@@ -41,9 +41,41 @@ img,video{max-width:100%}
 .bubble audio,.bubble video{max-width:100%}
 @media(max-width:700px){
   .sidebar{min-height:100dvh}
-  .sendbar{padding-bottom:max(12px,env(safe-area-inset-bottom))}
+  .sendbar{
+    padding:8px 8px max(12px,env(safe-area-inset-bottom));
+    gap:6px;
+    width:100%;
+    flex-shrink:0;
+    overflow:visible;
+  }
+  .sendbar input{
+    min-width:0;
+    width:auto;
+    flex:1 1 auto;
+  }
+  .sendbar button{
+    flex:0 0 44px;
+    width:44px;
+    min-width:44px;
+    max-width:44px;
+    padding:8px 0;
+  }
+  /* На узком экране оставляем место для поля и всегда видимой кнопки «Отправить». */
+  #audioCallButton,#videoCallButton{display:none}
+  .send{
+    display:grid!important;
+    place-items:center;
+    flex:0 0 46px!important;
+    width:46px!important;
+    min-width:46px!important;
+    max-width:46px!important;
+    height:46px;
+    font-size:22px;
+    position:relative;
+    z-index:2;
+  }
   .chat{height:100dvh;min-height:100dvh}
-  .messages{min-height:0}
+  .messages{min-height:0;padding-bottom:16px!important}
 }
 </style>
 </head>
