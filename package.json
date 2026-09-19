@@ -1,19 +1,19 @@
 {
   "name": "bkt-messenger",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "private": true,
-  "description": "БКТ — настоящий серверный мессенджер",
+  "description": "БКТ — серверный мессенджер с PostgreSQL",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
-    "better-sqlite3": "^11.7.0",
     "express": "^4.21.2",
     "jsonwebtoken": "^9.0.2",
-    "ws": "^8.18.0",
     "multer": "^1.4.5-lts.1",
-    "web-push": "^3.6.7"
+    "pg": "^8.16.3",
+    "web-push": "^3.6.7",
+    "ws": "^8.18.0"
   }
 }

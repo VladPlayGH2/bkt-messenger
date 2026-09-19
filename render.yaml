@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: bkt-messenger
+    runtime: node
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: bkt-messenger-db
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: NODE_ENV
+        value: production
+      - key: VAPID_SUBJECT
+        value: mailto:admin@example.com
+
+databases:
+  - name: bkt-messenger-db
+    databaseName: bkt_messenger
+    user: bkt_messenger
