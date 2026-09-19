@@ -36,6 +36,13 @@ async function api(url,opt={}){opt.headers={...(opt.headers||{}),Authorization:"
 async function authAction(){try{let d=await fetch("/api/"+(registering?"register":"login"),{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({username:$("login").value,password:$("pass").value})}).then(async r=>{let x=await r.json();if(!r.ok)throw Error(x.error);return x});token=d.token;localStorage.setItem("bkt_token",token);start()}catch(e){$("err").textContent=e.message}}
 async function start(){try{me=await api("/api/me");$("auth").style.display="none";$("app").style.display="grid";$("me").textContent="@"+me.username;connect();loadUsers()}catch{localStorage.removeItem("bkt_token");token=null}}
 function connect(){socket=new WebSocket((location.protocol==="https:"?"wss://":"ws://")+location.host+"/?token="+encodeURIComponent(token));socket.onmessage=e=>{let d=JSON.parse(e.data);if(d.type==="message"&&selected&&(d.message.sender_id===selected.id||d.message.receiver_id===selected.id))renderMessage(d.message)}}
+function verifiedName(name, verified){
+  const safe = escapeHtml(String(name || ""));
+  return safe + (verified
+    ? '<span class="verified-badge" title="Подтверждено">✓</span>'
+    : '');
+}
+
 async function loadUsers(){
   const input = $("search");
   const q = (input?.value || "").trim().replace(/^@+/,"");
