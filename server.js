@@ -130,8 +130,6 @@ app.post("/api/register", async (req, res) => {
   const accessCode = String(req.body.accessCode || "");
   if (!verifyProtectedCode(username, accessCode))
     return res.status(403).json({ error: protectedError(username) });
-  if (!/^[a-zA-Zа-яА-ЯёЁ0-9_]{3,24}$/.test(username))
-    return res.status(400).json({ error: "Логин: 3–24 символа, буквы, цифры или _" });
   if (password.length < 6)
     return res.status(400).json({ error: "Пароль должен быть не короче 6 символов" });
   try {
@@ -153,7 +151,10 @@ app.post("/api/login", async (req, res) => {
   const accessCode = String(req.body.accessCode || "");
   if (!verifyProtectedCode(username, accessCode))
     return res.status(403).json({ error: protectedError(username) });
-  const row = db.prepare("SELECT * FROM users WHERE username=?").get(username);
+  // Логин не должен зависеть от регистра: Vlad, vlad и VLAD
+  // должны находить одну и ту же учётную запись. Пароль при этом
+  // сравнивается строго, без изменения пробелов/регистра.
+  const row = db.prepare("SELECT * FROM users WHERE LOWER(username)=LOWER(?) LIMIT 1").get(username);
   if (!row || !(await bcrypt.compare(password, row.password_hash)))
     return res.status(401).json({ error: "Неверный логин или пароль" });
   const user = { id: row.id, username: row.username };
@@ -294,14 +295,6 @@ app.patch("/api/profile", auth, (req,res) => {
     return res.status(403).json({ error: protectedError(username) });
   const bio = String(req.body?.bio ?? "").trim().slice(0,160);
   const avatar = String(req.body?.avatar ?? "").trim().slice(0,500);
-
-  // Validate usernames by Unicode characters so Cyrillic/other letter cases
-  // accepted by the UI are not rejected in profile settings.
-  const usernameChars = Array.from(username);
-  const validUsername = usernameChars.length >= 3 && usernameChars.length <= 32
-    && usernameChars.every(ch => /[\p{L}\p{N}_.-]/u.test(ch));
-  if (!validUsername)
-    return res.status(400).json({error:"Логин: 3–32 символа, буквы, цифры, _, ., -"});
 
   const exists = db.prepare(
     "SELECT id FROM users WHERE LOWER(username)=LOWER(?) AND id<>?"

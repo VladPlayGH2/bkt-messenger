@@ -1,16 +1,5 @@
-# BKT Messenger — protected accounts
+# BKT Messenger — login validation fix
 
-Protected accounts in this build:
-- `Brozi` — requires its special access code.
-- `Vlad` — requires `VladBKT69102937!!!`.
-- `vladmobile` — requires `VladBKT69102937!!!`.
+Убрана проверка формата логина, которая показывала ошибку «Логин: 3–32 символа, буквы, цифры, _, ., -».
 
-Protection is checked on the server for login, registration, and profile rename. The access codes themselves are not stored in the project; only salted scrypt hashes are stored in `protected-access.json`.
-
-For `Vlad` and `vladmobile`, the same special code is used as requested.
-
-Run:
-```bash
-npm install
-npm start
-```
+Логин теперь не отклоняется этой проверкой при сохранении профиля и регистрации. Проверка занятости логина и защитные коды специальных аккаунтов сохранены.
