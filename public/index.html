@@ -636,7 +636,7 @@ function createPeer(){
   const pc=new RTCPeerConnection(rtcConfig);
   pc.onicecandidate=e=>{
     if(e.candidate && callPeerUserId)
-      callSocket({type:"call-signal",toUserId:Number(callPeerUserId),signalType:"ice",signal:e.candidate});
+      callSocket({type:"call-signal",toUserId:Number(callPeerUserId),signalType:"ice",callId:localCallId,signal:e.candidate});
   };
   pc.ontrack=e=>{
     const stream=e.streams[0];
@@ -703,6 +703,8 @@ async function handleCallSignal(d){
     localCallId=d.callId||null;
   }else if(d.signalType==="answer" && peer){
     await peer.setRemoteDescription(new RTCSessionDescription(d.signal));
+    for(const c of incomingIceCandidates){try{await peer.addIceCandidate(new RTCIceCandidate(c));}catch(e){}}
+    incomingIceCandidates=[];
   }else if(d.signalType==="ice"){
     if(peer && peer.remoteDescription){
       try{await peer.addIceCandidate(new RTCIceCandidate(d.signal));}catch(e){}
@@ -719,7 +721,7 @@ async function handleCallSignal(d){
 
 function endCall(notify=true){
   if(notify && callPeerUserId && socket && socket.readyState===WebSocket.OPEN)
-    callSocket({type:"call-signal",toUserId:Number(callPeerUserId),signalType:"hangup",signal:{}});
+    callSocket({type:"call-signal",toUserId:Number(callPeerUserId),signalType:"hangup",callId:localCallId,signal:{}});
   try{if(peer)peer.close()}catch(e){}
   if(localCallStream)localCallStream.getTracks().forEach(t=>t.stop());
   peer=null;localCallStream=null;incomingCall=null;pendingIceCandidates=[];incomingIceCandidates=[];callPeerUserId=null;localCallId=null;
