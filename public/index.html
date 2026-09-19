@@ -32,7 +32,23 @@ button,input{font:inherit}.app{height:100vh;max-width:1100px;margin:auto;display
 
 @media(max-width:700px){.quick-actions button{font-size:11px;padding:7px 3px}.avatar-upload,.wallpaper-row{flex-wrap:wrap}}
 
-.statuses-btn{margin:10px 18px 0;width:calc(100% - 36px);padding:11px 14px;border:1px solid #24312b;border-radius:14px;background:#111716;color:#fff;text-align:left;cursor:pointer;font-weight:700}.statuses-btn:hover{background:#16201c}.status-modal-card{width:min(520px,94vw)}.status-create{display:flex;gap:8px;flex-direction:column}.status-image-label{display:flex;align-items:center;gap:8px;padding:12px;border:1px dashed #24312b;border-radius:13px;cursor:pointer;background:#111716}.status-image-label input{display:none}.status-image-preview{display:none;width:100%;max-height:280px;object-fit:cover;border-radius:13px;border:1px solid #24312b}.status-create textarea{width:100%;min-height:90px;resize:vertical;box-sizing:border-box;background:#111716;border:1px solid #24312b;border-radius:13px;padding:12px;color:#fff;outline:0}.status-list{display:flex;flex-direction:column;gap:10px;margin:16px 0;max-height:50vh;overflow:auto}.status-card{display:flex;gap:10px;align-items:flex-start;padding:12px;border:1px solid #24312b;border-radius:14px;background:#0d1411}.status-card img{width:42px;height:42px;border-radius:50%;object-fit:cover}.status-card-media{width:100%;max-height:300px;object-fit:cover;border-radius:12px;margin-top:8px}.status-card-body{min-width:0;flex:1}.status-card-body b{display:block}.status-card-body small{display:block;color:#8d9893;margin-top:4px;white-space:pre-wrap;word-break:break-word}.status-delete{border:0;background:transparent;color:#ff8d8d;cursor:pointer;font-size:18px}</style>
+.statuses-btn{margin:10px 18px 0;width:calc(100% - 36px);padding:11px 14px;border:1px solid #24312b;border-radius:14px;background:#111716;color:#fff;text-align:left;cursor:pointer;font-weight:700}.statuses-btn:hover{background:#16201c}
+.status-modal-card{width:min(560px,94vw);padding:0!important;overflow:hidden}
+.tiktok-status-card{background:#070b09}
+.tiktok-status-head{display:flex;align-items:center;justify-content:space-between;padding:16px 18px;border-bottom:1px solid #1b2822}
+.tiktok-status-head h2{margin:0;font-size:20px}.status-x{border:0;background:transparent;color:#fff;font-size:28px;line-height:1;cursor:pointer}
+.status-create{display:flex;gap:9px;flex-direction:column}.tiktok-status-create{padding:16px 18px 12px}
+.status-upload-button{display:flex;align-items:center;justify-content:center;gap:8px;padding:12px;border-radius:12px;background:#18251e;border:1px solid #2a3a31;cursor:pointer;font-weight:700}.status-upload-button input{display:none}
+.status-composer-preview{position:relative;display:none;overflow:hidden;border-radius:16px;background:#000;aspect-ratio:9/14;max-height:62vh}
+.status-image-preview{display:block;width:100%;height:100%;object-fit:cover;border:0;border-radius:0}
+.status-caption-overlay{position:absolute;left:0;right:0;bottom:0;padding:46px 16px 16px;background:linear-gradient(transparent,rgba(0,0,0,.78));color:#fff;font-size:17px;font-weight:600;white-space:pre-wrap;word-break:break-word}
+.status-create textarea{width:100%;min-height:72px;resize:vertical;box-sizing:border-box;background:#111716;border:1px solid #24312b;border-radius:13px;padding:12px;color:#fff;outline:0}
+.status-counter{display:flex;justify-content:space-between;color:#8d9893;font-size:12px}
+.status-publish-button{width:100%;padding:12px!important;border-radius:12px!important}
+.status-feed-title{padding:8px 18px 0;font-weight:700}.status-list{display:flex;flex-direction:column;gap:10px;margin:10px 18px 18px;max-height:42vh;overflow:auto}
+.status-card{display:flex;gap:10px;align-items:flex-start;padding:12px;border:1px solid #24312b;border-radius:14px;background:#0d1411}.status-card img{width:42px;height:42px;border-radius:50%;object-fit:cover}.status-card-media{width:100%;max-height:300px;object-fit:cover;border-radius:12px;margin-top:8px}.status-card-body{min-width:0;flex:1}.status-card-body b{display:block}.status-card-body small{display:block;color:#8d9893;margin-top:4px;white-space:pre-wrap;word-break:break-word}.status-delete{border:0;background:transparent;color:#ff8d8d;cursor:pointer;font-size:18px}
+@media(max-width:700px){.status-composer-preview{max-height:58vh}.status-modal-card{width:calc(100vw - 12px);max-height:94dvh!important}.tiktok-status-create{padding:12px}.status-list{margin-left:12px;margin-right:12px}}
+</style>
 <style>
 .community-readonly{display:none;padding:11px 14px;border-top:1px solid #1b2822;color:#8d9893;text-align:center;background:#0a100d;font-size:13px}
 </style>
@@ -173,7 +189,24 @@ img,video{max-width:100%}
 <div id="recording" class="modal" style="display:none"><div class="modal-card"><h3>🎙️ Запись голосового</h3><div id="recordTime">0:00</div><div class="modal-actions"><button onclick="finishRecording()">Отправить</button><button onclick="cancelRecording()">Отмена</button></div></div></div>
 <div id="videoRecording" class="modal" style="display:none"><div class="modal-card"><h3>🎥 Видеосообщение</h3><video id="videoPreview" autoplay muted playsinline></video><div id="videoTime">0:00</div><div class="modal-actions"><button onclick="finishVideoRecording()">Отправить</button><button onclick="cancelVideoRecording()">Отмена</button></div></div></div>
 <div id="callModal" class="modal" style="display:none"><div class="modal-card"><h3 id="callTitle">Звонок</h3><video id="remoteVideo" autoplay playsinline style="width:100%;max-height:320px;border-radius:14px;background:#000"></video><audio id="remoteAudio" autoplay></audio><div class="modal-actions"><button id="acceptCall" onclick="acceptIncomingCall()">Принять</button><button onclick="endCall()">Завершить</button></div></div></div></main></div>
-<div id="statusesModal" class="modal" style="display:none"><div class="modal-card status-modal-card"><h2>🟢 Статусы</h2><div class="status-create"><label class="status-image-label">📷 Добавить фото<input id="statusImage" type="file" accept="image/jpeg,image/png,image/webp,image/gif" onchange="previewStatusImage(event)"></label><img id="statusImagePreview" class="status-image-preview" alt="Предпросмотр"><textarea id="statusText" maxlength="280" placeholder="Напиши что-нибудь..."></textarea><button class="primary" onclick="publishStatus()">Опубликовать</button></div><div id="statusList" class="status-list"></div><div class="modal-actions"><button onclick="closeStatuses()">Закрыть</button></div></div></div>
+<div id="statusesModal" class="modal" style="display:none">
+<div class="modal-card status-modal-card tiktok-status-card">
+  <div class="tiktok-status-head"><h2>🟢 Статусы</h2><button class="status-x" onclick="closeStatuses()" aria-label="Закрыть">×</button></div>
+  <div class="status-create tiktok-status-create">
+    <label class="status-upload-button">📷 Выбрать фото
+      <input id="statusImage" type="file" accept="image/jpeg,image/png,image/webp,image/gif" onchange="previewStatusImage(event)">
+    </label>
+    <div id="statusComposerPreview" class="status-composer-preview">
+      <img id="statusImagePreview" class="status-image-preview" alt="Предпросмотр">
+      <div class="status-caption-overlay"><span id="statusCaptionPreview">Подпись к фото…</span></div>
+    </div>
+    <textarea id="statusText" maxlength="280" placeholder="Добавьте подпись…"></textarea>
+    <div class="status-counter"><span>Фото + подпись</span><span id="statusTextCounter">0/280</span></div>
+    <button class="primary status-publish-button" onclick="publishStatus()">Опубликовать статус</button>
+  </div>
+  <div class="status-feed-title">Последние статусы</div>
+  <div id="statusList" class="status-list"></div>
+</div></div>
 <div id="settingsModal" class="modal"><div class="modal-card"><h2>Настройки профиля</h2><label>Логин</label><input id="profileUsername" autocomplete="username" autocapitalize="none" spellcheck="false" oninput="toggleProfileProtectedCode()"><input id="profileAccessCode" type="password" placeholder="Секретный код" autocomplete="off" style="display:none"><label>О себе</label><textarea id="profileBio" maxlength="160"></textarea><label>Аватар</label><div class="settings-avatar"><img id="profileAvatarPreview" src="" alt=""><span>Выберите другой стикер для аватарки.</span><input id="settingsAvatarPreview" type="hidden" value=""></div><div id="settingsAvatarGrid" class="auth-avatar-grid settings-avatar-grid"></div><label>Обои чата</label><div class="wallpaper-row"><input id="wallpaperColor" type="color" value="#08100c"><input id="wallpaperUrl" placeholder="Ссылка на обои"><button type="button" onclick="applyChatWallpaper()">Применить</button><button type="button" onclick="clearChatWallpaper()">Сбросить</button></div><div id="settingsError" class="error"></div><div class="modal-actions"><button onclick="saveSettings()">Сохранить</button><button onclick="closeSettings()">Отмена</button><button onclick="logout()" style="background:#a92323;color:#fff">Выйти</button></div></div></div>
 <div id="profileViewModal" class="modal" style="display:none">
 <div class="profile-view-card">
@@ -207,18 +240,30 @@ async function openStatuses(){
   modal.style.display="grid";
   $("statusText").value="";
   $("statusImage").value="";
-  $("statusImagePreview").style.display="none";
   $("statusImagePreview").src="";
+  $("statusComposerPreview").style.display="none";
+  $("statusCaptionPreview").textContent="Подпись к фото…";
+  $("statusTextCounter").textContent="0/280";
   await loadStatuses();
 }
 function closeStatuses(){ if($("statusesModal")) $("statusesModal").style.display="none"; }
 function statusTime(v){ const d=new Date(v); return Number.isNaN(d.getTime())?"":d.toLocaleString("ru-RU",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}); }
 function previewStatusImage(event){
-  const file=event.target.files?.[0], preview=$("statusImagePreview");
-  if(!file){ preview.style.display="none"; preview.src=""; return; }
-  if(file.size>8*1024*1024){ alert("Фото должно быть не больше 8 МБ"); event.target.value=""; preview.style.display="none"; return; }
-  preview.src=URL.createObjectURL(file); preview.style.display="block";
+  const file=event.target.files?.[0], preview=$("statusImagePreview"), wrap=$("statusComposerPreview");
+  if(!file){ wrap.style.display="none"; preview.src=""; return; }
+  if(file.size>8*1024*1024){ alert("Фото должно быть не больше 8 МБ"); event.target.value=""; wrap.style.display="none"; return; }
+  preview.src=URL.createObjectURL(file);
+  wrap.style.display="block";
+  $("statusCaptionPreview").textContent=$("statusText").value.trim()||"Подпись к фото…";
 }
+document.addEventListener("input",e=>{
+  if(e.target?.id==="statusText"){
+    const text=e.target.value||"";
+    $("statusTextCounter").textContent=`${text.length}/280`;
+    const p=$("statusCaptionPreview");
+    if(p)p.textContent=text.trim()||"Подпись к фото…";
+  }
+});
 async function loadStatuses(){
   const box=$("statusList"); if(!box)return;
   try{
