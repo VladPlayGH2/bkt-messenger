@@ -20,6 +20,16 @@ button,input{font:inherit}.app{height:100vh;max-width:1100px;margin:auto;display
 @media(max-width:700px){.chathead{padding:8px 10px;gap:8px}.call-actions button{width:40px;height:40px;min-width:40px;padding:0}.chat-title b{font-size:14px}.chat-title .status{font-size:11px}}
 
 .quick-actions{display:flex;gap:6px;margin:0 10px 10px}.quick-actions button{flex:1;min-width:0;padding:8px 5px;border:1px solid #24312b;background:#111716;color:#fff;border-radius:10px;cursor:pointer;font-size:12px;white-space:nowrap}.quick-actions .notify-btn{margin:0;width:auto}.avatar-upload,.wallpaper-row{display:flex;gap:7px;align-items:center}.avatar-upload input[type=file]{display:none}.avatar-upload button,.wallpaper-row button{border:0;border-radius:9px;padding:9px;cursor:pointer;background:#18251e;color:#fff}.avatar-upload #profileAvatar,.wallpaper-row input[placeholder]{min-width:0;flex:1}.wallpaper-row input[type=color]{width:46px;height:38px;padding:2px;background:#111716;border:1px solid #24312b;border-radius:8px}.settings-modal .modal-card{}
+.profile-view-card{width:min(430px,92vw);background:#0c1110;border:1px solid #24312b;border-radius:20px;padding:24px;text-align:center}
+.profile-view-avatar{width:96px;height:96px;border-radius:50%;margin:4px auto 14px;background:#0c6630;display:grid;place-items:center;font-size:34px;font-weight:700;overflow:hidden}
+.profile-view-avatar img{width:100%;height:100%;object-fit:cover}
+.profile-view-name{font-size:22px;font-weight:700}
+.profile-view-username{color:#8d9893;margin-top:4px}
+.profile-view-bio{margin:18px 0;color:#dce5e0;white-space:pre-wrap;word-break:break-word;min-height:24px}
+.profile-view-actions{display:flex;gap:8px}
+.profile-view-actions button{flex:1;padding:11px;border:0;border-radius:10px;cursor:pointer;background:#18251e;color:#fff}
+.profile-view-actions .primary-profile{background:#22ff72;color:#001609;font-weight:700}
+
 @media(max-width:700px){.quick-actions button{font-size:11px;padding:7px 3px}.avatar-upload,.wallpaper-row{flex-wrap:wrap}}
 </style>
 <style id="bkt-mobile-css">
@@ -96,12 +106,12 @@ img,video{max-width:100%}
 <div id="auth" class="auth"><div class="card">
 <div class="brand"><div class="logo">БКТ</div><div><h1>БКТ</h1><small>Мессенджер</small></div></div>
 <h2 id="authTitle">Вход</h2><div id="err" class="error"></div>
-<input id="login" placeholder="Логин" autocomplete="username" oninput="updateBroziCodeField()"><input id="pass" type="password" placeholder="Пароль" autocomplete="current-password"><input id="broziCode" type="password" placeholder="Специальный код" autocomplete="off" style="display:none">
+<input id="login" placeholder="Логин" autocomplete="username" oninput="toggleBroziCode()"><input id="pass" type="password" placeholder="Пароль" autocomplete="current-password"><input id="accessCode" type="password" inputmode="numeric" maxlength="9" placeholder="Специальный код для Brozi" autocomplete="off" style="display:none">
 <button class="primary" onclick="authAction()" id="authBtn">Войти</button><div class="switch" onclick="toggleAuth()" id="switch">Нет аккаунта? Регистрация</div>
 </div></div><div class="app" id="app" style="display:none">
-<aside class="sidebar"><div class="quick-actions"><button id="profileBtn" onclick="openSettings()">⚙️ Настройки</button><button class="notify-btn" id="notifyBtn" onclick="enableNotifications()">🔔 Уведомления</button><button onclick="createGroup()">＋ Группа</button></div><div class="top"><div class="brand"><div class="logo">БКТ</div><div><h1>БКТ</h1><small id="me"></small></div></div></div>
+<aside class="sidebar"><div class="quick-actions"><button id="profileBtn" onclick="openSettings()">⚙️ Настройки</button><button class="notify-btn" id="notifyBtn" onclick="enableNotifications()">🔔 Уведомления</button><button onclick="createGroup()">＋ Группа</button></div><div class="top"><div class="brand"><div class="logo">БКТ</div><div><h1>БКТ</h1><small id="me" onclick="openMyProfile()" style="cursor:pointer" title="Открыть свой профиль"></small></div></div></div>
 <div class="search"><input id="search" placeholder="Найти пользователя по @username" oninput="loadUsers()"></div><div id="groups"></div><div id="users" class="users"></div></aside>
-<main class="chat"><div class="chathead"><button class="back" onclick="mobileBack()" style="display:none">‹</button><div class="avatar" id="headAvatar">БКТ</div><div class="chat-title"><b id="headName">Выберите чат</b><span class="status" id="headStatus"></span></div><div class="call-actions"><button id="audioCallButton" title="Аудиозвонок" aria-label="Аудиозвонок">📞</button><button id="videoCallButton" title="Видеозвонок" aria-label="Видеозвонок">📹</button></div></div>
+<main class="chat"><div class="chathead"><button class="back" onclick="mobileBack()" style="display:none">‹</button><div class="avatar" id="headAvatar" onclick="openSelectedProfile()" style="cursor:pointer" title="Открыть профиль"></div><div class="chat-title" onclick="openSelectedProfile()" style="cursor:pointer"><b id="headName">Выберите чат</b><span class="status" id="headStatus"></span></div><div class="call-actions"><button id="audioCallButton" title="Аудиозвонок" aria-label="Аудиозвонок">📞</button><button id="videoCallButton" title="Видеозвонок" aria-label="Видеозвонок">📹</button></div></div>
 <div id="messages" class="messages"><div class="empty">Выберите пользователя слева</div></div>
 <div class="sendbar">
 <button id="voiceButton" title="Голосовое сообщение">🎙️</button>
@@ -112,14 +122,25 @@ img,video{max-width:100%}
 <div id="recording" class="modal" style="display:none"><div class="modal-card"><h3>🎙️ Запись голосового</h3><div id="recordTime">0:00</div><div class="modal-actions"><button onclick="finishRecording()">Отправить</button><button onclick="cancelRecording()">Отмена</button></div></div></div>
 <div id="videoRecording" class="modal" style="display:none"><div class="modal-card"><h3>🎥 Видеосообщение</h3><video id="videoPreview" autoplay muted playsinline></video><div id="videoTime">0:00</div><div class="modal-actions"><button onclick="finishVideoRecording()">Отправить</button><button onclick="cancelVideoRecording()">Отмена</button></div></div></div>
 <div id="callModal" class="modal" style="display:none"><div class="modal-card"><h3 id="callTitle">Звонок</h3><video id="remoteVideo" autoplay playsinline style="width:100%;max-height:320px;border-radius:14px;background:#000"></video><audio id="remoteAudio" autoplay></audio><div class="modal-actions"><button id="acceptCall" onclick="acceptIncomingCall()">Принять</button><button onclick="endCall()">Завершить</button></div></div></div></main></div>
-<div id="settingsModal" class="modal"><div class="modal-card"><h2>Настройки профиля</h2><label>Логин</label><input id="profileUsername"><label>О себе</label><textarea id="profileBio" maxlength="160"></textarea><label>Аватар</label><div class="avatar-upload"><input id="profileAvatar" placeholder="Ссылка на аватар"><input id="avatarFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif" onchange="uploadAvatarFile(this)"><button type="button" onclick="document.getElementById('avatarFile').click()">📷 Выбрать фото</button></div><label>Обои чата</label><div class="wallpaper-row"><input id="wallpaperColor" type="color" value="#08100c"><input id="wallpaperUrl" placeholder="Ссылка на обои"><button type="button" onclick="applyChatWallpaper()">Применить</button><button type="button" onclick="clearChatWallpaper()">Сбросить</button></div><div id="settingsError" class="error"></div><div class="modal-actions"><button onclick="saveSettings()">Сохранить</button><button onclick="closeSettings()">Отмена</button><button onclick="logout()" style="background:#a92323;color:#fff">Выйти</button></div></div></div>
+<div id="settingsModal" class="modal"><div class="modal-card"><h2>Настройки профиля</h2><label>Логин</label><input id="profileUsername" autocomplete="username" autocapitalize="none" spellcheck="false" oninput="toggleProfileBroziCode()"><input id="profileAccessCode" type="password" inputmode="numeric" maxlength="9" placeholder="Специальный код для Brozi" autocomplete="off" style="display:none"><label>О себе</label><textarea id="profileBio" maxlength="160"></textarea><label>Аватар</label><div class="avatar-upload"><input id="profileAvatar" placeholder="Ссылка на аватар"><input id="avatarFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif" onchange="uploadAvatarFile(this)"><button type="button" onclick="document.getElementById('avatarFile').click()">📷 Выбрать фото</button></div><label>Обои чата</label><div class="wallpaper-row"><input id="wallpaperColor" type="color" value="#08100c"><input id="wallpaperUrl" placeholder="Ссылка на обои"><button type="button" onclick="applyChatWallpaper()">Применить</button><button type="button" onclick="clearChatWallpaper()">Сбросить</button></div><div id="settingsError" class="error"></div><div class="modal-actions"><button onclick="saveSettings()">Сохранить</button><button onclick="closeSettings()">Отмена</button><button onclick="logout()" style="background:#a92323;color:#fff">Выйти</button></div></div></div>
+<div id="profileViewModal" class="modal" style="display:none">
+<div class="profile-view-card">
+  <div id="profileViewAvatar" class="profile-view-avatar">БКТ</div>
+  <div id="profileViewName" class="profile-view-name">Профиль</div>
+  <div id="profileViewUsername" class="profile-view-username"></div>
+  <div id="profileViewBio" class="profile-view-bio"></div>
+  <div class="profile-view-actions">
+    <button id="profileViewChat" class="primary-profile" onclick="chatFromProfile()">💬 Написать</button>
+    <button onclick="closeProfileView()">Закрыть</button>
+  </div>
+</div></div>
 <script>
 let token=sessionStorage.getItem("bkt_token")||null, me=null, selected=null, activeGroup=null, socket=null, registering=false;
 // Never reuse a persistent login token left by another person/browser session.
 try{localStorage.removeItem("bkt_token");}catch(_){}
 const $=id=>document.getElementById(id);
-function updateBroziCodeField(){const el=$("broziCode"); if(!el)return; const name=$("login").value.trim().replace(/^@+/,"").toLowerCase(); const protectedName=["brozi","vlad","vladmobile"].includes(name); el.style.display=protectedName?"block":"none"; if(!protectedName) el.value="";}
-function toggleAuth(){registering=!registering;$("authTitle").textContent=registering?"Регистрация":"Вход";$("authBtn").textContent=registering?"Создать аккаунт":"Войти";$("switch").textContent=registering?"Уже есть аккаунт? Войти":"Нет аккаунта? Регистрация";$("err").textContent="";updateBroziCodeField()}
+function toggleBroziCode(){const isBrozi=$("login").value.trim().toLowerCase()==="brozi"; $("accessCode").style.display=isBrozi?"block":"none";}
+function toggleAuth(){registering=!registering;$("authTitle").textContent=registering?"Регистрация":"Вход";$("authBtn").textContent=registering?"Создать аккаунт":"Войти";$("switch").textContent=registering?"Уже есть аккаунт? Войти":"Нет аккаунта? Регистрация";$("err").textContent=""; toggleBroziCode()}
 async function api(path, options={}){
   const saved=sessionStorage.getItem("bkt_token");
   if(saved) token=saved;
@@ -141,13 +162,12 @@ async function api(path, options={}){
 async function authAction(){
   const username=$("login").value.trim();
   const password=$("pass").value;
-  const accessCode=$("broziCode")?.value.trim()||"";
   $("err").textContent="";
   if(!username||!password){$("err").textContent="Введите логин и пароль";return;}
   try{
     const d=await api("/api/"+(registering?"register":"login"),{
       method:"POST",
-      body:{username,password,accessCode}
+      body:{username,password,accessCode:$("accessCode").value.trim()}
     });
     token=d.token;
     sessionStorage.setItem("bkt_token",token);
@@ -292,7 +312,7 @@ function connectSocket(){
 
 function verifiedName(name, verified){
   const safe=escapeHtml(String(name||""));
-  return safe+(verified?'<span class="verified-badge" title="Подтверждённый аккаунт" aria-label="Подтверждённый аккаунт">✓</span>':"");
+  return safe+(verified?'<span class="verified-badge" title="Подтверждено">✓</span>':"");
 }
 
 async function loadUsers(){
@@ -358,7 +378,7 @@ async function deleteGroupMessage(id){
   try{await api("/api/groups/messages/"+id,{method:"DELETE"});const el=$("gm"+id);if(el)el.remove();}
   catch(e){alert(e.message||"Не удалось удалить сообщение");}
 }
-async function openUser(u){activeGroup=null;selected=u;$("app").classList.add("mobile-chat");$("headName").innerHTML=verifiedName(u.username, !!u.verified);$("headAvatar").textContent=u.username[0].toUpperCase();$("headStatus").textContent=" ● онлайн";let ms=await api("/api/messages/"+u.id);$("messages").innerHTML="";ms.forEach(renderMessage);$("messages").scrollTop=$("messages").scrollHeight;loadUsers()}
+async function openUser(u){activeGroup=null;selected=u;$("app").classList.add("mobile-chat");$("headName").textContent=u.username;$("headAvatar").textContent=u.username[0].toUpperCase();$("headStatus").textContent=" ● онлайн";let ms=await api("/api/messages/"+u.id);$("messages").innerHTML="";ms.forEach(renderMessage);$("messages").scrollTop=$("messages").scrollHeight;loadUsers()}
   loadChatWallpaper();
 function renderMessage(m){
   if(document.getElementById("m"+m.id))return;
@@ -536,10 +556,37 @@ function applyChatWallpaper(){ const v=$("wallpaperUrl").value.trim() || $("wall
 function clearChatWallpaper(){ if(wallpaperKey()!=="none")localStorage.removeItem("bkt_wallpaper_"+wallpaperKey()); $("wallpaperUrl").value=""; $("wallpaperColor").value="#08100c"; applyWallpaperValue(""); }
 async function uploadAvatarFile(input){ const f=input.files?.[0]; if(!f)return; const form=new FormData(); form.append("avatar",f,f.name); try{ const r=await fetch("/api/profile/avatar",{method:"POST",headers:{Authorization:"Bearer "+token},body:form}); const d=await r.json(); if(!r.ok)throw Error(d.error||"Ошибка загрузки"); $("profileAvatar").value=d.avatar; await saveSettings(); }catch(e){ $("settingsError").style.color="#ff8d8d"; $("settingsError").textContent=e.message; } finally{input.value="";} }
 
+async function openProfileView(userId, isMe=false){
+  try{
+    const p = isMe ? await api("/api/profile") : await api("/api/users/"+encodeURIComponent(userId)+"/profile");
+    $("profileViewName").innerHTML = verifiedName(p.username, !!p.verified);
+    $("profileViewUsername").textContent = "@"+p.username;
+    $("profileViewBio").textContent = p.bio || "О себе пока ничего не указано.";
+    const av=$("profileViewAvatar");
+    av.innerHTML="";
+    if(p.avatar){
+      const img=document.createElement("img"); img.src=p.avatar; img.alt=""; av.appendChild(img);
+    }else{
+      av.textContent=(p.username||"?")[0].toUpperCase();
+    }
+    $("profileViewChat").style.display = isMe ? "none" : "block";
+    $("profileViewModal").style.display="grid";
+    window.profileViewUser = isMe ? null : p;
+  }catch(e){ alert(e.message || "Не удалось открыть профиль"); }
+}
+function openMyProfile(){ openProfileView(me?.id, true); }
+function openSelectedProfile(){ if(selected) openProfileView(selected.id, false); }
+function closeProfileView(){ $("profileViewModal").style.display="none"; window.profileViewUser=null; }
+async function chatFromProfile(){
+  const p=window.profileViewUser;
+  closeProfileView();
+  if(!p) return;
+  await openUser(p);
+}
 async function openSettings(){
   try{
     const p = await api("/api/profile");
-    $("profileUsername").value = p.username || "";
+    $("profileUsername").value = p.username || ""; toggleProfileBroziCode();
     $("profileBio").value = p.bio || "";
     $("profileAvatar").value = p.avatar || "";
     $("settingsError").style.color = "";
@@ -551,10 +598,12 @@ async function openSettings(){
   }
 }
 function closeSettings(){ $("settingsModal").style.display="none"; }
+function toggleProfileBroziCode(){const isBrozi=$("profileUsername").value.trim().toLowerCase()==="brozi"; $("profileAccessCode").style.display=isBrozi?"block":"none";}
 async function saveSettings(){
  try{
   const p=await api("/api/profile",{method:"PATCH",body:JSON.stringify({
    username:$("profileUsername").value.trim(),
+    accessCode:$("profileAccessCode").value.trim(),
    bio:$("profileBio").value,
    avatar:$("profileAvatar").value.trim()
   })});

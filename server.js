@@ -360,7 +360,12 @@ app.get("/api/users/by-username/:username", auth, (req,res) => {
 
 app.get("/api/users/:id/profile", auth, (req, res) => {
   const userId = Number(req.params.id);
-  const user = db.prepare("SELECT id, username FROM users WHERE id=?").get(userId);
+  const user = db.prepare(`
+    SELECT id, username,
+      COALESCE(bio,'') AS bio,
+      COALESCE(avatar,'') AS avatar
+    FROM users WHERE id=?
+  `).get(userId);
   if (!user) return res.status(404).json({ error: "Пользователь не найден" });
   res.json({ ...user, verified: isVerified(userId) });
 });
