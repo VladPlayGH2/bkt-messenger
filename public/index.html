@@ -337,10 +337,13 @@ async function send(){
 }
 
 
-let peer=null, localCallStream=null, incomingCall=null, callType="audio";
+let peer=null, localCallStream=null, incomingCall=null, callType="audio", pendingIceCandidates=[];
 
 function callSocket(data){
-  if(socket && socket.readyState===WebSocket.OPEN) socket.send(JSON.stringify(data));
+  if(!socket || socket.readyState!==WebSocket.OPEN){
+    throw new Error("Нет соединения с сервером. Перезагрузи страницу.");
+  }
+  socket.send(JSON.stringify(data));
 }
 
 async function startCall(type){
@@ -353,11 +356,14 @@ async function startCall(type){
       type==="video"?{audio:true,video:true}:{audio:true}
     );
     peer=createPeer();
+    pendingIceCandidates=[];
     localCallStream.getTracks().forEach(t=>peer.addTrack(t,localCallStream));
     $("callTitle").textContent=type==="video"?"📹 Видеозвонок":"📞 Аудиозвонок";
     $("callModal").style.display="grid";
     if(type==="video"){
       $("remoteVideo").style.display="block";
+      $("remoteVideo").muted=true;
+      $("remoteVideo").srcObject=localCallStream;
     }else{
       $("remoteVideo").style.display="none";
     }
@@ -382,7 +388,7 @@ function createPeer(){
   pc.ontrack=e=>{
     const stream=e.streams[0];
     $("remoteAudio").srcObject=stream;
-    $("remoteVideo").srcObject=stream;
+    if(callType==="video"){$("remoteVideo").srcObject=stream;$("remoteVideo").muted=false;}
     $("remoteAudio").play().catch(()=>{});
     $("remoteVideo").play().catch(()=>{});
   };
@@ -402,8 +408,11 @@ async function acceptIncomingCall(){
       callType==="video"?{audio:true,video:true}:{audio:true}
     );
     peer=createPeer();
+    pendingIceCandidates=[];
     localCallStream.getTracks().forEach(t=>peer.addTrack(t,localCallStream));
     await peer.setRemoteDescription(new RTCSessionDescription(incomingCall.signal));
+    for(const c of pendingIceCandidates){try{await peer.addIceCandidate(c)}catch(e){}}
+    pendingIceCandidates=[];
     const answer=await peer.createAnswer();
     await peer.setLocalDescription(answer);
     callSocket({type:"call-signal",toUserId:from,signalType:"answer",signal:{sdp:peer.localDescription.sdp,type:peer.localDescription.type},callType});
@@ -437,7 +446,7 @@ function endCall(notify=true){
   if(notify && selected) callSocket({type:"call-signal",toUserId:Number(selected.id),signalType:"hangup",signal:{}});
   try{if(peer)peer.close()}catch(e){}
   if(localCallStream)localCallStream.getTracks().forEach(t=>t.stop());
-  peer=null;localCallStream=null;incomingCall=null;
+  peer=null;localCallStream=null;incomingCall=null;pendingIceCandidates=[];
   $("callModal").style.display="none";
   $("remoteVideo").srcObject=null;
   $("remoteAudio").srcObject=null;

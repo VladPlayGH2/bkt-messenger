@@ -51,6 +51,7 @@ const uploadMedia = multer({
 const server = http.createServer(app);
 const wss = new WebSocketServer({ server });
 const sockets = new Map();
+// One active WebSocket per account; reconnecting replaces the old connection.
 
 app.use(express.json());
 app.use(express.static(path.join(__dirname, "public")));
@@ -531,6 +532,11 @@ wss.on("connection", (ws, req) => {
       try {
         const data = JSON.parse(raw.toString());
         if (data.type === "call-signal" && data.toUserId) {
+          const target = sockets.get(Number(data.toUserId));
+          if (!target || target.readyState !== 1) {
+            ws.send(JSON.stringify({type:"call-signal",signalType:"unavailable",toUserId:Number(data.toUserId)}));
+            return;
+          }
           sendSignal(data.toUserId, {
             fromUserId: user.id,
             fromUsername: user.username,
