@@ -299,10 +299,13 @@ app.patch("/api/profile", auth, (req,res) => {
   const exists = db.prepare(
     "SELECT id FROM users WHERE LOWER(username)=LOWER(?) AND id<>?"
   ).get(username, meUser.id);
-  if (exists) return res.status(409).json({error:"Этот логин уже занят"});
 
+  // If the requested username is already used, do not show an error and do not
+  // overwrite another account. Keep the current username and still save the
+  // other profile settings.
+  const usernameToSave = exists ? meUser.username : username;
   db.prepare("UPDATE users SET username=?,bio=?,avatar=? WHERE id=?")
-    .run(username,bio,avatar,meUser.id);
+    .run(usernameToSave,bio,avatar,meUser.id);
 
   const updated = db.prepare(
     "SELECT id,username,COALESCE(bio,'') AS bio,COALESCE(avatar,'') AS avatar FROM users WHERE id=?"
