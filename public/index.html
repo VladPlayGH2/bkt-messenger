@@ -252,7 +252,7 @@ async function authAction(){
   const password=$("pass").value;
   $("err").textContent="";
   if(!username||!password){$("err").textContent="Введите логин и пароль";return;}
-  if(registering && !selectedRegistrationAvatar){$("err").textContent="Выберите аватарку из стикеров";return;}
+  if(registering && !selectedRegistrationAvatar){ selectedRegistrationAvatar=REGISTRATION_AVATARS[0]; }
   try{
     const d=await api("/api/"+(registering?"register":"login"),{
       method:"POST",
