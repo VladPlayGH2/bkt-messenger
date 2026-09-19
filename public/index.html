@@ -129,6 +129,7 @@ img,video{max-width:100%}
 .auth-avatar-item img{width:100%;aspect-ratio:1/1;object-fit:contain;display:block}
 .settings-avatar{display:flex;align-items:center;gap:10px;padding:9px 0 12px;color:#9ba8a1;font-size:12px}
 .settings-avatar img{width:58px;height:58px;object-fit:contain;border-radius:14px;background:#111716;border:1px solid #24312b}
+.settings-avatar-grid{margin:4px 0 14px;grid-template-columns:repeat(6,1fr);max-height:180px}.settings-avatar-item{min-width:0}
 
 .bubble.sticker-bubble{background:transparent!important;padding:3px!important}
 @media(max-width:700px){
@@ -171,7 +172,7 @@ img,video{max-width:100%}
 <div id="recording" class="modal" style="display:none"><div class="modal-card"><h3>🎙️ Запись голосового</h3><div id="recordTime">0:00</div><div class="modal-actions"><button onclick="finishRecording()">Отправить</button><button onclick="cancelRecording()">Отмена</button></div></div></div>
 <div id="videoRecording" class="modal" style="display:none"><div class="modal-card"><h3>🎥 Видеосообщение</h3><video id="videoPreview" autoplay muted playsinline></video><div id="videoTime">0:00</div><div class="modal-actions"><button onclick="finishVideoRecording()">Отправить</button><button onclick="cancelVideoRecording()">Отмена</button></div></div></div>
 <div id="callModal" class="modal" style="display:none"><div class="modal-card"><h3 id="callTitle">Звонок</h3><video id="remoteVideo" autoplay playsinline style="width:100%;max-height:320px;border-radius:14px;background:#000"></video><audio id="remoteAudio" autoplay></audio><div class="modal-actions"><button id="acceptCall" onclick="acceptIncomingCall()">Принять</button><button onclick="endCall()">Завершить</button></div></div></div></main></div>
-<div id="settingsModal" class="modal"><div class="modal-card"><h2>Настройки профиля</h2><label>Логин</label><input id="profileUsername" autocomplete="username" autocapitalize="none" spellcheck="false" oninput="toggleProfileProtectedCode()"><input id="profileAccessCode" type="password" placeholder="Секретный код" autocomplete="off" style="display:none"><label>О себе</label><textarea id="profileBio" maxlength="160"></textarea><label>Аватар</label><div class="settings-avatar"><img id="profileAvatarPreview" src="" alt=""><span>Аватарку можно выбрать только при регистрации из стикеров.</span></div><label>Обои чата</label><div class="wallpaper-row"><input id="wallpaperColor" type="color" value="#08100c"><input id="wallpaperUrl" placeholder="Ссылка на обои"><button type="button" onclick="applyChatWallpaper()">Применить</button><button type="button" onclick="clearChatWallpaper()">Сбросить</button></div><div id="settingsError" class="error"></div><div class="modal-actions"><button onclick="saveSettings()">Сохранить</button><button onclick="closeSettings()">Отмена</button><button onclick="logout()" style="background:#a92323;color:#fff">Выйти</button></div></div></div>
+<div id="settingsModal" class="modal"><div class="modal-card"><h2>Настройки профиля</h2><label>Логин</label><input id="profileUsername" autocomplete="username" autocapitalize="none" spellcheck="false" oninput="toggleProfileProtectedCode()"><input id="profileAccessCode" type="password" placeholder="Секретный код" autocomplete="off" style="display:none"><label>О себе</label><textarea id="profileBio" maxlength="160"></textarea><label>Аватар</label><div class="settings-avatar"><img id="profileAvatarPreview" src="" alt=""><span>Выберите другой стикер для аватарки.</span><input id="settingsAvatarPreview" type="hidden" value=""></div><div id="settingsAvatarGrid" class="auth-avatar-grid settings-avatar-grid"></div><label>Обои чата</label><div class="wallpaper-row"><input id="wallpaperColor" type="color" value="#08100c"><input id="wallpaperUrl" placeholder="Ссылка на обои"><button type="button" onclick="applyChatWallpaper()">Применить</button><button type="button" onclick="clearChatWallpaper()">Сбросить</button></div><div id="settingsError" class="error"></div><div class="modal-actions"><button onclick="saveSettings()">Сохранить</button><button onclick="closeSettings()">Отмена</button><button onclick="logout()" style="background:#a92323;color:#fff">Выйти</button></div></div></div>
 <div id="profileViewModal" class="modal" style="display:none">
 <div class="profile-view-card">
   <div id="profileViewAvatar" class="profile-view-avatar">БКТ</div>
@@ -707,6 +708,7 @@ async function openSettings(){
     $("profileBio").value = p.bio || "";
     const avatarPreview=$("profileAvatarPreview");
     avatarPreview.src = p.avatar || "/icon.svg";
+    renderSettingsAvatarPicker(p.avatar || "");
     $("settingsError").style.color = "";
     $("settingsError").textContent = "";
     $("settingsModal").style.display = "grid";
@@ -715,6 +717,25 @@ async function openSettings(){
     $("settingsModal").style.display = "grid";
   }
 }
+function renderSettingsAvatarPicker(currentAvatar){
+  const grid=$("settingsAvatarGrid");
+  if(!grid)return;
+  grid.innerHTML="";
+  REGISTRATION_AVATARS.forEach((src,i)=>{
+    const b=document.createElement("button"); b.type="button"; b.className="auth-avatar-item settings-avatar-item"+(currentAvatar===src?" selected":"");
+    b.title=`Аватарка ${i+1}`;
+    const img=document.createElement("img"); img.src=src; img.alt=`Аватарка ${i+1}`;
+    b.appendChild(img);
+    b.onclick=()=>{
+      grid.querySelectorAll(".auth-avatar-item").forEach(x=>x.classList.remove("selected"));
+      b.classList.add("selected");
+      $("profileAvatarPreview").src=src;
+      $("settingsAvatarPreview").value=src;
+    };
+    grid.appendChild(b);
+  });
+  $("settingsAvatarPreview").value=currentAvatar || REGISTRATION_AVATARS[0];
+}
 function closeSettings(){ $("settingsModal").style.display="none"; }
 function toggleProfileProtectedCode(){const username=$("profileUsername").value.trim().replace(/^@+/,"").toLowerCase(); const protectedUser=["brozi","vlad","vladmobile"].includes(username); $("profileAccessCode").style.display=protectedUser?"block":"none";}
 async function saveSettings(){
@@ -722,7 +743,8 @@ async function saveSettings(){
   const p=await api("/api/profile",{method:"PATCH",body:JSON.stringify({
    username:$("profileUsername").value.trim(),
     accessCode:$("profileAccessCode").value.trim(),
-   bio:$("profileBio").value
+   bio:$("profileBio").value,
+   avatar:$("settingsAvatarPreview").value
   })});
   me={...me,...p};
   $("me").textContent="@"+p.username;
@@ -843,7 +865,7 @@ async function send(){
 }
 
 
-let peer=null, localCallStream=null, incomingCall=null, callType="audio", pendingIceCandidates=[], incomingIceCandidates=[], callPeerUserId=null, localCallId=null;
+let peer=null, localCallStream=null, incomingCall=null, callType="audio", pendingIceCandidates=[], incomingIceCandidates=[], callPeerUserId=null, localCallId=null, callTimeout=null;
 
 function callSocket(data){
   if(!socket || socket.readyState!==WebSocket.OPEN){
@@ -861,6 +883,7 @@ async function startCall(type){
     await loadRtcConfig();
     localCallStream=await navigator.mediaDevices.getUserMedia(type==="video"?{audio:true,video:true}:{audio:true});
     peer=createPeer(); pendingIceCandidates=[]; incomingIceCandidates=[]; callPeerUserId=Number(selected.id);
+    clearTimeout(callTimeout); callTimeout=setTimeout(()=>{ if(peer && !["connected","completed"].includes(peer.iceConnectionState)) { endCall(true); alert("Не удалось установить соединение. Проверьте интернет или настройки TURN."); } },45000);
     localCallStream.getTracks().forEach(t=>peer.addTrack(t,localCallStream));
     $("callTitle").textContent=type==="video"?"📹 Видеозвонок":"📞 Аудиозвонок";
     $("callModal").style.display="grid";
@@ -880,10 +903,24 @@ async function loadRtcConfig(){
   try{ const c=await api("/api/rtc-config"); if(Array.isArray(c.iceServers)&&c.iceServers.length) rtcConfig=c; }catch(_){}
 }
 function createPeer(){
-  const pc=new RTCPeerConnection(rtcConfig);
+  const pc=new RTCPeerConnection({
+    ...rtcConfig,
+    iceCandidatePoolSize: 10,
+    bundlePolicy: "max-bundle",
+    rtcpMuxPolicy: "require"
+  });
   pc.onicecandidate=e=>{
-    if(e.candidate && callPeerUserId)
-      callSocket({type:"call-signal",toUserId:Number(callPeerUserId),signalType:"ice",callId:localCallId,signal:e.candidate});
+    if(e.candidate && callPeerUserId) {
+      try { callSocket({type:"call-signal",toUserId:Number(callPeerUserId),signalType:"ice",callId:localCallId,signal:e.candidate}); }
+      catch(_) {}
+    }
+  };
+  pc.onicecandidateerror=e=>console.warn("ICE candidate error", e.errorCode, e.url);
+  pc.oniceconnectionstatechange=()=>{
+    if(["connected","completed"].includes(pc.iceConnectionState)) clearTimeout(callTimeout);
+    if(pc.iceConnectionState==="failed") {
+      console.warn("ICE failed; TURN may be unavailable");
+    }
   };
   pc.ontrack=e=>{
     const stream=e.streams[0];
@@ -909,6 +946,7 @@ async function acceptIncomingCall(){
     );
     peer=createPeer();
     callPeerUserId=Number(from);
+    clearTimeout(callTimeout); callTimeout=setTimeout(()=>{ if(peer && !["connected","completed"].includes(peer.iceConnectionState)) { endCall(true); alert("Не удалось установить соединение. Проверьте интернет или настройки TURN."); } },45000);
     localCallId=incomingCall.callId||null;
     localCallStream.getTracks().forEach(t=>peer.addTrack(t,localCallStream));
     await peer.setRemoteDescription(new RTCSessionDescription(incomingCall.signal));
@@ -953,8 +991,8 @@ async function handleCallSignal(d){
     for(const c of incomingIceCandidates){try{await peer.addIceCandidate(new RTCIceCandidate(c));}catch(e){}}
     incomingIceCandidates=[];
   }else if(d.signalType==="ice"){
-    if(peer && peer.remoteDescription){
-      try{await peer.addIceCandidate(new RTCIceCandidate(d.signal));}catch(e){}
+    if(peer && peer.remoteDescription && peer.remoteDescription.type){
+      try{await peer.addIceCandidate(new RTCIceCandidate(d.signal));}catch(e){console.warn("ICE add failed",e)}
     }else{
       incomingIceCandidates.push(d.signal);
     }
@@ -967,6 +1005,7 @@ async function handleCallSignal(d){
 }
 
 function endCall(notify=true){
+  clearTimeout(callTimeout); callTimeout=null;
   if(notify && callPeerUserId && socket && socket.readyState===WebSocket.OPEN)
     callSocket({type:"call-signal",toUserId:Number(callPeerUserId),signalType:"hangup",callId:localCallId,signal:{}});
   try{if(peer)peer.close()}catch(e){}

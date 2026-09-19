@@ -268,17 +268,31 @@ function sendSignal(toUserId, payload) {
 }
 
 app.get("/api/rtc-config", auth, (req, res) => {
+  // STUN discovers public addresses. A self-hosted coturn TURN server is used
+  // when a direct PC↔phone WebRTC path is impossible. TURN credentials are
+  // short-lived and are generated server-side from TURN_SECRET.
   const iceServers = [
-    { urls: "stun:stun.l.google.com:19302" },
-    { urls: "stun:stun1.l.google.com:19302" }
+    { urls: [
+      "stun:stun.l.google.com:19302",
+      "stun:stun1.l.google.com:19302",
+      "stun:stun.cloudflare.com:3478"
+    ] }
   ];
-  if (process.env.TURN_URL && process.env.TURN_USERNAME && process.env.TURN_CREDENTIAL) {
-    iceServers.push({
-      urls: process.env.TURN_URL.split(",").map(s => s.trim()).filter(Boolean),
-      username: process.env.TURN_USERNAME,
-      credential: process.env.TURN_CREDENTIAL
-    });
+
+  const turnHost = String(process.env.TURN_HOST || "").trim();
+  const turnUrls = String(process.env.TURN_URLS || process.env.TURN_URL || "")
+    .split(",").map(s => s.trim()).filter(Boolean);
+  const turnSecret = String(process.env.TURN_SECRET || "");
+  if (turnUrls.length && turnSecret && turnHost) {
+    const expires = Math.floor(Date.now() / 1000) + 3600;
+    const username = `${expires}:${String(req.user.id)}`;
+    const credential = crypto.createHmac("sha1", turnSecret).update(username).digest("base64");
+    iceServers.push({ urls: turnUrls, username, credential });
+  } else if (turnUrls.length && process.env.TURN_USERNAME && process.env.TURN_CREDENTIAL) {
+    // Backwards-compatible static credentials. Prefer TURN_SECRET for production.
+    iceServers.push({ urls: turnUrls, username: process.env.TURN_USERNAME, credential: process.env.TURN_CREDENTIAL });
   }
+  res.set("Cache-Control", "no-store, no-cache, must-revalidate");
   res.json({ iceServers });
 });
 
@@ -342,10 +356,12 @@ app.patch("/api/profile", auth, async (req, res) => {
   const accessCode = String(req.body?.accessCode ?? "");
   if (protectedAccount(username) && !verifyProtectedCode(username, accessCode)) return res.status(403).json({ error: protectedError(username) });
   const bio = String(req.body?.bio ?? "").trim().slice(0, 160);
+  const avatar = String(req.body?.avatar ?? "").trim();
+  if (!/^\/stickers\/(?:[1-9]|1[0-2])\.png$/.test(avatar)) return res.status(400).json({ error: "Выберите аватарку из стикеров" });
   const exists = await one("SELECT id FROM users WHERE LOWER(username)=LOWER($1) AND id<>$2", [username, meUser.id]);
   const usernameToSave = exists ? meUser.username : username;
-  const updated = await one(`UPDATE users SET username=$1,bio=$2 WHERE id=$3
-    RETURNING id,username,COALESCE(bio,'') AS bio,COALESCE(avatar,'') AS avatar`, [usernameToSave, bio, meUser.id]);
+  const updated = await one(`UPDATE users SET username=$1,bio=$2,avatar=$3 WHERE id=$4
+    RETURNING id,username,COALESCE(bio,'') AS bio,COALESCE(avatar,'') AS avatar`, [usernameToSave, bio, avatar, meUser.id]);
   res.json(updated);
 });
 
@@ -664,6 +680,20 @@ wss.on("connection", (ws, req) => {
   } catch {
     ws.close();
   }
+});
+
+// Keep WebSocket connections alive on Render and mobile networks.
+const wsHeartbeat = setInterval(() => {
+  for (const ws of wss.clients) {
+    if (ws.isAlive === false) { try { ws.terminate(); } catch (_) {} continue; }
+    ws.isAlive = false;
+    try { ws.ping(); } catch (_) {}
+  }
+}, 25000);
+wss.on("close", () => clearInterval(wsHeartbeat));
+wss.on("connection", ws => {
+  ws.isAlive = true;
+  ws.on("pong", () => { ws.isAlive = true; });
 });
 
 app.get("*", (req, res) => res.sendFile(path.join(__dirname, "public", "index.html")));

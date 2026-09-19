@@ -1,0 +1,18 @@
+# coturn configuration for BKT Messenger
+# Copy to /etc/turnserver.conf on a VPS running coturn.
+listening-port=3478
+fingerprint
+lt-cred-mech
+use-auth-secret
+static-auth-secret=CHANGE_ME_TO_THE_SAME_TURN_SECRET_AS_RENDER
+realm=turn.example.com
+server-name=turn.example.com
+stale-nonce=600
+no-cli
+# If the VPS has a public IPv4, set it here:
+# external-ip=203.0.113.10
+# listening-ip=0.0.0.0
+min-port=49152
+max-port=65535
+no-tlsv1
+no-tlsv1_1

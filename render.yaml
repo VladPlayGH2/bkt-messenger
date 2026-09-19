@@ -15,6 +15,14 @@ services:
         value: production
       - key: VAPID_SUBJECT
         value: mailto:admin@example.com
+      # Add a TURN provider for reliable PC↔phone calls across restrictive NATs.
+      # Set these in Render Dashboard as secret environment variables.
+      - key: TURN_HOST
+        sync: false
+      - key: TURN_URLS
+        sync: false
+      - key: TURN_SECRET
+        sync: false
 
 databases:
   - name: bkt-messenger-db
