@@ -186,6 +186,21 @@ function protectedError(username) {
 }
 
 const app = express();
+
+// Disappearing messages: 3 seconds, 1 view, or 10 seconds.
+// State is kept server-side so the recipient can consume it once.
+const disappearingMessages = new Map();
+
+function normalizeDisappearMode(value){
+  return ["3s","1view","10s"].includes(value) ? value : null;
+}
+function scheduleDisappear(id, mode){
+  if(mode === "3s" || mode === "10s"){
+    const ms = mode === "3s" ? 3000 : 10000;
+    setTimeout(()=>disappearingMessages.delete(String(id)), ms);
+  }
+}
+
 const mediaDir = path.join(__dirname, "uploads", "media");
 fs.mkdirSync(mediaDir, { recursive: true });
 const mediaStorage = multer.diskStorage({
@@ -216,6 +231,28 @@ webpush.setVapidDetails(
 );
 
 app.use(express.json());
+
+// Ephemeral message controls
+app.post("/api/messages/disappear", express.json(), (req,res)=>{
+  const { id, mode } = req.body || {};
+  const normalized = normalizeDisappearMode(mode);
+  if(id == null || !normalized) return res.status(400).json({error:"invalid id or mode"});
+  disappearingMessages.set(String(id), { mode: normalized, viewed: false, createdAt: Date.now() });
+  scheduleDisappear(id, normalized);
+  res.json({ok:true, id, mode:normalized});
+});
+
+app.post("/api/messages/:id/view", (req,res)=>{
+  const item = disappearingMessages.get(String(req.params.id));
+  if(!item) return res.json({ok:true, expired:true});
+  if(item.mode === "1view"){
+    item.viewed = true;
+    disappearingMessages.delete(String(req.params.id));
+    return res.json({ok:true, expired:true});
+  }
+  res.json({ok:true, expired:false, mode:item.mode});
+});
+
 app.use(express.static(path.join(__dirname, "public")));
 app.use("/media", express.static(mediaDir));
 const statusMediaDir = path.join(__dirname, "uploads", "statuses");
