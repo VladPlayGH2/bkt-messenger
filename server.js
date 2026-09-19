@@ -40,6 +40,39 @@ async function many(text, params = []) {
   return result.rows;
 }
 
+async function ensureCommunityGroup() {
+  // System group: every registered user is a member, but only Brozi and Vlad may post.
+  let group = await one("SELECT id, name, owner_id FROM groups WHERE name=$1 ORDER BY id LIMIT 1", ["БКТ Сообщество"]);
+  if (!group) {
+    const owner = await one("SELECT id FROM users WHERE LOWER(username) IN ('brozi','vlad') ORDER BY CASE WHEN LOWER(username)='brozi' THEN 0 ELSE 1 END, id LIMIT 1")
+      || await one("SELECT id FROM users ORDER BY id LIMIT 1");
+    if (!owner) return null;
+    group = await one("INSERT INTO groups(name,owner_id) VALUES($1,$2) RETURNING id,name,owner_id", ["БКТ Сообщество", owner.id]);
+  }
+  await query(`INSERT INTO group_members(group_id,user_id,role)
+    SELECT $1, u.id, CASE WHEN LOWER(u.username)='brozi' OR LOWER(u.username)='vlad' THEN 'admin' ELSE 'member' END
+    FROM users u
+    ON CONFLICT(group_id,user_id) DO NOTHING`, [group.id]);
+  return group;
+}
+
+async function addUserToCommunityGroup(userId) {
+  const group = await ensureCommunityGroup();
+  if (!group) return;
+  const user = await one("SELECT id,username FROM users WHERE id=$1", [userId]);
+  if (!user) return;
+  await query(`INSERT INTO group_members(group_id,user_id,role) VALUES($1,$2,$3)
+    ON CONFLICT(group_id,user_id) DO UPDATE SET role=EXCLUDED.role`, [group.id, user.id, ['brozi','vlad'].includes(String(user.username).toLowerCase()) ? 'admin' : 'member']);
+}
+
+async function isCommunityGroup(groupId) {
+  return !!(await one("SELECT 1 FROM groups WHERE id=$1 AND name=$2", [Number(groupId), "БКТ Сообщество"]));
+}
+
+function canPostInCommunity(username) {
+  return ['brozi', 'vlad'].includes(String(username || '').trim().replace(/^@+/, '').toLowerCase());
+}
+
 async function initDb() {
   await query(`
     CREATE TABLE IF NOT EXISTS users (
@@ -119,6 +152,7 @@ async function initDb() {
       await query("INSERT INTO verified_users(user_id, verified_by) VALUES($1, NULL) ON CONFLICT(user_id) DO NOTHING", [account.id]);
     }
   }
+  await ensureCommunityGroup();
 }
 
 const protectedAccess = JSON.parse(fs.readFileSync(path.join(__dirname, "protected-access.json"), "utf8"));
@@ -253,13 +287,16 @@ app.post("/api/register", async (req, res) => {
     const username = String(req.body.username || "").trim();
     const password = String(req.body.password || "");
     const accessCode = String(req.body.accessCode || "");
+    const avatar = String(req.body.avatar || "").trim();
     if (!verifyProtectedCode(username, accessCode)) return res.status(403).json({ error: protectedError(username) });
     if (password.length < 6) return res.status(400).json({ error: "Пароль должен быть не короче 6 символов" });
+    if (!/^\/stickers\/(?:[1-9]|1[0-2])\.png$/.test(avatar)) return res.status(400).json({ error: "Выберите аватарку из стикеров" });
     const hash = await bcrypt.hash(password, 10);
-    const user = await one("INSERT INTO users(username,password_hash) VALUES($1,$2) RETURNING id,username", [username, hash]);
+    const user = await one("INSERT INTO users(username,password_hash,avatar) VALUES($1,$2,$3) RETURNING id,username,avatar", [username, hash, avatar]);
     if (["brozi", "vlad", "vladmobile"].includes(username.toLowerCase())) {
       await query("INSERT INTO verified_users(user_id, verified_by) VALUES($1, NULL) ON CONFLICT(user_id) DO NOTHING", [user.id]);
     }
+    await addUserToCommunityGroup(user.id);
     res.json({ token: tokenFor(user), user });
   } catch (e) {
     if (e.code === "23505") return res.status(409).json({ error: "Такой пользователь уже существует" });
@@ -298,28 +335,6 @@ app.get("/api/profile", auth, async (req, res) => {
   res.json(user);
 });
 
-app.post("/api/profile/avatar", auth, uploadMedia.single("avatar"), async (req, res) => {
-  try {
-    if (!req.file) return res.status(400).json({ error: "Файл аватара не получен" });
-    if (!/^image\/(png|jpeg|webp|gif)$/.test(req.file.mimetype)) {
-      fs.unlinkSync(req.file.path);
-      return res.status(400).json({ error: "Аватар должен быть PNG, JPG, WEBP или GIF" });
-    }
-    const meUser = await currentUser(req);
-    if (!meUser) {
-      fs.unlinkSync(req.file.path);
-      return res.status(401).json({ error: "Сессия истекла" });
-    }
-    const url = `/media/${req.file.filename}`;
-    await query("UPDATE users SET avatar=$1 WHERE id=$2", [url, meUser.id]);
-    res.json({ avatar: url });
-  } catch (e) {
-    try { if (req.file?.path && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path); } catch {}
-    console.error(e);
-    res.status(500).json({ error: "Не удалось загрузить аватар" });
-  }
-});
-
 app.patch("/api/profile", auth, async (req, res) => {
   const meUser = await currentUser(req);
   if (!meUser) return res.status(401).json({ error: "Аккаунт не найден в базе данных. Выйдите и войдите снова." });
@@ -327,11 +342,10 @@ app.patch("/api/profile", auth, async (req, res) => {
   const accessCode = String(req.body?.accessCode ?? "");
   if (protectedAccount(username) && !verifyProtectedCode(username, accessCode)) return res.status(403).json({ error: protectedError(username) });
   const bio = String(req.body?.bio ?? "").trim().slice(0, 160);
-  const avatar = String(req.body?.avatar ?? "").trim().slice(0, 500);
   const exists = await one("SELECT id FROM users WHERE LOWER(username)=LOWER($1) AND id<>$2", [username, meUser.id]);
   const usernameToSave = exists ? meUser.username : username;
-  const updated = await one(`UPDATE users SET username=$1,bio=$2,avatar=$3 WHERE id=$4
-    RETURNING id,username,COALESCE(bio,'') AS bio,COALESCE(avatar,'') AS avatar`, [usernameToSave, bio, avatar, meUser.id]);
+  const updated = await one(`UPDATE users SET username=$1,bio=$2 WHERE id=$3
+    RETURNING id,username,COALESCE(bio,'') AS bio,COALESCE(avatar,'') AS avatar`, [usernameToSave, bio, meUser.id]);
   res.json(updated);
 });
 
@@ -503,6 +517,7 @@ app.post("/api/groups", auth, async (req, res) => {
   const name = String(req.body?.name || "").trim();
   const memberIds = Array.isArray(req.body?.memberIds) ? req.body.memberIds.map(Number).filter(Number.isInteger) : [];
   if (!name || name.length > 80) return res.status(400).json({ error: "Введите название группы" });
+  if (name.toLowerCase() === "бкт сообщество".toLowerCase()) return res.status(409).json({ error: "Эта группа создаётся автоматически" });
   const uniqueMembers = [...new Set([Number(meUser.id), ...memberIds])].slice(0, 100);
   const client = await pool.connect();
   let groupId;
@@ -582,6 +597,9 @@ app.post("/api/groups/:id/messages", auth, async (req, res) => {
   const groupId = Number(req.params.id);
   const text = String(req.body.text || "").trim();
   if (!(await isGroupMember(groupId, req.user.id))) return res.status(403).json({ error: "Нет доступа" });
+  if (await isCommunityGroup(groupId) && !canPostInCommunity(req.user.username)) {
+    return res.status(403).json({ error: "В группе «БКТ Сообщество» могут писать только Brozi и Vlad" });
+  }
   if (!text || text.length > 5000) return res.status(400).json({ error: "Некорректное сообщение" });
   const group = await one("SELECT id,name FROM groups WHERE id=$1", [groupId]);
   const inserted = await one("INSERT INTO group_messages(group_id,sender_id,text) VALUES($1,$2,$3) RETURNING id", [groupId, req.user.id, text]);
