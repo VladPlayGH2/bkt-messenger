@@ -7,6 +7,7 @@ const Database = require("better-sqlite3");
 const { WebSocketServer } = require("ws");
 const multer = require("multer");
 const fs = require("fs");
+const webpush = require("web-push");
 
 const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || "change-this-secret-in-production";
@@ -19,6 +20,14 @@ CREATE TABLE IF NOT EXISTS users (
   username TEXT UNIQUE NOT NULL,
   password_hash TEXT NOT NULL,
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS push_subscriptions (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,
+  endpoint TEXT NOT NULL UNIQUE,
+  subscription_json TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY(user_id) REFERENCES users(id)
 );
 CREATE TABLE IF NOT EXISTS messages (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -52,6 +61,20 @@ const server = http.createServer(app);
 const wss = new WebSocketServer({ server });
 const sockets = new Map();
 // One active WebSocket per account; reconnecting replaces the old connection.
+
+const vapidFile = path.join(__dirname, "vapid.json");
+let vapidKeys;
+try {
+  vapidKeys = JSON.parse(fs.readFileSync(vapidFile, "utf8"));
+} catch {
+  vapidKeys = webpush.generateVAPIDKeys();
+  fs.writeFileSync(vapidFile, JSON.stringify(vapidKeys, null, 2), { mode: 0o600 });
+}
+webpush.setVapidDetails(
+  process.env.VAPID_SUBJECT || "mailto:admin@bkt.local",
+  vapidKeys.publicKey,
+  vapidKeys.privateKey
+);
 
 app.use(express.json());
 app.use(express.static(path.join(__dirname, "public")));
@@ -344,8 +367,46 @@ app.get("/api/messages/:userId", auth, (req, res) => {
 
 function push(userId, payload) {
   const ws = sockets.get(Number(userId));
-  if (ws && ws.readyState === 1) ws.send(JSON.stringify(payload));
+  const deliveredBySocket = !!(ws && ws.readyState === 1);
+  if (deliveredBySocket) ws.send(JSON.stringify(payload));
+  return deliveredBySocket;
 }
+
+async function pushNotification(userId, payload) {
+  const rows = db.prepare("SELECT id, endpoint, subscription_json FROM push_subscriptions WHERE user_id=?").all(Number(userId));
+  for (const row of rows) {
+    try {
+      await webpush.sendNotification(JSON.parse(row.subscription_json), JSON.stringify(payload));
+    } catch (err) {
+      if (err && (err.statusCode === 404 || err.statusCode === 410)) {
+        db.prepare("DELETE FROM push_subscriptions WHERE id=?").run(row.id);
+      } else {
+        console.error("Web Push error:", err && err.message ? err.message : err);
+      }
+    }
+  }
+}
+
+app.get("/api/push/public-key", auth, (req, res) => {
+  res.json({ publicKey: vapidKeys.publicKey });
+});
+
+app.post("/api/push/subscribe", auth, (req, res) => {
+  const sub = req.body;
+  if (!sub || !sub.endpoint || !sub.keys || !sub.keys.p256dh || !sub.keys.auth)
+    return res.status(400).json({ error: "Некорректная push-подписка" });
+  db.prepare(`
+    INSERT INTO push_subscriptions(user_id,endpoint,subscription_json) VALUES(?,?,?)
+    ON CONFLICT(endpoint) DO UPDATE SET user_id=excluded.user_id, subscription_json=excluded.subscription_json
+  `).run(req.user.id, sub.endpoint, JSON.stringify(sub));
+  res.json({ ok: true });
+});
+
+app.delete("/api/push/subscribe", auth, (req, res) => {
+  const endpoint = String(req.body?.endpoint || "");
+  if (endpoint) db.prepare("DELETE FROM push_subscriptions WHERE user_id=? AND endpoint=?").run(req.user.id, endpoint);
+  res.json({ ok: true });
+});
 
 app.post("/api/messages", auth, (req, res) => {
   const receiver = Number(req.body.receiverId);
@@ -361,7 +422,16 @@ app.post("/api/messages", auth, (req, res) => {
     FROM messages m JOIN users u ON u.id=m.sender_id WHERE m.id=?
   `).get(result.lastInsertRowid);
 
-  push(receiver, { type: "message", message });
+  const delivered = push(receiver, { type: "message", message });
+  if (!delivered) {
+    pushNotification(receiver, {
+      type: "message",
+      title: message.sender_name || "Новое сообщение",
+      body: message.text || "Новое сообщение",
+      senderId: message.sender_id,
+      message
+    }).catch(() => {});
+  }
   push(req.user.id, { type: "message", message });
   res.json(message);
 });
@@ -563,7 +633,7 @@ app.post("/api/groups/:id/messages", auth, (req,res) => {
     FROM group_messages gm JOIN users u ON u.id=gm.sender_id WHERE gm.id=?
   `).get(result.lastInsertRowid);
   const members=db.prepare("SELECT user_id FROM group_members WHERE group_id=?").all(groupId);
-  for(const m of members) push(m.user_id,{type:"group-message",message:msg});
+  for(const m of members){ const delivered=push(m.user_id,{type:"group-message",message:msg}); if(!delivered) pushNotification(m.user_id,{type:"group-message",title:group.name||"Новое сообщение",body:msg.text||"Новое сообщение",groupId:group.id,message:msg}).catch(()=>{}); }
   res.json(msg);
 });
 

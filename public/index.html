@@ -78,15 +78,21 @@ img,video{max-width:100%}
   .messages{min-height:0;padding-bottom:16px!important}
 }
 </style>
+<style id="bkt-notify-css">
+#bktToast{position:fixed;right:18px;top:18px;z-index:1000;max-width:min(360px,calc(100vw - 36px));padding:12px 15px;border:1px solid #2b4436;border-radius:14px;background:#0d1511;color:#fff;box-shadow:0 12px 35px rgba(0,0,0,.45);display:none;cursor:pointer}
+#bktToast b{display:block;margin-bottom:3px}.notify-btn{margin:0 18px 10px;padding:10px;border:1px solid #24312b;background:#111716;color:#fff;border-radius:12px;cursor:pointer;width:calc(100% - 36px)}
+@media(max-width:700px){#bktToast{top:max(10px,env(safe-area-inset-top));right:10px;max-width:calc(100vw - 20px)}}
+</style>
 </head>
 <body>
+<div id="bktToast" onclick="openToastChat()"></div>
 <div id="auth" class="auth"><div class="card">
 <div class="brand"><div class="logo">БКТ</div><div><h1>БКТ</h1><small>Мессенджер</small></div></div>
 <h2 id="authTitle">Вход</h2><div id="err" class="error"></div>
 <input id="login" placeholder="Логин" autocomplete="username"><input id="pass" type="password" placeholder="Пароль" autocomplete="current-password">
 <button class="primary" onclick="authAction()" id="authBtn">Войти</button><div class="switch" onclick="toggleAuth()" id="switch">Нет аккаунта? Регистрация</div>
 </div></div><div class="app" id="app" style="display:none">
-<aside class="sidebar"><button id="profileBtn" onclick="openSettings()" style="margin:0 18px 10px;padding:10px;border:1px solid #24312b;background:#111716;color:#fff;border-radius:12px;cursor:pointer">⚙️ Настройки профиля</button><button onclick="createGroup()" style="margin:0 18px 10px;padding:10px;border:0;border-radius:12px;cursor:pointer">＋ Создать группу</button><div class="top"><div class="brand"><div class="logo">БКТ</div><div><h1>БКТ</h1><small id="me"></small></div></div></div>
+<aside class="sidebar"><button id="profileBtn" onclick="openSettings()" style="margin:0 18px 10px;padding:10px;border:1px solid #24312b;background:#111716;color:#fff;border-radius:12px;cursor:pointer">⚙️ Настройки профиля</button><button class="notify-btn" id="notifyBtn" onclick="enableNotifications()">🔔 Включить уведомления</button><button onclick="createGroup()" style="margin:0 18px 10px;padding:10px;border:0;border-radius:12px;cursor:pointer">＋ Создать группу</button><div class="top"><div class="brand"><div class="logo">БКТ</div><div><h1>БКТ</h1><small id="me"></small></div></div></div>
 <div class="search"><input id="search" placeholder="Найти пользователя по @username" oninput="loadUsers()"></div><div id="groups"></div><div id="users" class="users"></div></aside>
 <main class="chat"><div class="chathead"><button class="back" onclick="mobileBack()" style="display:none">‹</button><div class="avatar" id="headAvatar">БКТ</div><div><b id="headName">Выберите чат</b><span class="status" id="headStatus"></span></div></div>
 <div id="messages" class="messages"><div class="empty">Выберите пользователя слева</div></div>
@@ -152,6 +158,8 @@ async function start(){
     connectSocket();
     loadUsers();
     loadGroups();
+    updateNotifyButton();
+    if("Notification" in window && Notification.permission === "granted") setupPush().catch(()=>{});
   }catch(e){
     localStorage.removeItem("bkt_token");
     token=null;
@@ -160,6 +168,70 @@ async function start(){
     $("auth").style.display="grid";
     $("err").textContent="";
   }
+}
+
+let toastTimer=null;
+let toastUserId=null;
+
+function updateNotifyButton(){
+  const b=$("notifyBtn"); if(!b) return;
+  if(!("Notification" in window)){ b.textContent="🔔 Уведомления недоступны"; b.disabled=true; return; }
+  b.textContent = Notification.permission === "granted" ? "🔔 Уведомления включены" : "🔔 Включить уведомления";
+}
+
+let pushRegistration=null;
+
+function urlBase64ToUint8Array(base64String){
+  const padding="=".repeat((4-base64String.length%4)%4);
+  const base64=(base64String+padding).replace(/-/g,"+").replace(/_/g,"/");
+  const raw=atob(base64);
+  return Uint8Array.from([...raw].map(c=>c.charCodeAt(0)));
+}
+
+async function setupPush(){
+  if(!window.isSecureContext || !("serviceWorker" in navigator) || !("PushManager" in window)) return false;
+  pushRegistration=await navigator.serviceWorker.register("/sw.js");
+  let sub=await pushRegistration.pushManager.getSubscription();
+  if(!sub){
+    const r=await api("/api/push/public-key");
+    sub=await pushRegistration.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:urlBase64ToUint8Array(r.publicKey)});
+  }
+  await api("/api/push/subscribe",{method:"POST",body:JSON.stringify(sub.toJSON())});
+  return true;
+}
+
+async function enableNotifications(){
+  if(!window.isSecureContext){ alert("Для push-уведомлений нужен HTTPS (или localhost)."); return; }
+  if(!("Notification" in window)){ alert("Этот браузер не поддерживает уведомления."); return; }
+  try{
+    const permission=await Notification.requestPermission();
+    if(permission==="granted") await setupPush();
+    updateNotifyButton();
+  }catch(e){ console.error(e); alert("Не удалось включить push-уведомления."); }
+}
+
+function notifyIncomingMessage(message){
+  const isMine = Number(message.sender_id)===Number(me?.id);
+  if(isMine) return;
+  const isOpen = selected && Number(selected.id)===Number(message.sender_id) && document.visibilityState === "visible";
+  if(isOpen) return;
+  const name = message.sender_name || "Новое сообщение";
+  toastUserId = Number(message.sender_id);
+  const toast=$("bktToast");
+  if(toast){ toast.innerHTML=`<b>💬 ${escapeHtml(name)}</b><span>${escapeHtml(message.text||"Новое сообщение")}</span>`; toast.style.display="block"; clearTimeout(toastTimer); toastTimer=setTimeout(()=>toast.style.display="none",5000); }
+  if("Notification" in window && Notification.permission === "granted"){
+    try{
+      const n=new Notification(name,{body:message.text||"Новое сообщение",tag:"bkt-message-"+message.sender_id});
+      n.onclick=()=>{window.focus(); if(toastUserId){loadUserAndOpen(toastUserId);} n.close();};
+    }catch(e){}
+  }
+}
+
+async function loadUserAndOpen(userId){
+  try{ const list=await api("/api/users/search?q="+encodeURIComponent(String(userId))); }catch(_){}
+  const users=await api("/api/users").catch(()=>[]);
+  const u=users.find(x=>Number(x.id)===Number(userId));
+  if(u) openUser(u);
 }
 
 function connectSocket(){
@@ -172,6 +244,7 @@ function connectSocket(){
       const d=JSON.parse(e.data);
       if(d.type==="call-signal"){handleCallSignal(d);return;}
       if(d.type==="message" && d.message) {
+        notifyIncomingMessage(d.message);
         if(selected && (Number(d.message.sender_id)===Number(selected.id) || Number(d.message.receiver_id)===Number(selected.id)))
           renderMessage(d.message);
         return;
