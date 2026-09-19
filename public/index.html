@@ -198,7 +198,7 @@ function formatMessageTime(value){
   return date.toLocaleTimeString("ru-RU",{hour:"2-digit",minute:"2-digit"});
 }
 function toggleProtectedCode(){const username=$("login").value.trim().replace(/^@+/,"").toLowerCase(); const protectedUser=["brozi","vlad","vladmobile"].includes(username); $("accessCode").style.display=protectedUser?"block":"none"; $("accessCode").placeholder=protectedUser?"Секретный код":"Секретный код";}
-const REGISTRATION_AVATARS = Array.from({length:12},(_,i)=>`/stickers/${i+1}.png`);
+const REGISTRATION_AVATARS = Array.from({length:12},(_,i)=>`/stickers/${i+1}.webp`);
 function renderRegistrationAvatarPicker(){
   const picker=$("registerAvatarPicker"), grid=$("registerAvatarGrid"), selected=$("registerAvatarSelected");
   if(!picker||!grid||!selected)return;
@@ -782,7 +782,7 @@ if (searchInput) {
 
 
 
-const STICKERS = Array.from({length:12},(_,i)=>`/stickers/${i+1}.png`);
+const STICKERS = Array.from({length:12},(_,i)=>`/stickers/${i+1}.webp`);
 let stickerPickerReady=false;
 
 function buildStickerPicker(){
