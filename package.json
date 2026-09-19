@@ -4,12 +4,15 @@
   "private": true,
   "description": "БКТ — настоящий серверный мессенджер",
   "main": "server.js",
-  "scripts": { "start": "node server.js" },
+  "scripts": {
+    "start": "node server.js"
+  },
   "dependencies": {
     "bcryptjs": "^2.4.3",
     "better-sqlite3": "^11.7.0",
     "express": "^4.21.2",
     "jsonwebtoken": "^9.0.2",
-    "ws": "^8.18.0"
+    "ws": "^8.18.0",
+    "multer": "^1.4.5-lts.1"
   }
 }
