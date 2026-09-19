@@ -43,7 +43,7 @@ async function loadUsers(){
   }
 }
 async function loadGroups(){
- try{const gs=await api('/api/groups');$("groups").innerHTML=gs.map(g=>`<div class="group-item" onclick='openGroup(${JSON.stringify(g)})'>👥 ${escapeHtml(g.name)}<small style="display:block;color:#8d9893">${g.members.length} участников</small></div>`).join('')}catch(e){console.error(e)}
+ try{const gs=await api('/api/groups');$("groups").innerHTML=gs.map(g=>`<div class="group-item" onclick='openGroup(${JSON.stringify(g)})'>👥 ${escapeHtml(g.name)}<small style="display:block;color:#8d9893">${Array.isArray(g.members) ? g.members.length : 1} участников</small></div>`).join('')}catch(e){console.error(e)}
 }
 async function createGroup(){
  const name=prompt('Название группы:'); if(!name||!name.trim())return;

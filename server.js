@@ -394,34 +394,58 @@ app.post("/api/media", auth, uploadMedia.single("media"), (req, res) => {
 
 
 app.post("/api/groups", auth, (req, res) => {
-  const name = String(req.body.name || "").trim();
-  const memberIds = Array.isArray(req.body.memberIds) ? req.body.memberIds.map(Number).filter(Boolean) : [];
-  if (!name || name.length > 80) return res.status(400).json({ error: "Некорректное название группы" });
+  const meUser = currentUser(req);
+  if (!meUser) return res.status(401).json({error:"Сессия недействительна"});
 
-  const uniqueMembers = [...new Set([Number(req.user.id), ...memberIds])];
-  if (uniqueMembers.length > 100) return res.status(400).json({ error: "Максимум 100 участников" });
+  const name = String(req.body?.name || "").trim();
+  const memberIds = Array.isArray(req.body?.memberIds)
+    ? req.body.memberIds.map(Number).filter(Number.isInteger)
+    : [];
+
+  if (!name || name.length > 80)
+    return res.status(400).json({error:"Введите название группы"});
+
+  // Создатель всегда является первым участником.
+  const uniqueMembers = [...new Set([Number(meUser.id), ...memberIds])].slice(0,100);
 
   const tx = db.transaction(() => {
-    const group = db.prepare("INSERT INTO groups(name, owner_id) VALUES(?,?)").run(name, req.user.id);
-    const add = db.prepare("INSERT INTO group_members(group_id,user_id,role) VALUES(?,?,?)");
-    add.run(group.lastInsertRowid, req.user.id, "owner");
+    const group = db.prepare(
+      "INSERT INTO groups(name, owner_id) VALUES(?,?)"
+    ).run(name, meUser.id);
+
+    const add = db.prepare(
+      "INSERT OR IGNORE INTO group_members(group_id,user_id,role) VALUES(?,?,?)"
+    );
+
     for (const uid of uniqueMembers) {
-      if (uid === Number(req.user.id)) continue;
-      if (db.prepare("SELECT id FROM users WHERE id=?").get(uid)) add.run(group.lastInsertRowid, uid, "member");
+      if (db.prepare("SELECT id FROM users WHERE id=?").get(uid)) {
+        add.run(group.lastInsertRowid, uid, uid === Number(meUser.id) ? "owner" : "member");
+      }
     }
+
     return Number(group.lastInsertRowid);
   });
 
   const groupId = tx();
-  const group = db.prepare("SELECT id,name,owner_id,created_at FROM groups WHERE id=?").get(groupId);
+
+  const group = db.prepare(
+    "SELECT id,name,owner_id,created_at FROM groups WHERE id=?"
+  ).get(groupId);
+
   const members = db.prepare(`
     SELECT u.id,u.username,gm.role
-    FROM group_members gm JOIN users u ON u.id=gm.user_id
-    WHERE gm.group_id=? ORDER BY CASE gm.role WHEN 'owner' THEN 0 ELSE 1 END,u.username COLLATE NOCASE
+    FROM group_members gm
+    JOIN users u ON u.id=gm.user_id
+    WHERE gm.group_id=?
+    ORDER BY CASE gm.role WHEN 'owner' THEN 0 ELSE 1 END,
+             u.username
   `).all(groupId);
 
-  for (const m of members) push(m.id, { type:"group-created", group, members });
-  res.json({ ...group, members });
+  for (const m of members) {
+    push(m.id, {type:"group-created", group, members});
+  }
+
+  res.json({...group, members});
 });
 
 app.get("/api/groups", auth, (req, res) => {
