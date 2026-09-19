@@ -100,6 +100,24 @@ img,video{max-width:100%}
 #bktToast b{display:block;margin-bottom:3px}.notify-btn{margin:0 18px 10px;padding:10px;border:1px solid #24312b;background:#111716;color:#fff;border-radius:12px;cursor:pointer;width:calc(100% - 36px)}
 @media(max-width:700px){#bktToast{top:max(10px,env(safe-area-inset-top));right:10px;max-width:calc(100vw - 20px)}}
 </style>
+
+<style id="bkt-statuses-css">
+.status-open-btn{margin:0 18px 10px;width:calc(100% - 36px);padding:11px 14px;border:1px solid #24312b;border-radius:13px;background:#111716;color:#fff;cursor:pointer;text-align:left;font-weight:700}
+.status-open-btn:hover{background:#16201c}
+#statusModal{display:none;position:fixed;inset:0;z-index:900;background:#020403}
+.status-shell{height:100%;display:grid;grid-template-columns:1fr;position:relative}
+.status-close{position:absolute;right:18px;top:16px;z-index:5;border:0;background:rgba(0,0,0,.55);color:#fff;border-radius:50%;width:42px;height:42px;font-size:22px;cursor:pointer}
+.status-feed{height:100%;overflow-y:auto;overflow-x:hidden;scroll-snap-type:y mandatory;scroll-behavior:smooth;overscroll-behavior-y:contain;-webkit-overflow-scrolling:touch;touch-action:pan-y}
+.status-card{height:100dvh;min-height:100vh;scroll-snap-align:start;position:relative;background:#080b09;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.status-card img{display:block;width:100%;height:100%;object-fit:contain;background:#050706}
+.status-card.no-photo{align-items:flex-start;justify-content:flex-start;padding:100px 28px;background:radial-gradient(circle at 70% 20%,rgba(34,255,114,.18),transparent 40%),#07110b}
+.status-caption{position:absolute;left:0;right:0;bottom:0;padding:100px 24px 30px;background:linear-gradient(transparent,rgba(0,0,0,.9));color:#fff;pointer-events:none}.status-caption button{pointer-events:auto}.status-user{font-weight:800;font-size:19px;margin-bottom:10px}.status-text{font-size:18px;line-height:1.45;white-space:pre-wrap;word-break:break-word}.status-time{font-size:12px;color:#b7c0bb;margin-top:9px}
+
+.status-empty{height:100%;display:grid;place-items:center;color:#a7b2ab;text-align:center;padding:30px}
+.status-create{position:absolute;left:18px;top:16px;z-index:5;border:0;border-radius:22px;padding:10px 14px;background:#22ff72;color:#001609;font-weight:800;cursor:pointer}
+.status-create-modal{position:absolute;inset:0;background:rgba(0,0,0,.72);display:none;place-items:center;z-index:10;padding:20px}.status-create-card{width:min(430px,95vw);background:#0c1110;border:1px solid #24312b;border-radius:20px;padding:20px}.status-create-card textarea{width:100%;min-height:100px;box-sizing:border-box;background:#111716;border:1px solid #24312b;border-radius:12px;color:#fff;padding:12px;resize:vertical}.status-preview{display:block;width:100%;max-height:55vh;object-fit:contain;border-radius:12px;margin:10px 0;background:#050706}.status-actions{display:flex;gap:8px;margin-top:12px}.status-actions button{flex:1;padding:11px;border:0;border-radius:12px;cursor:pointer}.status-actions .publish{background:#22ff72;color:#001609;font-weight:800}.status-actions .cancel{background:#202a25;color:#fff}
+@media(max-width:700px){.status-caption{padding:100px 18px 24px}.status-open-btn{margin-bottom:8px}.status-user{font-size:18px}.status-text{font-size:17px}}
+</style>
 </head>
 <body>
 <div id="bktToast" onclick="openToastChat()"></div>
@@ -110,7 +128,7 @@ img,video{max-width:100%}
 <button class="primary" onclick="authAction()" id="authBtn">Войти</button><div class="switch" onclick="toggleAuth()" id="switch">Нет аккаунта? Регистрация</div>
 </div></div><div class="app" id="app" style="display:none">
 <aside class="sidebar"><div class="quick-actions"><button id="profileBtn" onclick="openSettings()">⚙️ Настройки</button><button class="notify-btn" id="notifyBtn" onclick="enableNotifications()">🔔 Уведомления</button><button onclick="createGroup()">＋ Группа</button></div><div class="top"><div class="brand"><div class="logo">БКТ</div><div><h1>БКТ</h1><small id="me" onclick="openMyProfile()" style="cursor:pointer" title="Открыть свой профиль"></small></div></div></div>
-<div class="search"><input id="search" placeholder="Найти пользователя по @username" oninput="loadUsers()"></div><div id="groups"></div><div id="users" class="users"></div></aside>
+<button class="status-open-btn" onclick="openStatuses()">◉ Статусы</button><div class="search"><input id="search" placeholder="Найти пользователя по @username" oninput="loadUsers()"></div><div id="groups"></div><div id="users" class="users"></div></aside>
 <main class="chat"><div class="chathead"><button class="back" onclick="mobileBack()" style="display:none">‹</button><div class="avatar" id="headAvatar" onclick="openSelectedProfile()" style="cursor:pointer" title="Открыть профиль"></div><div class="chat-title" onclick="openSelectedProfile()" style="cursor:pointer"><b id="headName">Выберите чат</b><span class="status" id="headStatus"></span></div><div class="call-actions"><button id="audioCallButton" title="Аудиозвонок" aria-label="Аудиозвонок">📞</button><button id="videoCallButton" title="Видеозвонок" aria-label="Видеозвонок">📹</button></div></div>
 <div id="messages" class="messages"><div class="empty">Выберите пользователя слева</div></div>
 <div class="sendbar">
@@ -134,6 +152,24 @@ img,video{max-width:100%}
     <button onclick="closeProfileView()">Закрыть</button>
   </div>
 </div></div>
+
+<div id="statusModal">
+  <div class="status-shell">
+    <button class="status-close" onclick="closeStatuses()">×</button>
+    <button class="status-create" onclick="openStatusCreate()">＋ Мой статус</button>
+    <div id="statusFeed" class="status-feed"><div class="status-empty">Загрузка статусов…</div></div>
+    <div id="statusCreateModal" class="status-create-modal">
+      <div class="status-create-card">
+        <h2 style="margin-top:0">Новый статус</h2>
+        <input id="statusImage" type="file" accept="image/*" onchange="previewStatusImage(this)" style="width:100%;color:#fff">
+        <img id="statusPreview" class="status-preview" style="display:none" alt="Предпросмотр">
+        <textarea id="statusText" maxlength="280" placeholder="Подпись к статусу..."></textarea>
+        <div id="statusError" class="error"></div>
+        <div class="status-actions"><button class="cancel" onclick="closeStatusCreate()">Отмена</button><button class="publish" onclick="publishStatus()">Опубликовать</button></div>
+      </div>
+    </div>
+  </div>
+</div>
 <script>
 let token=sessionStorage.getItem("bkt_token")||null, me=null, selected=null, activeGroup=null, socket=null, registering=false;
 // Never reuse a persistent login token left by another person/browser session.
@@ -807,6 +843,50 @@ $("audioCallButton").onclick=()=>startCall("audio");
 $("videoCallButton").onclick=()=>startCall("video");
 
 
+
+
+let statusImageFile=null;
+function openStatuses(){
+  const m=$('statusModal'); if(!m)return; m.style.display='block'; loadStatuses();
+}
+function closeStatuses(){const m=$('statusModal'); if(m)m.style.display='none'; closeStatusCreate();}
+function openStatusCreate(){const m=$('statusCreateModal'); if(m)m.style.display='grid';}
+function closeStatusCreate(){const m=$('statusCreateModal'); if(m)m.style.display='none'; statusImageFile=null; const f=$('statusImage'); if(f)f.value=''; const p=$('statusPreview'); if(p){p.src='';p.style.display='none';} const t=$('statusText');if(t)t.value=''; const e=$('statusError');if(e)e.textContent='';}
+function previewStatusImage(input){
+  statusImageFile=input.files&&input.files[0]||null; const p=$('statusPreview');
+  if(!p||!statusImageFile)return; if(statusImageFile.size>8*1024*1024){$('statusError').textContent='Фото не больше 8 МБ';input.value='';statusImageFile=null;return;}
+  p.src=URL.createObjectURL(statusImageFile); p.style.display='block';
+}
+async function publishStatus(){
+  const err=$('statusError'); err.textContent=''; const text=$('statusText').value.trim(); let mediaUrl='';
+  try{
+    if(!text && !statusImageFile){err.textContent='Добавьте фото или подпись';return;}
+    if(statusImageFile){const fd=new FormData();fd.append('image',statusImageFile);const saved=token;const res=await fetch('/api/statuses/upload',{method:'POST',headers:saved?{Authorization:'Bearer '+saved}:{},body:fd});const d=await res.json();if(!res.ok)throw new Error(d.error||'Не удалось загрузить фото');mediaUrl=d.url;}
+    await api('/api/statuses',{method:'POST',body:{text,mediaUrl}}); closeStatusCreate(); await loadStatuses();
+  }catch(e){err.textContent=e.message||'Не удалось опубликовать статус';}
+}
+function statusTime(v){try{return new Date(v).toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'});}catch(_){return '';}}
+async function loadStatuses(){
+  const feed=$('statusFeed'); if(!feed)return; feed.innerHTML='<div class="status-empty">Загрузка…</div>';
+  try{
+    const rows=await api('/api/statuses');
+    if(!rows.length){feed.innerHTML='<div class="status-empty">Пока нет статусов.<br>Добавь свой через «Мой статус».</div>';return;}
+    feed.innerHTML=rows.map((s,i)=>{
+      const safeText=escapeHtml(s.text||''); const user=escapeHtml('@'+(s.username||'Пользователь'));
+      const photo=s.media_url?`<img src="${s.media_url}" alt="Статус @${escapeHtml(s.username||'')}">`:'';
+      return `<article class="status-card ${s.media_url?'':'no-photo'}">${photo}<div class="status-caption"><div class="status-user">${user}</div>${safeText?`<div class="status-text">${safeText}</div>`:''}<div class="status-time">${statusTime(s.created_at)} · 24 часа</div>${Number(s.user_id)===Number(me?.id)?`<button onclick="event.stopPropagation();deleteStatus(${Number(s.id)})" style="margin-top:10px;background:#a92323;color:#fff;border:0;border-radius:10px;padding:8px 12px;cursor:pointer">Удалить</button>`:''}</div></article>`;
+    }).join('');
+  }catch(e){feed.innerHTML=`<div class="status-empty">Не удалось загрузить статусы<br><small>${escapeHtml(e.message||'')}</small></div>`;}
+}
+async function deleteStatus(id){try{await api('/api/statuses/'+id,{method:'DELETE'});await loadStatuses();}catch(e){alert(e.message||'Не удалось удалить статус');}}
+
+(function(){
+  document.addEventListener('keydown',e=>{
+    const modal=$('statusModal'); if(!modal||modal.style.display!=='block')return;
+    if(e.key==='ArrowDown'||e.key==='PageDown'){e.preventDefault(); const f=$('statusFeed'); f?.scrollBy({top:window.innerHeight,behavior:'smooth'});}
+    if(e.key==='ArrowUp'||e.key==='PageUp'){e.preventDefault(); const f=$('statusFeed'); f?.scrollBy({top:-window.innerHeight,behavior:'smooth'});}
+  });
+})();
 
 // Сессия восстанавливается один раз после загрузки DOM.
 
