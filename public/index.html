@@ -2,6 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="icon" href="/favicon.ico">
 <title>БКТ Мессенджер</title>
 <style>
 *{box-sizing:border-box}body{margin:0;background:#020403;color:#f4f7f5;font:15px Arial,sans-serif}
@@ -315,6 +316,56 @@ img,video{max-width:100%}
 .phone-status-source{display:none}
 </style>
 
+
+<style id="whatsapp-status-style">
+.wa-status-modal{padding:0;background:#fff;color:#111;z-index:3000}
+.wa-status-panel{width:min(100%,680px);height:100dvh;margin:auto;background:#fff;display:flex;flex-direction:column}
+.wa-status-header{height:58px;display:flex;align-items:center;justify-content:space-between;padding:0 14px;border-bottom:1px solid #e7e7e7;flex:none}
+.wa-status-title{font-size:20px;font-weight:700}
+.wa-icon-btn{width:42px;height:42px;border:0;background:transparent;border-radius:50%;font-size:24px;touch-action:manipulation}
+.wa-status-list-head{flex:none}
+.wa-my-status-row{display:flex;align-items:center;gap:12px;padding:14px 16px;min-height:76px;touch-action:manipulation}
+.wa-avatar-wrap{position:relative;width:54px;height:54px;flex:none}
+.wa-status-avatar{width:54px;height:54px;border-radius:50%;background:#e9edef center/cover no-repeat;border:2px solid #fff}
+.wa-add-badge{position:absolute;right:-2px;bottom:-2px;width:22px;height:22px;border-radius:50%;background:#25d366;color:#fff;border:2px solid #fff;text-align:center;line-height:18px;font-size:18px}
+.wa-status-name{font-size:16px;font-weight:600}
+.wa-status-sub{font-size:14px;color:#667781;margin-top:3px}
+.wa-status-section{padding:9px 16px;background:#f0f2f5;color:#667781;font-size:14px;font-weight:600}
+.wa-status-list{overflow:auto;flex:1;-webkit-overflow-scrolling:touch}
+.wa-status-row{display:flex;align-items:center;gap:12px;padding:12px 16px;min-height:72px;touch-action:manipulation}
+.wa-status-row:active,.wa-my-status-row:active{background:#f5f6f6}
+.wa-status-row .wa-status-avatar{width:52px;height:52px;border:3px solid #25d366}
+.wa-status-row-body{min-width:0;flex:1}
+.wa-status-row-name{font-size:16px;font-weight:600}
+.wa-status-row-time{font-size:13px;color:#667781;margin-top:4px}
+.wa-status-empty{text-align:center;color:#667781;padding:40px 24px}
+.wa-viewer-modal{padding:0;background:#000;z-index:3100}
+.wa-viewer{width:100vw;height:100dvh;background:#000;position:relative;overflow:hidden}
+.wa-viewer-media{position:absolute;inset:0;display:flex;align-items:center;justify-content:center}
+.wa-viewer-media img{width:100%;height:100%;object-fit:contain;background:#000}
+.wa-viewer-top{position:absolute;z-index:3;top:0;left:0;right:0;display:flex;align-items:center;gap:8px;padding:max(8px,env(safe-area-inset-top)) 10px 10px;background:linear-gradient(#000b,transparent)}
+.wa-viewer-author{color:#fff;font-size:15px;font-weight:600;flex:1}
+.wa-viewer-progress{position:absolute;z-index:5;top:max(4px,env(safe-area-inset-top));left:8px;right:8px;height:3px;border-radius:3px;background:#ffffff66}
+.wa-viewer-progress:before{content:"";display:block;width:100%;height:100%;background:#fff;border-radius:3px;transform-origin:left;animation:waStatusTimer 5s linear forwards}
+@keyframes waStatusTimer{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+.wa-viewer-caption{position:absolute;z-index:3;left:16px;right:16px;bottom:72px;color:#fff;font-size:17px;line-height:1.35;text-shadow:0 1px 4px #000}
+.wa-viewer-bottom{position:absolute;z-index:4;bottom:max(12px,env(safe-area-inset-bottom));left:0;right:0;text-align:center}
+.wa-viewer-bottom button{border:0;background:#ffffff18;color:#fff;border-radius:22px;padding:11px 18px;font-size:15px}
+.wa-composer-modal{align-items:flex-end;padding:0;background:#0005;z-index:3200}
+.wa-composer-sheet{width:min(100%,620px);margin:auto 0 0;background:#fff;border-radius:20px 20px 0 0;padding:14px 16px max(16px,env(safe-area-inset-bottom));max-height:92dvh;overflow:auto}
+.wa-composer-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;font-size:18px}
+.wa-composer-source{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:8px 0 12px}
+.wa-composer-source button{min-height:50px;border:0;border-radius:12px;background:#f0f2f5;font-size:16px;font-weight:600}
+.wa-composer-preview-wrap{background:#111;border-radius:14px;overflow:hidden;max-height:52dvh}
+.wa-composer-preview{width:100%;height:100%;max-height:52dvh;object-fit:contain;display:block}
+#statusCaption{width:100%;box-sizing:border-box;min-height:80px;margin-top:12px;border:1px solid #d8dde1;border-radius:12px;padding:12px;font-size:16px;resize:none}
+.wa-publish-btn{width:100%;min-height:52px;margin-top:10px;border:0;border-radius:14px;background:#25d366;color:#fff;font-size:17px;font-weight:700}
+@media(min-width:701px){
+ .wa-status-panel{box-shadow:0 0 30px #0002}
+ .wa-composer-sheet{border-radius:20px;margin-bottom:20px}
+}
+</style>
+
 </head>
 <body>
 <div id="bktToast" onclick="openToastChat()"></div>
@@ -349,35 +400,69 @@ img,video{max-width:100%}
 <div id="recording" class="modal" style="display:none"><div class="modal-card"><h3>🎙️ Запись голосового</h3><div id="recordTime">0:00</div><div class="modal-actions"><button onclick="finishRecording()">Отправить</button><button onclick="cancelRecording()">Отмена</button></div></div></div>
 <div id="videoRecording" class="modal" style="display:none"><div class="modal-card"><h3>🎥 Видеосообщение</h3><video id="videoPreview" autoplay muted playsinline></video><div id="videoTime">0:00</div><div class="modal-actions"><button onclick="finishVideoRecording()">Отправить</button><button onclick="cancelVideoRecording()">Отмена</button></div></div></div>
 <div id="callModal" class="modal" style="display:none"><div class="modal-card"><h3 id="callTitle">Звонок</h3><video id="remoteVideo" autoplay playsinline style="width:100%;max-height:320px;border-radius:14px;background:#000"></video><audio id="remoteAudio" autoplay></audio><div class="modal-actions"><button id="acceptCall" onclick="acceptIncomingCall()">Принять</button><button onclick="endCall()">Завершить</button></div></div></div></main></div>
-<div id="statusesModal" class="modal tiktok-status-modal" style="display:none">
-  <div class="tiktok-feed-shell">
-    <div class="tiktok-feed-top">
-      <b>Статусы</b>
-      <button class="status-x" onclick="closeStatuses()" aria-label="Закрыть">×</button>
+
+<div id="statusesModal" class="modal wa-status-modal" style="display:none">
+  <div class="wa-status-panel">
+    <div class="wa-status-header">
+      <div class="wa-status-title">Статус</div>
+      <button type="button" class="wa-icon-btn" onclick="closeStatuses()">✕</button>
     </div>
-    <div id="statusFeed" class="tiktok-status-feed"></div>
-    <div id="statusEmpty" class="tiktok-status-empty" style="display:none">
-      <div>📷</div><b>Пока нет статусов</b><span>Добавьте фото с подписью</span>
-      <button class="primary" onclick="focusStatusComposer()">Добавить статус</button>
+
+    <div class="wa-status-list-head">
+      <div class="wa-my-status-row" onclick="focusStatusComposer()">
+        <div class="wa-avatar-wrap">
+          <div id="waMyStatusAvatar" class="wa-status-avatar"></div>
+          <div class="wa-add-badge">+</div>
+        </div>
+        <div>
+          <div class="wa-status-name">Мой статус</div>
+          <div class="wa-status-sub">Добавить обновление статуса</div>
+        </div>
+      </div>
+      <div class="wa-status-section">Недавние обновления</div>
+    </div>
+
+    <div id="statusFeed" class="wa-status-list"></div>
+    <div id="statusEmpty" class="wa-status-empty">Здесь появятся статусы контактов</div>
+  </div>
+</div>
+
+<div id="statusViewerModal" class="modal wa-viewer-modal" style="display:none">
+  <div class="wa-viewer">
+    <div id="waViewerProgress" class="wa-viewer-progress"></div>
+    <div class="wa-viewer-top">
+      <button type="button" class="wa-icon-btn" onclick="closeStatusViewer()">‹</button>
+      <div id="waViewerAuthor" class="wa-viewer-author"></div>
+      <button type="button" class="wa-icon-btn" onclick="closeStatusViewer()">✕</button>
+    </div>
+    <div id="waViewerMedia" class="wa-viewer-media"></div>
+    <div id="waViewerCaption" class="wa-viewer-caption"></div>
+    <div class="wa-viewer-bottom">
+      <button type="button" onclick="focusStatusComposer()">✚ Добавить статус</button>
     </div>
   </div>
 </div>
-<div id="statusComposerModal" class="modal" style="display:none"><div class="phone-status-source">
-          <button type="button" onclick="document.getElementById('statusCameraInput').click()">📷 Камера</button>
-          <button type="button" onclick="document.getElementById('statusPhotoInput').click()">🖼️ Галерея</button>
-        </div>
-        <input id="statusCameraInput" type="file" accept="image/*" capture="environment" hidden>
-        
-  <div class="modal-card status-modal-card tiktok-status-card">
-    <div class="tiktok-status-head"><h2>Новый статус</h2><button class="status-x" onclick="closeStatusComposer()">×</button></div>
-    <div class="status-create tiktok-status-create">
-      <label class="status-upload-button">📷 Выбрать фото
-        <input id="statusImage" type="file" accept="image/jpeg,image/png,image/webp,image/gif" onchange="previewStatusImage(event)" accept="image/*" capture="environment">
-      </label>
-      <div id="statusComposerPreview" class="status-composer-preview">
-        <img id="statusImagePreview" class="status-image-preview" alt="Предпросмотр">
-        <div class="status-caption-overlay"><span id="statusCaptionPreview">Подпись к фото…</span></div>
-      </div><input id="statusPhotoInput" type="file" accept="image/*" hidden>
+
+<div id="statusComposerModal" class="modal wa-composer-modal" style="display:none">
+  <div class="wa-composer-sheet">
+    <div class="wa-composer-head">
+      <b>Новый статус</b>
+      <button type="button" class="wa-icon-btn" onclick="closeStatusComposer()">✕</button>
+    </div>
+    <div class="wa-composer-source">
+      <button type="button" onclick="document.getElementById('statusCameraInput').click()">📷 Камера</button>
+      <button type="button" onclick="document.getElementById('statusPhotoInput').click()">🖼️ Галерея</button>
+    </div>
+    <input id="statusCameraInput" type="file" accept="image/*" capture="environment" hidden>
+    <input id="statusPhotoInput" type="file" accept="image/*" hidden>
+    <div id="statusPreviewWrap" class="wa-composer-preview-wrap" style="display:none">
+      <img id="statusPreview" class="wa-composer-preview" alt="">
+    </div>
+    <textarea id="statusCaption" maxlength="700" placeholder="Добавьте подпись"></textarea>
+    <button id="statusPublishButton" class="wa-publish-btn" type="button" onclick="publishStatus()">Опубликовать</button>
+  </div>
+</div>
+<input id="statusPhotoInput" type="file" accept="image/*" hidden>
       <textarea id="statusText" maxlength="280" placeholder="Добавьте подпись…"></textarea>
       <div class="status-counter"><span>Фото + подпись</span><span id="statusTextCounter">0/280</span></div>
       <button class="primary status-publish-button" onclick="publishStatus()">Опубликовать статус</button>
@@ -1530,6 +1615,161 @@ document.addEventListener("click", function(e){
   if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",init);
   else init();
   new MutationObserver(init).observe(document.body,{childList:true,subtree:true});
+})();
+</script>
+
+<script id="whatsapp-status-js">
+(function(){
+  let waStatuses=[];
+  let waCurrentIndex=0;
+  let waTimer=null;
+
+  function $(id){return document.getElementById(id)}
+  function esc(v){return typeof escapeHtml==="function"?escapeHtml(v||""):String(v||"")}
+
+  window.openStatuses=function(){
+    const modal=$("statusesModal");
+    if(modal) modal.style.display="flex";
+    loadStatuses();
+  };
+  window.closeStatuses=function(){
+    const modal=$("statusesModal"); if(modal) modal.style.display="none";
+  };
+  window.focusStatusComposer=function(){
+    const m=$("statusComposerModal");
+    if(m) m.style.display="flex";
+    if($("statusesModal")) $("statusesModal").style.display="none";
+  };
+  window.closeStatusComposer=function(){
+    const m=$("statusComposerModal"); if(m) m.style.display="none";
+  };
+
+  function statusAvatar(s){
+    return s.avatar || s.avatar_url || "";
+  }
+  function renderStatusRow(s,i){
+    const row=document.createElement("div");
+    row.className="wa-status-row";
+    row.onclick=()=>openStatusViewer(i);
+    const av=document.createElement("div");
+    av.className="wa-status-avatar";
+    const src=statusAvatar(s);
+    if(src) av.style.backgroundImage=`url("${src}")`;
+    const body=document.createElement("div");
+    body.className="wa-status-row-body";
+    body.innerHTML=`<div class="wa-status-row-name">${esc(s.username||"Пользователь")}</div>
+      <div class="wa-status-row-time">${s.created_at?new Date(s.created_at).toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"}):"Недавно"}</div>`;
+    row.append(av,body);
+    return row;
+  }
+
+  window.loadStatuses=async function(){
+    const list=$("statusFeed"), empty=$("statusEmpty");
+    if(!list) return;
+    list.innerHTML="";
+    try{
+      const r=await fetch("/api/statuses");
+      waStatuses=await r.json();
+      if(!Array.isArray(waStatuses)) waStatuses=[];
+      if(empty) empty.style.display=waStatuses.length?"none":"block";
+      waStatuses.forEach((s,i)=>list.appendChild(renderStatusRow(s,i)));
+      const my=$("waMyStatusAvatar");
+      if(my && typeof me!=="undefined" && me && (me.avatar||me.avatar_url)){
+        my.style.backgroundImage=`url("${me.avatar||me.avatar_url}")`;
+      }
+    }catch(e){
+      if(empty){empty.style.display="block";empty.textContent="Не удалось загрузить статусы";}
+    }
+  };
+
+  window.openStatusViewer=function(i){
+    if(!waStatuses[i]) return;
+    waCurrentIndex=i;
+    const m=$("statusViewerModal");
+    if(m) m.style.display="flex";
+    showStatus(waCurrentIndex);
+  };
+  window.closeStatusViewer=function(){
+    clearTimeout(waTimer);
+    const m=$("statusViewerModal"); if(m) m.style.display="none";
+  };
+  function showStatus(i){
+    const s=waStatuses[i]; if(!s) return;
+    const media=$("waViewerMedia"), cap=$("waViewerCaption"), author=$("waViewerAuthor"), prog=$("waViewerProgress");
+    media.innerHTML="";
+    if(s.media_url){
+      const img=document.createElement("img");
+      img.src=s.media_url; img.alt="";
+      media.appendChild(img);
+    }else{
+      const box=document.createElement("div");
+      box.style.cssText="color:#fff;font-size:26px;padding:30px;text-align:center";
+      box.textContent=s.text||"";
+      media.appendChild(box);
+    }
+    author.textContent=s.username||"Пользователь";
+    cap.textContent=s.text||"";
+    if(prog){prog.innerHTML=""; void prog.offsetWidth; prog.className="wa-viewer-progress";}
+    clearTimeout(waTimer);
+    waTimer=setTimeout(()=>{
+      if(waCurrentIndex<waStatuses.length-1){waCurrentIndex++;showStatus(waCurrentIndex)}
+      else closeStatusViewer();
+    },5000);
+  }
+
+  // Swipe left/right through statuses on phones.
+  let sx=0;
+  document.addEventListener("touchstart",e=>{
+    if($("statusViewerModal")?.style.display!=="flex") return;
+    sx=e.touches[0].clientX;
+  },{passive:true});
+  document.addEventListener("touchend",e=>{
+    if($("statusViewerModal")?.style.display!=="flex") return;
+    const dx=e.changedTouches[0].clientX-sx;
+    if(Math.abs(dx)>60){
+      if(dx<0 && waCurrentIndex<waStatuses.length-1){waCurrentIndex++;showStatus(waCurrentIndex)}
+      if(dx>0 && waCurrentIndex>0){waCurrentIndex--;showStatus(waCurrentIndex)}
+    }
+  },{passive:true});
+
+  function previewFile(file){
+    if(!file) return;
+    const wrap=$("statusPreviewWrap"), img=$("statusPreview");
+    if(!wrap||!img) return;
+    img.src=URL.createObjectURL(file);
+    wrap.style.display="block";
+  }
+  function wireInput(id){
+    const el=$(id); if(!el||el.dataset.waWired) return;
+    el.dataset.waWired="1";
+    el.addEventListener("change",()=>previewFile(el.files&&el.files[0]));
+  }
+  wireInput("statusPhotoInput"); wireInput("statusCameraInput");
+
+  window.previewStatusImage=function(ev){
+    const f=ev?.target?.files?.[0]; if(f) previewFile(f);
+  };
+
+  window.publishStatus=async function(){
+    const photo=$("statusPhotoInput"), camera=$("statusCameraInput"), cap=$("statusCaption");
+    const file=(photo?.files?.[0]) || (camera?.files?.[0]);
+    if(!file){alert("Выберите фото или сделайте снимок.");return;}
+    const btn=$("statusPublishButton"); if(btn){btn.disabled=true;btn.textContent="Публикация…";}
+    try{
+      const fd=new FormData(); fd.append("file",file);
+      const upload=await fetch("/api/statuses/upload",{method:"POST",headers:typeof token!=="undefined"&&token?{Authorization:"Bearer "+token}:{},body:fd});
+      if(!upload.ok) throw new Error("upload");
+      const up=await upload.json();
+      await fetch("/api/statuses",{method:"POST",headers:{"Content-Type":"application/json",...(typeof token!=="undefined"&&token?{Authorization:"Bearer "+token}:{})},body:JSON.stringify({text:cap?.value||"",mediaUrl:up.url||up.mediaUrl})});
+      if(cap) cap.value="";
+      if(photo) photo.value="";
+      if(camera) camera.value="";
+      if($("statusPreviewWrap")) $("statusPreviewWrap").style.display="none";
+      closeStatusComposer();
+      openStatuses();
+    }catch(e){alert("Не удалось опубликовать статус.");}
+    finally{if(btn){btn.disabled=false;btn.textContent="Опубликовать";}}
+  };
 })();
 </script>
 </body></html>
