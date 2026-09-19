@@ -289,7 +289,7 @@ function connectSocket(){
 
 function verifiedName(name, verified){
   const safe=escapeHtml(String(name||""));
-  return safe+(verified?'<span class="verified-badge" title="Подтверждено">✓</span>':"");
+  return safe+(verified?'<span class="verified-badge" title="Подтверждённый аккаунт" aria-label="Подтверждённый аккаунт">✓</span>':"");
 }
 
 async function loadUsers(){
@@ -355,7 +355,7 @@ async function deleteGroupMessage(id){
   try{await api("/api/groups/messages/"+id,{method:"DELETE"});const el=$("gm"+id);if(el)el.remove();}
   catch(e){alert(e.message||"Не удалось удалить сообщение");}
 }
-async function openUser(u){activeGroup=null;selected=u;$("app").classList.add("mobile-chat");$("headName").textContent=u.username;$("headAvatar").textContent=u.username[0].toUpperCase();$("headStatus").textContent=" ● онлайн";let ms=await api("/api/messages/"+u.id);$("messages").innerHTML="";ms.forEach(renderMessage);$("messages").scrollTop=$("messages").scrollHeight;loadUsers()}
+async function openUser(u){activeGroup=null;selected=u;$("app").classList.add("mobile-chat");$("headName").innerHTML=verifiedName(u.username, !!u.verified);$("headAvatar").textContent=u.username[0].toUpperCase();$("headStatus").textContent=" ● онлайн";let ms=await api("/api/messages/"+u.id);$("messages").innerHTML="";ms.forEach(renderMessage);$("messages").scrollTop=$("messages").scrollHeight;loadUsers()}
 function renderMessage(m){
   if(document.getElementById("m"+m.id))return;
   const d=document.createElement("div");

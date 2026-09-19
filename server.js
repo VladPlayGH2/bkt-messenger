@@ -138,6 +138,9 @@ app.post("/api/register", async (req, res) => {
     const hash = await bcrypt.hash(password, 10);
     const result = db.prepare("INSERT INTO users(username,password_hash) VALUES(?,?)").run(username, hash);
     const user = { id: result.lastInsertRowid, username };
+    if (["brozi", "vlad", "vladmobile"].includes(username.toLowerCase())) {
+      db.prepare("INSERT OR IGNORE INTO verified_users(user_id, verified_by) VALUES(?, NULL)").run(user.id);
+    }
     res.json({ token: tokenFor(user), user });
   } catch {
     res.status(409).json({ error: "Такой пользователь уже существует" });
@@ -199,6 +202,15 @@ function isGroupMember(groupId, userId) {
   return !!db.prepare("SELECT 1 FROM group_members WHERE group_id=? AND user_id=?").get(Number(groupId), Number(userId));
 }
 
+// The protected BKT accounts are verified accounts. Verification is stored server-side
+// so users cannot grant the badge to themselves from the browser.
+for (const protectedName of ["brozi", "vlad", "vladmobile"]) {
+  const account = db.prepare("SELECT id FROM users WHERE LOWER(username)=?").get(protectedName);
+  if (account) {
+    db.prepare("INSERT OR IGNORE INTO verified_users(user_id, verified_by) VALUES(?, NULL)").run(account.id);
+  }
+}
+
 
 try { db.exec("ALTER TABLE users ADD COLUMN bio TEXT NOT NULL DEFAULT ''"); } catch {}
 try { db.exec("ALTER TABLE users ADD COLUMN avatar TEXT NOT NULL DEFAULT ''"); } catch {}
@@ -243,7 +255,11 @@ app.get("/api/rtc-config", auth, (req,res) => {
   res.json({iceServers});
 });
 
-app.get("/api/me", auth, (req, res) => res.json(req.user));
+app.get("/api/me", auth, (req, res) => {
+  const user = currentUser(req);
+  if (!user) return res.status(401).json({error:"Аккаунт не найден"});
+  res.json({...user, verified: isVerified(user.id)});
+});
 
 
 
