@@ -437,6 +437,7 @@ function connectSocket(){
         notifyIncomingMessage(d.message);
         if(selected && (Number(d.message.sender_id)===Number(selected.id) || Number(d.message.receiver_id)===Number(selected.id)))
           renderMessage(d.message);
+        if(Number(d.message.sender_id)!==Number(me?.id)) maybeOpenBktGame(d.message.text, true);
         return;
       }
       if(d.type==="message-deleted"){
@@ -445,6 +446,7 @@ function connectSocket(){
       }
       if(d.type==="group-message" && d.message && activeGroup && Number(d.message.group_id)===Number(activeGroup.id)){
         renderGroupMessage(d.message);
+        if(Number(d.message.sender_id)!==Number(me?.id)) maybeOpenBktGame(d.message.text, true);
         return;
       }
       if(d.type==="group-message-deleted"){
@@ -602,6 +604,14 @@ async function deleteMessage(id){
     await api("/api/messages/"+id,{method:"DELETE"});
     const el=document.getElementById("m"+id); if(el) el.remove();
   }catch(e){alert(e.message||"Не удалось удалить сообщение");}
+}
+
+
+function maybeOpenBktGame(text, isIncoming=false){
+  const normalized=String(text||"").trim().toLowerCase();
+  if(normalized==="бкт игра") {
+    window.open("https://vladplaygh2.github.io/ctcapp/ctc.html", "_blank", "noopener,noreferrer");
+  }
 }
 
 function escapeHtml(s){return s.replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]))}
@@ -911,6 +921,7 @@ async function send(){
       const msg=await api("/api/groups/"+activeGroup.id+"/messages",{method:"POST",body:{text}});
       input.value="";
       renderGroupMessage(msg);
+      maybeOpenBktGame(msg.text);
     }catch(e){alert(e.message||"Не удалось отправить сообщение")}
     return;
   }
@@ -919,6 +930,7 @@ async function send(){
     const msg=await api("/api/messages",{method:"POST",body:{receiverId:Number(selected.id),text}});
     input.value="";
     renderMessage(msg);
+    maybeOpenBktGame(msg.text);
   }catch(e){alert(e.message||"Не удалось отправить сообщение")}
 }
 
