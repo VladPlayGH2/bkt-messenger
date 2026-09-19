@@ -295,9 +295,12 @@ app.patch("/api/profile", auth, (req,res) => {
   const bio = String(req.body?.bio ?? "").trim().slice(0,160);
   const avatar = String(req.body?.avatar ?? "").trim().slice(0,500);
 
-  // Keep the same username rules used during registration, while allowing
-  // Cyrillic usernames that the original registration already supports.
-  if (!/^[a-zA-Zа-яА-ЯёЁ0-9_.-]{3,32}$/.test(username))
+  // Validate usernames by Unicode characters so Cyrillic/other letter cases
+  // accepted by the UI are not rejected in profile settings.
+  const usernameChars = Array.from(username);
+  const validUsername = usernameChars.length >= 3 && usernameChars.length <= 32
+    && usernameChars.every(ch => /[\p{L}\p{N}_.-]/u.test(ch));
+  if (!validUsername)
     return res.status(400).json({error:"Логин: 3–32 символа, буквы, цифры, _, ., -"});
 
   const exists = db.prepare(
