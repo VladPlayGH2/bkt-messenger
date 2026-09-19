@@ -3,7 +3,6 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>БКТ Мессенджер</title>
-<link rel="icon" href="/favicon.ico" sizes="any">
 <style>
 *{box-sizing:border-box}body{margin:0;background:#020403;color:#f4f7f5;font:15px Arial,sans-serif}
 button,input{font:inherit}.app{height:100vh;max-width:1100px;margin:auto;display:grid;grid-template-columns:330px 1fr;background:#050807}
@@ -31,12 +30,11 @@ button,input{font:inherit}.app{height:100vh;max-width:1100px;margin:auto;display
 .profile-view-actions button{flex:1;padding:11px;border:0;border-radius:10px;cursor:pointer;background:#18251e;color:#fff}
 .profile-view-actions .primary-profile{background:#22ff72;color:#001609;font-weight:700}
 
-@media(max-width:700px){.quick-actions button{font-size:11px;padding:7px 3px}.avatar-upload,.wallpaper-row{flex-wrap:wrap}}
-</style>
-<style>
-.community-readonly{display:none;padding:11px 14px;border-top:1px solid #1b2822;color:#8d9893;text-align:center;background:#0a100d;font-size:13px}
-</style>
 
+.avatar-upload{display:block}.avatar-upload input[type=file]{display:none}
+.sticker-picker{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:8px 0 12px}.sticker-option{border:2px solid transparent;background:#111716;border-radius:12px;padding:6px;cursor:pointer;aspect-ratio:1;display:grid;place-items:center}.sticker-option:hover{background:#17231c}.sticker-option.selected{border-color:#22ff72;box-shadow:0 0 0 2px rgba(34,255,114,.15)}.sticker-option img{width:100%;height:100%;object-fit:contain}.auth-avatar-picker{display:none;margin:8px 0 12px}.auth-avatar-picker.show{display:block}.auth-avatar-picker label,.settings-avatar-picker label{display:block;margin-bottom:6px}.avatar-current{width:58px;height:58px;border-radius:50%;object-fit:cover;background:#0c6630;display:block;margin:0 auto 8px}.settings-avatar-picker{margin:8px 0 12px}.settings-avatar-picker .sticker-picker{grid-template-columns:repeat(6,1fr)}
+@media(max-width:700px){.quick-actions button{font-size:11px;padding:7px 3px}.avatar-upload,.wallpaper-row{flex-wrap:wrap}.settings-avatar-picker .sticker-picker{grid-template-columns:repeat(4,1fr)}}
+</style>
 <style id="bkt-mobile-css">
 html,body{width:100%;height:100%;margin:0}
 *{box-sizing:border-box}
@@ -105,52 +103,13 @@ img,video{max-width:100%}
 #bktToast b{display:block;margin-bottom:3px}.notify-btn{margin:0 18px 10px;padding:10px;border:1px solid #24312b;background:#111716;color:#fff;border-radius:12px;cursor:pointer;width:calc(100% - 36px)}
 @media(max-width:700px){#bktToast{top:max(10px,env(safe-area-inset-top));right:10px;max-width:calc(100vw - 20px)}}
 </style>
-
-<style id="bkt-stickers-css">
-.sticker-button{border:0;background:#18251e;color:#fff;border-radius:14px;width:44px;height:44px;cursor:pointer;font-size:22px;flex:0 0 44px}
-.sticker-button:hover{background:#223128}
-.sticker-picker{position:fixed;z-index:40;display:none;width:min(390px,calc(100vw - 24px));max-height:min(520px,65vh);background:#0b110f;border:1px solid #26352d;border-radius:18px;box-shadow:0 18px 60px rgba(0,0,0,.55);overflow:hidden}
-.sticker-picker-head{padding:12px 14px;border-bottom:1px solid #202d26;display:flex;align-items:center;justify-content:space-between}
-.sticker-picker-head b{font-size:14px}
-.sticker-close{border:0;background:transparent;color:#aeb9b3;font-size:20px;cursor:pointer}
-.sticker-pack-title{padding:9px 12px;color:#9ba8a1;font-size:12px}
-.sticker-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;padding:10px 12px 14px;overflow:auto;max-height:390px}
-.sticker-item{border:0;background:transparent;border-radius:12px;padding:5px;cursor:pointer;min-width:0}
-.sticker-item:hover{background:#18251e}
-.sticker-item img{width:100%;aspect-ratio:1/1;object-fit:contain;display:block}
-.sticker-msg{width:150px;max-width:45vw;height:auto;display:block;object-fit:contain}
-.auth-avatar-picker{display:none;margin:8px 0 4px;padding:10px;border:1px solid #24312b;border-radius:14px;background:#0a100e}
-.auth-avatar-picker.show{display:block}
-.auth-avatar-title{font-size:12px;color:#9ba8a1;margin-bottom:7px}
-.auth-avatar-selected{display:flex;align-items:center;gap:9px;margin-bottom:8px;color:#dce5e0;font-size:12px}
-.auth-avatar-selected img{width:48px;height:48px;object-fit:contain;border-radius:12px;background:#111716}
-.auth-avatar-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:4px;max-height:150px;overflow:auto}
-.auth-avatar-item{border:1px solid transparent;background:transparent;border-radius:9px;padding:3px;cursor:pointer}
-.auth-avatar-item:hover,.auth-avatar-item.selected{background:#18251e;border-color:#22ff72}
-.auth-avatar-item img{width:100%;aspect-ratio:1/1;object-fit:contain;display:block}
-.settings-avatar{display:flex;align-items:center;gap:10px;padding:9px 0 12px;color:#9ba8a1;font-size:12px}
-.settings-avatar img{width:58px;height:58px;object-fit:contain;border-radius:14px;background:#111716;border:1px solid #24312b}
-.settings-avatar-grid{margin:4px 0 14px;grid-template-columns:repeat(6,1fr);max-height:180px}.settings-avatar-item{min-width:0}
-
-.bubble.sticker-bubble{background:transparent!important;padding:3px!important}
-@media(max-width:700px){
- .sticker-picker{left:8px!important;right:8px;width:auto;bottom:72px;top:auto}
- .sticker-grid{grid-template-columns:repeat(4,1fr);max-height:48vh}
- .sticker-msg{width:130px;max-width:42vw}
-}
-</style>
 </head>
 <body>
 <div id="bktToast" onclick="openToastChat()"></div>
 <div id="auth" class="auth"><div class="card">
 <div class="brand"><div class="logo">БКТ</div><div><h1>БКТ</h1><small>Мессенджер</small></div></div>
 <h2 id="authTitle">Вход</h2><div id="err" class="error"></div>
-<input id="login" placeholder="Логин" autocomplete="username" oninput="toggleProtectedCode()"><input id="pass" type="password" placeholder="Пароль" autocomplete="current-password"><input id="accessCode" type="password" autocomplete="off" placeholder="Секретный код" style="display:none">
-<div id="registerAvatarPicker" class="auth-avatar-picker">
-  <div class="auth-avatar-title">Выберите аватарку из стикеров</div>
-  <div id="registerAvatarSelected" class="auth-avatar-selected"><span>Аватарка не выбрана</span></div>
-  <div id="registerAvatarGrid" class="auth-avatar-grid"></div>
-</div>
+<input id="login" placeholder="Логин" autocomplete="username" oninput="toggleProtectedCode()"><input id="pass" type="password" placeholder="Пароль" autocomplete="current-password"><input id="accessCode" type="password" autocomplete="off" placeholder="Секретный код" style="display:none"><div id="authAvatarPicker" class="auth-avatar-picker"><label>Аватарка</label><img id="authAvatarPreview" class="avatar-current" src="/stickers/1.webp"><div id="authStickerPicker" class="sticker-picker"></div></div>
 <button class="primary" onclick="authAction()" id="authBtn">Войти</button><div class="switch" onclick="toggleAuth()" id="switch">Нет аккаунта? Регистрация</div>
 </div></div><div class="app" id="app" style="display:none">
 <aside class="sidebar"><div class="quick-actions"><button id="profileBtn" onclick="openSettings()">⚙️ Настройки</button><button class="notify-btn" id="notifyBtn" onclick="enableNotifications()">🔔 Уведомления</button><button onclick="createGroup()">＋ Группа</button></div><div class="top"><div class="brand"><div class="logo">БКТ</div><div><h1>БКТ</h1><small id="me" onclick="openMyProfile()" style="cursor:pointer" title="Открыть свой профиль"></small></div></div></div>
@@ -160,20 +119,13 @@ img,video{max-width:100%}
 <div class="sendbar">
 <button id="voiceButton" title="Голосовое сообщение">🎙️</button>
 <button id="videoNoteButton" title="Видеосообщение">🎥</button>
-<button id="stickerButton" class="sticker-button" title="Стикеры" aria-label="Стикеры">🧸</button>
 <input id="text" placeholder="Сообщение..." onkeydown="if(event.key==='Enter')send()">
 <button class="send" onclick="send()">➤</button>
-</div>
-<div id="communityReadonly" class="community-readonly">🔒 В этой группе могут писать только Brozi и Vlad</div>
-<div id="stickerPicker" class="sticker-picker" aria-label="Стикеры">
-  <div class="sticker-picker-head"><b>Стикеры</b><button class="sticker-close" id="stickerClose" aria-label="Закрыть">×</button></div>
-  <div class="sticker-pack-title">Капибара и Туф</div>
-  <div id="stickerGrid" class="sticker-grid"></div>
 </div>
 <div id="recording" class="modal" style="display:none"><div class="modal-card"><h3>🎙️ Запись голосового</h3><div id="recordTime">0:00</div><div class="modal-actions"><button onclick="finishRecording()">Отправить</button><button onclick="cancelRecording()">Отмена</button></div></div></div>
 <div id="videoRecording" class="modal" style="display:none"><div class="modal-card"><h3>🎥 Видеосообщение</h3><video id="videoPreview" autoplay muted playsinline></video><div id="videoTime">0:00</div><div class="modal-actions"><button onclick="finishVideoRecording()">Отправить</button><button onclick="cancelVideoRecording()">Отмена</button></div></div></div>
 <div id="callModal" class="modal" style="display:none"><div class="modal-card"><h3 id="callTitle">Звонок</h3><video id="remoteVideo" autoplay playsinline style="width:100%;max-height:320px;border-radius:14px;background:#000"></video><audio id="remoteAudio" autoplay></audio><div class="modal-actions"><button id="acceptCall" onclick="acceptIncomingCall()">Принять</button><button onclick="endCall()">Завершить</button></div></div></div></main></div>
-<div id="settingsModal" class="modal"><div class="modal-card"><h2>Настройки профиля</h2><label>Логин</label><input id="profileUsername" autocomplete="username" autocapitalize="none" spellcheck="false" oninput="toggleProfileProtectedCode()"><input id="profileAccessCode" type="password" placeholder="Секретный код" autocomplete="off" style="display:none"><label>О себе</label><textarea id="profileBio" maxlength="160"></textarea><label>Аватар</label><div class="settings-avatar"><img id="profileAvatarPreview" src="" alt=""><span>Выберите другой стикер для аватарки.</span><input id="settingsAvatarPreview" type="hidden" value=""></div><div id="settingsAvatarGrid" class="auth-avatar-grid settings-avatar-grid"></div><label>Обои чата</label><div class="wallpaper-row"><input id="wallpaperColor" type="color" value="#08100c"><input id="wallpaperUrl" placeholder="Ссылка на обои"><button type="button" onclick="applyChatWallpaper()">Применить</button><button type="button" onclick="clearChatWallpaper()">Сбросить</button></div><div id="settingsError" class="error"></div><div class="modal-actions"><button onclick="saveSettings()">Сохранить</button><button onclick="closeSettings()">Отмена</button><button onclick="logout()" style="background:#a92323;color:#fff">Выйти</button></div></div></div>
+<div id="settingsModal" class="modal"><div class="modal-card"><h2>Настройки профиля</h2><label>Логин</label><input id="profileUsername" autocomplete="username" autocapitalize="none" spellcheck="false" oninput="toggleProfileProtectedCode()"><input id="profileAccessCode" type="password" placeholder="Секретный код" autocomplete="off" style="display:none"><label>О себе</label><textarea id="profileBio" maxlength="160"></textarea><label>Аватарка из стикеров</label><div class="settings-avatar-picker"><input id="profileAvatar" type="hidden"><img id="profileAvatarPreview" class="avatar-current" src="/stickers/1.webp"><div id="profileStickerPicker" class="sticker-picker"></div></div><label>Обои чата</label><div class="wallpaper-row"><input id="wallpaperColor" type="color" value="#08100c"><input id="wallpaperUrl" placeholder="Ссылка на обои"><button type="button" onclick="applyChatWallpaper()">Применить</button><button type="button" onclick="clearChatWallpaper()">Сбросить</button></div><div id="settingsError" class="error"></div><div class="modal-actions"><button onclick="saveSettings()">Сохранить</button><button onclick="closeSettings()">Отмена</button><button onclick="logout()" style="background:#a92323;color:#fff">Выйти</button></div></div></div>
 <div id="profileViewModal" class="modal" style="display:none">
 <div class="profile-view-card">
   <div id="profileViewAvatar" class="profile-view-avatar">БКТ</div>
@@ -186,7 +138,23 @@ img,video{max-width:100%}
   </div>
 </div></div>
 <script>
-let token=sessionStorage.getItem("bkt_token")||null, me=null, selected=null, activeGroup=null, socket=null, registering=false, selectedRegistrationAvatar="";
+let token=sessionStorage.getItem("bkt_token")||null, me=null, selected=null, activeGroup=null, socket=null, registering=false;
+const STICKER_AVATARS=Array.from({length:12},(_,i)=>`/stickers/${i+1}.webp`);
+let selectedAuthAvatar="/stickers/1.webp";
+let selectedProfileAvatar="/stickers/1.webp";
+function renderStickerPicker(containerId, selectedValue, onPick){
+  const box=$(containerId); if(!box)return; box.innerHTML="";
+  STICKER_AVATARS.forEach(src=>{
+    const b=document.createElement("button"); b.type="button"; b.className="sticker-option"+(src===selectedValue?" selected":"");
+    b.title="Выбрать аватарку";
+    const img=document.createElement("img"); img.src=src; img.alt=""; b.appendChild(img);
+    b.onclick=()=>{ onPick(src); renderStickerPicker(containerId,src,onPick); };
+    box.appendChild(b);
+  });
+}
+function setupAuthAvatarPicker(){ renderStickerPicker("authStickerPicker",selectedAuthAvatar,(src)=>{selectedAuthAvatar=src; $("authAvatarPreview").src=src;}); }
+function setupProfileAvatarPicker(){ renderStickerPicker("profileStickerPicker",selectedProfileAvatar,(src)=>{selectedProfileAvatar=src; $("profileAvatar").value=src; $("profileAvatarPreview").src=src;}); }
+
 // Never reuse a persistent login token left by another person/browser session.
 try{localStorage.removeItem("bkt_token");}catch(_){}
 const $=id=>document.getElementById(id);
@@ -199,37 +167,7 @@ function formatMessageTime(value){
   return date.toLocaleTimeString("ru-RU",{hour:"2-digit",minute:"2-digit"});
 }
 function toggleProtectedCode(){const username=$("login").value.trim().replace(/^@+/,"").toLowerCase(); const protectedUser=["brozi","vlad","vladmobile"].includes(username); $("accessCode").style.display=protectedUser?"block":"none"; $("accessCode").placeholder=protectedUser?"Секретный код":"Секретный код";}
-const REGISTRATION_AVATARS = Array.from({length:12},(_,i)=>`/stickers/${i+1}.webp`);
-function renderRegistrationAvatarPicker(){
-  const picker=$("registerAvatarPicker"), grid=$("registerAvatarGrid"), selected=$("registerAvatarSelected");
-  if(!picker||!grid||!selected)return;
-  picker.classList.toggle("show",registering);
-  grid.innerHTML="";
-  if(selectedRegistrationAvatar){
-    selected.innerHTML=`<img src="${selectedRegistrationAvatar}" alt=""><span>Выбранная аватарка</span>`;
-  }else{
-    selected.innerHTML="<span>Аватарка не выбрана</span>";
-  }
-  REGISTRATION_AVATARS.forEach((src,i)=>{
-    const b=document.createElement("button"); b.type="button"; b.className="auth-avatar-item"+(selectedRegistrationAvatar===src?" selected":"");
-    b.title=`Аватарка ${i+1}`;
-    const img=document.createElement("img"); img.src=src; img.alt=`Аватарка ${i+1}`;
-    b.appendChild(img);
-    b.onclick=()=>{selectedRegistrationAvatar=src;renderRegistrationAvatarPicker();};
-    grid.appendChild(b);
-  });
-}
-
-function toggleAuth(){
-  registering=!registering;
-  $("authTitle").textContent=registering?"Регистрация":"Вход";
-  $("authBtn").textContent=registering?"Создать аккаунт":"Войти";
-  $("switch").textContent=registering?"Уже есть аккаунт? Войти":"Нет аккаунта? Регистрация";
-  $("err").textContent="";
-  selectedRegistrationAvatar="";
-  renderRegistrationAvatarPicker();
-  toggleProtectedCode();
-}
+function toggleAuth(){registering=!registering;$("authTitle").textContent=registering?"Регистрация":"Вход";$("authBtn").textContent=registering?"Создать аккаунт":"Войти";$("switch").textContent=registering?"Уже есть аккаунт? Войти":"Нет аккаунта? Регистрация";$("err").textContent=""; toggleProtectedCode(); const picker=$("authAvatarPicker"); if(picker) picker.classList.toggle("show",registering); if(registering) setupAuthAvatarPicker();}
 async function api(path, options={}){
   const saved=sessionStorage.getItem("bkt_token");
   if(saved) token=saved;
@@ -253,11 +191,10 @@ async function authAction(){
   const password=$("pass").value;
   $("err").textContent="";
   if(!username||!password){$("err").textContent="Введите логин и пароль";return;}
-  if(registering && !selectedRegistrationAvatar){ selectedRegistrationAvatar=REGISTRATION_AVATARS[0]; }
   try{
     const d=await api("/api/"+(registering?"register":"login"),{
       method:"POST",
-      body:{username,password,accessCode:$("accessCode").value.trim(),avatar:registering?selectedRegistrationAvatar:undefined}
+      body:{username,password,accessCode:$("accessCode").value.trim(),avatar:selectedAuthAvatar}
     });
     token=d.token;
     sessionStorage.setItem("bkt_token",token);
@@ -440,16 +377,6 @@ async function loadUsers(){
     box.innerHTML = '<div style="padding:14px;color:#ff8d8d">'+escapeHtml(e.message||"Ошибка поиска")+'</div>';
   }
 }
-function updateComposerAccess(){
-  const readonly = !!(activeGroup && activeGroup.name === "БКТ Сообщество" && !["brozi","vlad"].includes(String(me?.username || "").toLowerCase()));
-  const ids=["voiceButton","videoNoteButton","stickerButton","text"];
-  ids.forEach(id=>{const el=$(id);if(!el)return;el.disabled=readonly;el.style.opacity=readonly?".45":"";el.style.cursor=readonly?"not-allowed":"";});
-  const send=$('.send');
-  if(send){send.disabled=readonly;send.style.opacity=readonly?".45":"";send.style.cursor=readonly?"not-allowed":"";}
-  const notice=$("communityReadonly");
-  if(notice) notice.style.display=readonly?"block":"none";
-}
-
 async function loadGroups(){
  try{const gs=await api('/api/groups');$("groups").innerHTML=gs.map(g=>`<div class="group-item" onclick='openGroup(${JSON.stringify(g)})'>👥 ${escapeHtml(g.name)}<small style="display:block;color:#8d9893">${Array.isArray(g.members) ? g.members.length : 1} участников</small></div>`).join('')}catch(e){console.error(e)}
 }
@@ -459,22 +386,12 @@ async function createGroup(){
  for(const n0 of raw.split(',')){const n=n0.trim().replace(/^@+/,'');if(!n)continue;try{const a=await api('/api/users?q='+encodeURIComponent(n));const u=a.find(x=>x.username.toLowerCase()===n.toLowerCase())||a[0];if(u)ids.push(u.id)}catch{}}
  try{const g=await api('/api/groups',{method:'POST',body:JSON.stringify({name:name.trim(),memberIds:ids})});openGroup(g);loadGroups()}catch(e){alert(e.message)}
 }
-async function openGroup(g){activeGroup=g;selected=null;$("app").classList.add('mobile-chat');$("headName").textContent=g.name;$("headAvatar").textContent='👥';$("headStatus").textContent=` ${g.members.length} участников`;updateComposerAccess();loadChatWallpaper();const ms=await api('/api/groups/'+g.id+'/messages');$("messages").innerHTML='';ms.forEach(renderGroupMessage)}
+async function openGroup(g){activeGroup=g;selected=null;$("app").classList.add('mobile-chat');$("headName").textContent=g.name;$("headAvatar").textContent='👥';$("headStatus").textContent=` ${g.members.length} участников`;loadChatWallpaper();const ms=await api('/api/groups/'+g.id+'/messages');$("messages").innerHTML='';ms.forEach(renderGroupMessage)}
 function renderGroupMessage(m){
   if($("gm"+m.id))return;
   const d=document.createElement("div"); d.id="gm"+m.id; d.className="bubble "+(Number(m.sender_id)===Number(me.id)?"me":"");
   const w=document.createElement("div"); w.style.fontSize="12px"; w.style.opacity=".7"; w.textContent=m.sender_name; d.appendChild(w);
-  if(String(m.text).startsWith("[STICKER]")){
-    const img=document.createElement("img");
-    img.className="sticker-msg";
-    img.alt="Стикер Туф";
-    img.src=String(m.text).substring(9);
-    img.loading="lazy";
-    d.classList.add("sticker-bubble");
-    d.appendChild(img);
-  } else {
-    const t=document.createElement("div"); t.textContent=m.text; d.appendChild(t);
-  }
+  const t=document.createElement("div"); t.textContent=m.text; d.appendChild(t);
   const meta=document.createElement("div"); meta.style.display="flex"; meta.style.justifyContent="flex-end"; meta.style.gap="6px";
   if(Number(m.sender_id)===Number(me.id)){
     const del=document.createElement("button"); del.type="button"; del.title="Удалить сообщение"; del.textContent="×";
@@ -488,7 +405,7 @@ async function deleteGroupMessage(id){
   try{await api("/api/groups/messages/"+id,{method:"DELETE"});const el=$("gm"+id);if(el)el.remove();}
   catch(e){alert(e.message||"Не удалось удалить сообщение");}
 }
-async function openUser(u){activeGroup=null;selected=u;$("app").classList.add("mobile-chat");$("headName").textContent=u.username;$("headAvatar").textContent=u.username[0].toUpperCase();$("headStatus").textContent=" ● онлайн";updateComposerAccess();let ms=await api("/api/messages/"+u.id);$("messages").innerHTML="";ms.forEach(renderMessage);$("messages").scrollTop=$("messages").scrollHeight;loadUsers()}
+async function openUser(u){activeGroup=null;selected=u;$("app").classList.add("mobile-chat");$("headName").textContent=u.username;$("headAvatar").textContent=u.username[0].toUpperCase();$("headStatus").textContent=" ● онлайн";let ms=await api("/api/messages/"+u.id);$("messages").innerHTML="";ms.forEach(renderMessage);$("messages").scrollTop=$("messages").scrollHeight;loadUsers()}
   loadChatWallpaper();
 function renderMessage(m){
   if(document.getElementById("m"+m.id))return;
@@ -496,16 +413,7 @@ function renderMessage(m){
   d.id="m"+m.id;
   d.className="bubble "+(Number(m.sender_id)===Number(me.id)?"me":"");
 
-  if(String(m.text).startsWith("[STICKER]")){
-    const src=String(m.text).substring(9);
-    const img=document.createElement("img");
-    img.className="sticker-msg";
-    img.alt="Стикер Туф";
-    img.src=src;
-    img.loading="lazy";
-    d.classList.add("sticker-bubble");
-    d.appendChild(img);
-  } else if(m.text.startsWith("[VOICE]")){
+  if(m.text.startsWith("[VOICE]")){
     const audio=document.createElement("audio");
     audio.controls=true; audio.preload="metadata"; audio.src=m.text.substring(7);
     audio.style.maxWidth="230px"; d.appendChild(audio);
@@ -562,7 +470,6 @@ function pickMime(types){
 }
 
 async function startVoiceRecording(){
-  if(activeGroup)return alert("Голосовые сообщения в группах пока недоступны");
   if(!selected)return alert("Сначала выберите чат");
   try{
     voiceStream=await navigator.mediaDevices.getUserMedia({audio:true});
@@ -608,7 +515,6 @@ function cancelRecording(){
 }
 
 async function startVideoRecording(){
-  if(activeGroup)return alert("Видеосообщения в группах пока недоступны");
   if(!selected)return alert("Сначала выберите чат");
   try{
     videoStream=await navigator.mediaDevices.getUserMedia({audio:true,video:true});
@@ -707,9 +613,10 @@ async function openSettings(){
     const p = await api("/api/profile");
     $("profileUsername").value = p.username || ""; toggleProfileProtectedCode();
     $("profileBio").value = p.bio || "";
-    const avatarPreview=$("profileAvatarPreview");
-    avatarPreview.src = p.avatar || "/icon.svg";
-    renderSettingsAvatarPicker(p.avatar || "");
+    selectedProfileAvatar = STICKER_AVATARS.includes(p.avatar) ? p.avatar : "/stickers/1.webp";
+    $("profileAvatar").value = selectedProfileAvatar;
+    $("profileAvatarPreview").src = selectedProfileAvatar;
+    setupProfileAvatarPicker();
     $("settingsError").style.color = "";
     $("settingsError").textContent = "";
     $("settingsModal").style.display = "grid";
@@ -717,25 +624,6 @@ async function openSettings(){
     $("settingsError").textContent = e.message || "Не удалось загрузить профиль";
     $("settingsModal").style.display = "grid";
   }
-}
-function renderSettingsAvatarPicker(currentAvatar){
-  const grid=$("settingsAvatarGrid");
-  if(!grid)return;
-  grid.innerHTML="";
-  REGISTRATION_AVATARS.forEach((src,i)=>{
-    const b=document.createElement("button"); b.type="button"; b.className="auth-avatar-item settings-avatar-item"+(currentAvatar===src?" selected":"");
-    b.title=`Аватарка ${i+1}`;
-    const img=document.createElement("img"); img.src=src; img.alt=`Аватарка ${i+1}`;
-    b.appendChild(img);
-    b.onclick=()=>{
-      grid.querySelectorAll(".auth-avatar-item").forEach(x=>x.classList.remove("selected"));
-      b.classList.add("selected");
-      $("profileAvatarPreview").src=src;
-      $("settingsAvatarPreview").value=src;
-    };
-    grid.appendChild(b);
-  });
-  $("settingsAvatarPreview").value=currentAvatar || REGISTRATION_AVATARS[0];
 }
 function closeSettings(){ $("settingsModal").style.display="none"; }
 function toggleProfileProtectedCode(){const username=$("profileUsername").value.trim().replace(/^@+/,"").toLowerCase(); const protectedUser=["brozi","vlad","vladmobile"].includes(username); $("profileAccessCode").style.display=protectedUser?"block":"none";}
@@ -745,7 +633,7 @@ async function saveSettings(){
    username:$("profileUsername").value.trim(),
     accessCode:$("profileAccessCode").value.trim(),
    bio:$("profileBio").value,
-   avatar:$("settingsAvatarPreview").value
+   avatar:$("profileAvatar").value.trim()
   })});
   me={...me,...p};
   $("me").textContent="@"+p.username;
@@ -767,8 +655,6 @@ function logout(){
 }
 
 
-renderRegistrationAvatarPicker();
-
 let searchTimer;
 const searchInput = document.getElementById("search");
 if (searchInput) {
@@ -782,72 +668,8 @@ if (searchInput) {
 }
 
 
-
-const STICKERS = Array.from({length:12},(_,i)=>`/stickers/${i+1}.webp`);
-let stickerPickerReady=false;
-
-function buildStickerPicker(){
-  if(stickerPickerReady)return;
-  const grid=$("stickerGrid");
-  if(!grid)return;
-  STICKERS.forEach((src,i)=>{
-    const b=document.createElement("button");
-    b.type="button";
-    b.className="sticker-item";
-    b.title="Туф";
-    b.setAttribute("aria-label",`Туф, стикер ${i+1}`);
-    const img=document.createElement("img");
-    img.src=src; img.alt="Туф"; img.loading="lazy";
-    b.appendChild(img);
-    b.onclick=()=>sendSticker(src);
-    grid.appendChild(b);
-  });
-  stickerPickerReady=true;
-}
-function positionStickerPicker(){
-  const picker=$("stickerPicker"), btn=$("stickerButton");
-  if(!picker||!btn)return;
-  if(window.matchMedia("(max-width:700px)").matches){picker.style.left="";picker.style.top="";return;}
-  const r=btn.getBoundingClientRect();
-  const width=Math.min(390,window.innerWidth-24);
-  picker.style.left=Math.max(12,Math.min(window.innerWidth-width-12,r.right-width))+"px";
-  picker.style.top=Math.max(12,r.top-Math.min(520,window.innerHeight*.65)-8)+"px";
-}
-function toggleStickerPicker(){
-  if(!selected && !activeGroup){alert("Сначала выберите чат");return;}
-  buildStickerPicker();
-  const p=$("stickerPicker");
-  const open=p.style.display==="block";
-  p.style.display=open?"none":"block";
-  if(!open)positionStickerPicker();
-}
-function closeStickerPicker(){if($("stickerPicker"))$("stickerPicker").style.display="none";}
-async function sendSticker(src){
-  if(activeGroup && activeGroup.name === "БКТ Сообщество" && !["brozi","vlad"].includes(String(me?.username || "").toLowerCase())){alert("В этой группе могут писать только Brozi и Vlad");return;}
-  if(!selected && !activeGroup)return;
-  closeStickerPicker();
-  const text="[STICKER]"+src;
-  try{
-    if(activeGroup){
-      const msg=await api("/api/groups/"+activeGroup.id+"/messages",{method:"POST",body:{text}});
-      renderGroupMessage(msg);
-    }else{
-      const msg=await api("/api/messages",{method:"POST",body:{receiverId:Number(selected.id),text}});
-      renderMessage(msg);
-    }
-  }catch(e){alert(e.message||"Не удалось отправить стикер");}
-}
-$("stickerButton").onclick=toggleStickerPicker;
-$("stickerClose").onclick=closeStickerPicker;
-document.addEventListener("click",e=>{
-  const p=$("stickerPicker"), b=$("stickerButton");
-  if(p && p.style.display==="block" && !p.contains(e.target) && e.target!==b)closeStickerPicker();
-});
-window.addEventListener("resize",()=>{if($("stickerPicker")?.style.display==="block")positionStickerPicker();});
-
 async function send(){
   const input=$("text"), text=input.value.trim();
-  if(activeGroup && activeGroup.name === "БКТ Сообщество" && !["brozi","vlad"].includes(String(me?.username || "").toLowerCase())){alert("В этой группе могут писать только Brozi и Vlad");return;}
   if(!text)return;
   if(activeGroup){
     try{
@@ -866,7 +688,7 @@ async function send(){
 }
 
 
-let peer=null, localCallStream=null, incomingCall=null, callType="audio", pendingIceCandidates=[], incomingIceCandidates=[], callPeerUserId=null, localCallId=null, callTimeout=null;
+let peer=null, localCallStream=null, incomingCall=null, callType="audio", pendingIceCandidates=[], incomingIceCandidates=[], callPeerUserId=null, localCallId=null;
 
 function callSocket(data){
   if(!socket || socket.readyState!==WebSocket.OPEN){
@@ -884,7 +706,6 @@ async function startCall(type){
     await loadRtcConfig();
     localCallStream=await navigator.mediaDevices.getUserMedia(type==="video"?{audio:true,video:true}:{audio:true});
     peer=createPeer(); pendingIceCandidates=[]; incomingIceCandidates=[]; callPeerUserId=Number(selected.id);
-    clearTimeout(callTimeout); callTimeout=setTimeout(()=>{ if(peer && !["connected","completed"].includes(peer.iceConnectionState)) { endCall(true); alert("Не удалось установить соединение. Проверьте интернет или настройки TURN."); } },45000);
     localCallStream.getTracks().forEach(t=>peer.addTrack(t,localCallStream));
     $("callTitle").textContent=type==="video"?"📹 Видеозвонок":"📞 Аудиозвонок";
     $("callModal").style.display="grid";
@@ -904,24 +725,10 @@ async function loadRtcConfig(){
   try{ const c=await api("/api/rtc-config"); if(Array.isArray(c.iceServers)&&c.iceServers.length) rtcConfig=c; }catch(_){}
 }
 function createPeer(){
-  const pc=new RTCPeerConnection({
-    ...rtcConfig,
-    iceCandidatePoolSize: 10,
-    bundlePolicy: "max-bundle",
-    rtcpMuxPolicy: "require"
-  });
+  const pc=new RTCPeerConnection(rtcConfig);
   pc.onicecandidate=e=>{
-    if(e.candidate && callPeerUserId) {
-      try { callSocket({type:"call-signal",toUserId:Number(callPeerUserId),signalType:"ice",callId:localCallId,signal:e.candidate}); }
-      catch(_) {}
-    }
-  };
-  pc.onicecandidateerror=e=>console.warn("ICE candidate error", e.errorCode, e.url);
-  pc.oniceconnectionstatechange=()=>{
-    if(["connected","completed"].includes(pc.iceConnectionState)) clearTimeout(callTimeout);
-    if(pc.iceConnectionState==="failed") {
-      console.warn("ICE failed; TURN may be unavailable");
-    }
+    if(e.candidate && callPeerUserId)
+      callSocket({type:"call-signal",toUserId:Number(callPeerUserId),signalType:"ice",callId:localCallId,signal:e.candidate});
   };
   pc.ontrack=e=>{
     const stream=e.streams[0];
@@ -947,7 +754,6 @@ async function acceptIncomingCall(){
     );
     peer=createPeer();
     callPeerUserId=Number(from);
-    clearTimeout(callTimeout); callTimeout=setTimeout(()=>{ if(peer && !["connected","completed"].includes(peer.iceConnectionState)) { endCall(true); alert("Не удалось установить соединение. Проверьте интернет или настройки TURN."); } },45000);
     localCallId=incomingCall.callId||null;
     localCallStream.getTracks().forEach(t=>peer.addTrack(t,localCallStream));
     await peer.setRemoteDescription(new RTCSessionDescription(incomingCall.signal));
@@ -992,8 +798,8 @@ async function handleCallSignal(d){
     for(const c of incomingIceCandidates){try{await peer.addIceCandidate(new RTCIceCandidate(c));}catch(e){}}
     incomingIceCandidates=[];
   }else if(d.signalType==="ice"){
-    if(peer && peer.remoteDescription && peer.remoteDescription.type){
-      try{await peer.addIceCandidate(new RTCIceCandidate(d.signal));}catch(e){console.warn("ICE add failed",e)}
+    if(peer && peer.remoteDescription){
+      try{await peer.addIceCandidate(new RTCIceCandidate(d.signal));}catch(e){}
     }else{
       incomingIceCandidates.push(d.signal);
     }
@@ -1006,7 +812,6 @@ async function handleCallSignal(d){
 }
 
 function endCall(notify=true){
-  clearTimeout(callTimeout); callTimeout=null;
   if(notify && callPeerUserId && socket && socket.readyState===WebSocket.OPEN)
     callSocket({type:"call-signal",toUserId:Number(callPeerUserId),signalType:"hangup",callId:localCallId,signal:{}});
   try{if(peer)peer.close()}catch(e){}
