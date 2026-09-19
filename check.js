@@ -1,34 +1,4 @@
-<!doctype html>
-<html lang="ru">
-<head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>БКТ Мессенджер</title>
-<style>
-*{box-sizing:border-box}body{margin:0;background:#020403;color:#f4f7f5;font:15px Arial,sans-serif}
-button,input{font:inherit}.app{height:100vh;max-width:1100px;margin:auto;display:grid;grid-template-columns:330px 1fr;background:#050807}
-.sidebar{border-right:1px solid #1b2822;display:flex;flex-direction:column}.top{padding:22px 20px 12px}.brand{display:flex;gap:12px;align-items:center}.logo{width:50px;height:50px;border-radius:15px;background:linear-gradient(145deg,#2aff78,#07963b);color:#031108;display:grid;place-items:center;font-weight:900}.brand h1{margin:0;font-size:24px}.brand small{color:#8d9893}.search{margin:12px 18px;background:#111716;border:1px solid #202b27;border-radius:16px;padding:12px}.search input,.auth input{width:100%;background:transparent;border:0;outline:0;color:#fff}.users{overflow:auto}.user{padding:14px 18px;border-bottom:1px solid #17211c;cursor:pointer}.user:hover,.user.active{background:#0d1812}.dot{color:#22ff72}.chat{display:flex;flex-direction:column;min-width:0}.chathead{height:76px;padding:12px 18px;border-bottom:1px solid #1b2822;display:flex;align-items:center;gap:12px}.chathead b{display:block}.status{color:#22ff72;font-size:12px}.avatar{width:45px;height:45px;border-radius:50%;background:#0c6630;display:grid;place-items:center;font-weight:bold}.messages{flex:1;overflow:auto;padding:24px;background:radial-gradient(circle at 80% 20%,rgba(0,255,90,.05),transparent 30%)}.bubble{max-width:70%;padding:10px 13px;margin:0 0 10px;border-radius:15px;background:#111816}.bubble.me{margin-left:auto;background:#0b6630}.bubble time{display:block;text-align:right;color:#a1b0a7;font-size:10px;margin-top:4px}.sendbar{display:flex;gap:8px;padding:12px;border-top:1px solid #1b2822}.sendbar input{flex:1;background:#111716;border:1px solid #24312b;border-radius:22px;padding:12px 15px;color:white;outline:0}.send{border:0;border-radius:50%;width:45px;background:#22ff72;cursor:pointer}.empty{margin:auto;text-align:center;color:#8d9893}.auth{position:fixed;inset:0;background:#020403;display:grid;place-items:center}.card{width:min(390px,92vw);background:#0c1110;border:1px solid #1b2822;border-radius:22px;padding:28px;box-shadow:0 0 60px rgba(0,255,90,.08)}.card h2{margin-top:0}.auth input{background:#111716;border:1px solid #24312b;border-radius:13px;padding:13px;margin:7px 0}.primary{width:100%;border:0;border-radius:13px;padding:13px;margin-top:10px;background:#22ff72;color:#001609;font-weight:bold;cursor:pointer}.switch{color:#22ff72;text-align:center;cursor:pointer;margin-top:16px}.error{color:#ff8d8d;min-height:20px}@media(max-width:700px){.app{grid-template-columns:1fr}.sidebar{display:flex}.chat{display:none}.app.mobile-chat .sidebar{display:none}.app.mobile-chat .chat{display:flex}.chathead .back{display:block}.chathead{height:68px}.bubble{max-width:82%}}
-#videoPreview{width:110px;height:110px;border-radius:50%;object-fit:cover;background:#020403}
-#videoRecording{align-items:center}
-@media(max-width:700px){.app.mobile-chat .sidebar{display:none}.app.mobile-chat .chat{display:flex}}
-.verified-badge{display:inline-grid;place-items:center;width:17px;height:17px;margin-left:4px;border-radius:50%;background:#2388ff;color:#fff;font-size:11px;font-weight:900;vertical-align:middle}
-.group-item{padding:12px 16px;border-radius:12px;cursor:pointer;margin:3px 10px}
-.group-item:hover{background:#142019}
-.verified-badge{display:inline-grid;place-items:center;width:17px;height:17px;margin-left:4px;border-radius:50%;background:#2388ff;color:#fff;font-size:11px;font-weight:900;vertical-align:middle}.group-item{padding:10px 18px;cursor:pointer;border-bottom:1px solid #17211c}.modal{position:fixed;inset:0;background:rgba(0,0,0,.7);display:none;place-items:center;z-index:20}.modal-card{width:min(420px,92vw);background:#0c1110;border:1px solid #24312b;border-radius:18px;padding:22px}.modal-card input,.modal-card textarea{width:100%;background:#111716;border:1px solid #24312b;border-radius:10px;padding:11px;color:#fff;margin:6px 0 12px}.modal-actions{display:flex;gap:8px}.modal-actions button{flex:1;padding:11px;border:0;border-radius:10px;cursor:pointer}</style>
-</head>
-<body>
-<div id="auth" class="auth"><div class="card">
-<div class="brand"><div class="logo">БКТ</div><div><h1>БКТ</h1><small>Мессенджер</small></div></div>
-<h2 id="authTitle">Вход</h2><div id="err" class="error"></div>
-<input id="login" placeholder="Логин" autocomplete="username"><input id="pass" type="password" placeholder="Пароль" autocomplete="current-password">
-<button class="primary" onclick="authAction()" id="authBtn">Войти</button><div class="switch" onclick="toggleAuth()" id="switch">Нет аккаунта? Регистрация</div>
-</div></div><div class="app" id="app" style="display:none">
-<aside class="sidebar"><button id="profileBtn" onclick="openSettings()" style="margin:0 18px 10px;padding:10px;border:1px solid #24312b;background:#111716;color:#fff;border-radius:12px;cursor:pointer">⚙️ Настройки профиля</button><button onclick="createGroup()" style="margin:0 18px 10px;padding:10px;border:0;border-radius:12px;cursor:pointer">＋ Создать группу</button><div class="top"><div class="brand"><div class="logo">БКТ</div><div><h1>БКТ</h1><small id="me"></small></div></div></div>
-<div class="search"><input id="search" placeholder="Найти пользователя по @username" oninput="loadUsers()"></div><div id="groups"></div><div id="users" class="users"></div></aside>
-<main class="chat"><div class="chathead"><button class="back" onclick="mobileBack()" style="display:none">‹</button><div class="avatar" id="headAvatar">БКТ</div><div><b id="headName">Выберите чат</b><span class="status" id="headStatus"></span></div></div>
-<div id="messages" class="messages"><div class="empty">Выберите пользователя слева</div></div>
-<div class="sendbar"><input id="text" placeholder="Сообщение..." onkeydown="if(event.key==='Enter')send()"><button class="send" onclick="send()">➤</button></div></main></div>
-<div id="settingsModal" class="modal"><div class="modal-card"><h2>Настройки профиля</h2><label>Логин</label><input id="profileUsername"><label>О себе</label><textarea id="profileBio" maxlength="160"></textarea><label>Аватар (ссылка)</label><input id="profileAvatar" placeholder="https://..."><div id="settingsError" class="error"></div><div class="modal-actions"><button onclick="saveSettings()">Сохранить</button><button onclick="closeSettings()">Отмена</button><button onclick="logout()" style="background:#a92323;color:#fff">Выйти</button></div></div></div>
-<script>
+
 let token=localStorage.getItem("bkt_token"), me=null, selected=null, activeGroup=null, socket=null, registering=false;
 const $=id=>document.getElementById(id);
 function toggleAuth(){registering=!registering;$("authTitle").textContent=registering?"Регистрация":"Вход";$("authBtn").textContent=registering?"Создать аккаунт":"Войти";$("switch").textContent=registering?"Уже есть аккаунт? Войти":"Нет аккаунта? Регистрация";$("err").textContent=""}
@@ -299,4 +269,3 @@ if (searchInput) {
   });
 }
 
-</script></body></html>

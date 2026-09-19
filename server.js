@@ -143,8 +143,24 @@ try { db.exec("ALTER TABLE users ADD COLUMN bio TEXT NOT NULL DEFAULT ''"); } ca
 try { db.exec("ALTER TABLE users ADD COLUMN avatar TEXT NOT NULL DEFAULT ''"); } catch {}
 
 
+function currentUser(req) {
+  const id = Number(req.user?.id ?? req.user?.userId ?? req.user?.sub ?? 0);
+  if (id) {
+    const byId = db.prepare("SELECT id,username FROM users WHERE id=?").get(id);
+    if (byId) return byId;
+  }
+  const username = String(req.user?.username ?? "").trim();
+  if (username) {
+    const byName = db.prepare("SELECT id,username FROM users WHERE LOWER(username)=LOWER(?)").get(username);
+    if (byName) return byName;
+  }
+  return null;
+}
 function currentUserId(req) {
-  return Number(req.user?.id ?? req.user?.userId ?? req.user?.sub ?? 0);
+  return currentUser(req)?.id || 0;
+}
+function normalizeUsername(v) {
+  return String(v ?? "").trim().replace(/^@+/, "").toLocaleLowerCase("ru-RU");
 }
 function normalizeUsername(v) {
   return String(v ?? "").trim().replace(/^@+/, "").toLowerCase();
@@ -155,55 +171,68 @@ app.get("/api/me", auth, (req, res) => res.json(req.user));
 
 
 app.get("/api/profile", auth, (req,res) => {
-  const uid = currentUserId(req);
-  if (!uid) return res.status(401).json({error:"Сессия недействительна"});
-  const user = db.prepare("SELECT id,username,bio,avatar FROM users WHERE id=?").get(uid);
-  if (!user) return res.status(404).json({error:"Пользователь не найден"});
+  const meUser = currentUser(req);
+  if (!meUser) return res.status(401).json({error:"Аккаунт не найден в базе данных. Выйдите и войдите снова."});
+
+  const user = db.prepare("SELECT id,username,COALESCE(bio,'') AS bio,COALESCE(avatar,'') AS avatar FROM users WHERE id=?").get(meUser.id);
+  if (!user) return res.status(404).json({error:"Профиль не найден"});
   res.json(user);
 });
 
 app.patch("/api/profile", auth, (req,res) => {
-  const uid = currentUserId(req);
-  if (!uid) return res.status(401).json({error:"Сессия недействительна"});
+  const meUser = currentUser(req);
+  if (!meUser) return res.status(401).json({error:"Аккаунт не найден в базе данных. Выйдите и войдите снова."});
 
   const username = String(req.body?.username ?? "").trim().replace(/^@+/,"");
   const bio = String(req.body?.bio ?? "").trim().slice(0,160);
   const avatar = String(req.body?.avatar ?? "").trim().slice(0,500);
 
-  if (!/^[a-zA-Z0-9_.-]{3,32}$/.test(username))
+  // Keep the same username rules used during registration, while allowing
+  // Cyrillic usernames that the original registration already supports.
+  if (!/^[a-zA-Zа-яА-ЯёЁ0-9_.-]{3,32}$/.test(username))
     return res.status(400).json({error:"Логин: 3–32 символа, буквы, цифры, _, ., -"});
 
   const exists = db.prepare(
     "SELECT id FROM users WHERE LOWER(username)=LOWER(?) AND id<>?"
-  ).get(username, uid);
+  ).get(username, meUser.id);
   if (exists) return res.status(409).json({error:"Этот логин уже занят"});
 
   db.prepare("UPDATE users SET username=?,bio=?,avatar=? WHERE id=?")
-    .run(username,bio,avatar,uid);
+    .run(username,bio,avatar,meUser.id);
 
-  res.json(db.prepare(
-    "SELECT id,username,bio,avatar FROM users WHERE id=?"
-  ).get(uid));
+  const updated = db.prepare(
+    "SELECT id,username,COALESCE(bio,'') AS bio,COALESCE(avatar,'') AS avatar FROM users WHERE id=?"
+  ).get(meUser.id);
+
+  res.json(updated);
 });
 
-
 app.get("/api/users/search", auth, (req,res) => {
-  const uid = currentUserId(req);
+  const meUser = currentUser(req);
   const q = normalizeUsername(req.query.q);
-  if (!uid) return res.status(401).json({error:"Сессия недействительна"});
+  if (!meUser) return res.status(401).json({error:"Аккаунт не найден в базе данных"});
   if (!q) return res.json([]);
 
-  const users = db.prepare(`
+  const all = db.prepare(`
     SELECT u.id,u.username,
       COALESCE(u.bio,'') AS bio,
       COALESCE(u.avatar,'') AS avatar,
       EXISTS(SELECT 1 FROM verified_users v WHERE v.user_id=u.id) AS verified
     FROM users u
-    WHERE LOWER(u.username) LIKE ?
-    ORDER BY CASE WHEN LOWER(u.username)=? THEN 0 ELSE 1 END,
-             LOWER(u.username)
-    LIMIT 20
-  `).all(q + "%", q);
+    WHERE u.id<>?
+    LIMIT 5000
+  `).all(meUser.id);
+
+  const users = all
+    .filter(u => String(u.username).toLocaleLowerCase("ru-RU").includes(q))
+    .sort((a,b) => {
+      const aa=String(a.username).toLocaleLowerCase("ru-RU");
+      const bb=String(b.username).toLocaleLowerCase("ru-RU");
+      const ae=aa===q?0:(aa.startsWith(q)?1:2);
+      const be=bb===q?0:(bb.startsWith(q)?1:2);
+      return ae-be || aa.localeCompare(bb,"ru");
+    })
+    .slice(0,50);
 
   res.set("Cache-Control","no-store");
   res.json(users);
