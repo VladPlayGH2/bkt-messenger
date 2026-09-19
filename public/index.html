@@ -740,7 +740,7 @@ function closeSettings(){ $("settingsModal").style.display="none"; }
 function toggleProfileProtectedCode(){const username=$("profileUsername").value.trim().replace(/^@+/,"").toLowerCase(); const protectedUser=["brozi","vlad","vladmobile"].includes(username); $("profileAccessCode").style.display=protectedUser?"block":"none";}
 async function saveSettings(){
  try{
-  const p=await api("/api/profile",{method:"PATCH",body:JSON.stringify({
+  const p=await api("/api/profile",{method:"PATCH",body:{
    username:$("profileUsername").value.trim(),
     accessCode:$("profileAccessCode").value.trim(),
    bio:$("profileBio").value,
