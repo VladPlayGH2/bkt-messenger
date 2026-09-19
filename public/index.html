@@ -37,14 +37,31 @@ async function authAction(){try{let d=await fetch("/api/"+(registering?"register
 async function start(){try{me=await api("/api/me");$("auth").style.display="none";$("app").style.display="grid";$("me").textContent="@"+me.username;connect();loadUsers()}catch{localStorage.removeItem("bkt_token");token=null}}
 function connect(){socket=new WebSocket((location.protocol==="https:"?"wss://":"ws://")+location.host+"/?token="+encodeURIComponent(token));socket.onmessage=e=>{let d=JSON.parse(e.data);if(d.type==="message"&&selected&&(d.message.sender_id===selected.id||d.message.receiver_id===selected.id))renderMessage(d.message)}}
 async function loadUsers(){
-  if(!me)return;
-  const raw=$("search").value.trim().replace(/^@+/,'');
-  try{
-    const list=await api("/api/users?q="+encodeURIComponent(raw)+"&t="+Date.now());
-    const title=raw?"Результаты поиска":"Мои чаты";
-    const empty=raw?"Пользователь не найден":"Пока нет чатов. Найдите друга выше.";
-    $("users").innerHTML=list.length?`<div style="padding:8px 18px;color:#8d9893;font-size:12px">${title}</div>`+list.map(u=>`<div class="user ${selected&&selected.id===u.id?"active":""}" onclick='openUser(${JSON.stringify(u)})'><span class="dot">●</span> ${escapeHtml(u.username)}${u.verified?'<span class="verified-badge">✓</span>':''}</div>`).join(''):`<div class="empty" style="padding:25px">${empty}</div>`;
-  }catch(e){console.error(e);$("users").innerHTML='<div class="empty" style="padding:25px">Не удалось выполнить поиск</div>'}
+  const input = $("search");
+  const q = (input?.value || "").trim().replace(/^@+/,"");
+  const box = $("users");
+  if (!box) return;
+  if (!q) { box.innerHTML=""; return; }
+
+  try {
+    const list = await api("/api/users/search?q="+encodeURIComponent(q));
+    box.innerHTML = "";
+    if (!list.length) {
+      box.innerHTML = '<div style="padding:14px;color:#8d9893">Пользователь не найден</div>';
+      return;
+    }
+    for (const u of list) {
+      const row = document.createElement("div");
+      row.className = "user";
+      row.onclick = () => openUser(u);
+      row.innerHTML =
+        `<div class="avatar">${u.avatar ? `<img src="${escapeHtml(u.avatar)}">` : escapeHtml((u.username||"?")[0].toUpperCase())}</div>` +
+        `<div><b>${verifiedName(u.username, !!u.verified)}</b><small>@${escapeHtml(u.username)}</small></div>`;
+      box.appendChild(row);
+    }
+  } catch(e) {
+    box.innerHTML = '<div style="padding:14px;color:#ff8d8d">Не удалось выполнить поиск</div>';
+  }
 }
 async function loadGroups(){
  try{const gs=await api('/api/groups');$("groups").innerHTML=gs.map(g=>`<div class="group-item" onclick='openGroup(${JSON.stringify(g)})'>👥 ${escapeHtml(g.name)}<small style="display:block;color:#8d9893">${g.members.length} участников</small></div>`).join('')}catch(e){console.error(e)}
@@ -217,14 +234,18 @@ async function uploadMediaFile(blob,kind){
 
 
 async function openSettings(){
- try{
-  const p=await api("/api/profile");
-  $("profileUsername").value=p.username||"";
-  $("profileBio").value=p.bio||"";
-  $("profileAvatar").value=p.avatar||"";
-  $("settingsError").textContent="";
-  $("settingsModal").style.display="grid";
- }catch(e){alert(e.message)}
+  try{
+    const p = await api("/api/profile");
+    $("profileUsername").value = p.username || "";
+    $("profileBio").value = p.bio || "";
+    $("profileAvatar").value = p.avatar || "";
+    $("settingsError").style.color = "";
+    $("settingsError").textContent = "";
+    $("settingsModal").style.display = "grid";
+  }catch(e){
+    $("settingsError").textContent = e.message || "Не удалось загрузить профиль";
+    $("settingsModal").style.display = "grid";
+  }
 }
 function closeSettings(){ $("settingsModal").style.display="none"; }
 async function saveSettings(){
@@ -246,13 +267,14 @@ async function saveSettings(){
  }
 }
 function logout(){
- try{if(socket)socket.close()}catch{}
- localStorage.removeItem("bkt_token");
- token=null;me=null;selected=null;activeGroup=null;
- $("settingsModal").style.display="none";
- $("app").style.display="none";
- $("auth").style.display="grid";
- $("login").value="";$("pass").value="";
+  try { if (socket) socket.close(); } catch {}
+  localStorage.removeItem("bkt_token");
+  localStorage.removeItem("token");
+  sessionStorage.removeItem("bkt_token");
+  token = null; me = null; selected = null; activeGroup = null;
+  if ($("settingsModal")) $("settingsModal").style.display = "none";
+  if ($("app")) $("app").style.display = "none";
+  if ($("auth")) $("auth").style.display = "grid";
 }
 
 
@@ -260,4 +282,17 @@ async function openSettings(){try{const p=await api('/api/profile');$("profileUs
 function closeSettings(){$("settingsModal").style.display='none'}
 async function saveSettings(){try{const p=await api('/api/profile',{method:'PATCH',body:JSON.stringify({username:$("profileUsername").value.trim(),bio:$("profileBio").value,avatar:$("profileAvatar").value.trim()})});token=p.token||token;if(p.token)localStorage.setItem('bkt_token',token);me={...me,...p};$("me").textContent='@'+p.username;$("settingsError").textContent='Сохранено';setTimeout(closeSettings,500);loadUsers()}catch(e){$("settingsError").textContent=e.message}}
 function logout(){try{socket&&socket.close()}catch{}localStorage.removeItem('bkt_token');location.reload()}
+
+let searchTimer;
+const searchInput = document.getElementById("search");
+if (searchInput) {
+  searchInput.addEventListener("input", () => {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(loadUsers, 180);
+  });
+  searchInput.addEventListener("keydown", e => {
+    if (e.key === "Enter") { e.preventDefault(); clearTimeout(searchTimer); loadUsers(); }
+  });
+}
+
 </script></body></html>

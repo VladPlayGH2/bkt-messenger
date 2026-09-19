@@ -142,27 +142,84 @@ function isGroupMember(groupId, userId) {
 try { db.exec("ALTER TABLE users ADD COLUMN bio TEXT NOT NULL DEFAULT ''"); } catch {}
 try { db.exec("ALTER TABLE users ADD COLUMN avatar TEXT NOT NULL DEFAULT ''"); } catch {}
 
+
+function currentUserId(req) {
+  return Number(req.user?.id ?? req.user?.userId ?? req.user?.sub ?? 0);
+}
+function normalizeUsername(v) {
+  return String(v ?? "").trim().replace(/^@+/, "").toLowerCase();
+}
+
 app.get("/api/me", auth, (req, res) => res.json(req.user));
 
 
 
 app.get("/api/profile", auth, (req,res) => {
-  const user = db.prepare("SELECT id,username,bio,avatar FROM users WHERE id=?").get(req.user.id);
+  const uid = currentUserId(req);
+  if (!uid) return res.status(401).json({error:"Сессия недействительна"});
+  const user = db.prepare("SELECT id,username,bio,avatar FROM users WHERE id=?").get(uid);
   if (!user) return res.status(404).json({error:"Пользователь не найден"});
   res.json(user);
 });
 
 app.patch("/api/profile", auth, (req,res) => {
-  const username = String(req.body.username ?? "").trim();
-  const bio = String(req.body.bio ?? "").trim().slice(0,160);
-  const avatar = String(req.body.avatar ?? "").trim().slice(0,500);
-  if (!/^[a-zA-Zа-яА-ЯёЁ0-9_]{3,24}$/.test(username))
+  const uid = currentUserId(req);
+  if (!uid) return res.status(401).json({error:"Сессия недействительна"});
+
+  const username = String(req.body?.username ?? "").trim().replace(/^@+/,"");
+  const bio = String(req.body?.bio ?? "").trim().slice(0,160);
+  const avatar = String(req.body?.avatar ?? "").trim().slice(0,500);
+
+  if (!/^[a-zA-Z0-9_.-]{3,32}$/.test(username))
     return res.status(400).json({error:"Логин: 3–32 символа, буквы, цифры, _, ., -"});
-  const exists = db.prepare("SELECT id FROM users WHERE LOWER(username)=LOWER(?) AND id<>?").get(username, req.user.id);
+
+  const exists = db.prepare(
+    "SELECT id FROM users WHERE LOWER(username)=LOWER(?) AND id<>?"
+  ).get(username, uid);
   if (exists) return res.status(409).json({error:"Этот логин уже занят"});
-  db.prepare("UPDATE users SET username=?,bio=?,avatar=? WHERE id=?").run(username,bio,avatar,req.user.id);
-  const updated = db.prepare("SELECT id,username,bio,avatar FROM users WHERE id=?").get(req.user.id);
-  res.json({ ...updated, token: tokenFor({id:updated.id, username:updated.username}) });
+
+  db.prepare("UPDATE users SET username=?,bio=?,avatar=? WHERE id=?")
+    .run(username,bio,avatar,uid);
+
+  res.json(db.prepare(
+    "SELECT id,username,bio,avatar FROM users WHERE id=?"
+  ).get(uid));
+});
+
+
+app.get("/api/users/search", auth, (req,res) => {
+  const uid = currentUserId(req);
+  const q = normalizeUsername(req.query.q);
+  if (!uid) return res.status(401).json({error:"Сессия недействительна"});
+  if (!q) return res.json([]);
+
+  const users = db.prepare(`
+    SELECT u.id,u.username,
+      COALESCE(u.bio,'') AS bio,
+      COALESCE(u.avatar,'') AS avatar,
+      EXISTS(SELECT 1 FROM verified_users v WHERE v.user_id=u.id) AS verified
+    FROM users u
+    WHERE LOWER(u.username) LIKE ?
+    ORDER BY CASE WHEN LOWER(u.username)=? THEN 0 ELSE 1 END,
+             LOWER(u.username)
+    LIMIT 20
+  `).all(q + "%", q);
+
+  res.set("Cache-Control","no-store");
+  res.json(users);
+});
+
+app.get("/api/users/by-username/:username", auth, (req,res) => {
+  const uid = currentUserId(req);
+  const q = normalizeUsername(req.params.username);
+  if (!uid) return res.status(401).json({error:"Сессия недействительна"});
+  const user = db.prepare(`
+    SELECT u.id,u.username,COALESCE(u.bio,'') AS bio,COALESCE(u.avatar,'') AS avatar,
+      EXISTS(SELECT 1 FROM verified_users v WHERE v.user_id=u.id) AS verified
+    FROM users u WHERE LOWER(u.username)=?
+  `).get(q);
+  if (!user) return res.status(404).json({error:"Пользователь не найден"});
+  res.json(user);
 });
 
 app.get("/api/users/:id/profile", auth, (req, res) => {
