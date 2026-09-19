@@ -256,7 +256,7 @@ async function authAction(){
   try{
     const d=await api("/api/"+(registering?"register":"login"),{
       method:"POST",
-      body:{username,password,accessCode:$("accessCode").value.trim(),avatar:registering?selectedRegistrationAvatar:undefined}
+      body:{username,password,accessCode:$("accessCode").value.trim(),avatar:registering?(selectedRegistrationAvatar||REGISTRATION_AVATARS[0]):undefined}
     });
     token=d.token;
     sessionStorage.setItem("bkt_token",token);
@@ -742,10 +742,10 @@ async function saveSettings(){
  try{
   const p=await api("/api/profile",{method:"PATCH",body:{
    username:$("profileUsername").value.trim(),
-    accessCode:$("profileAccessCode").value.trim(),
+   accessCode:$("profileAccessCode").value.trim(),
    bio:$("profileBio").value,
-   avatar:$("settingsAvatarPreview").value
-  })});
+   avatar:$("settingsAvatarPreview").value || REGISTRATION_AVATARS[0]
+  }});
   me={...me,...p};
   $("me").textContent="@"+p.username;
   $("settingsError").style.color="#22ff72";
