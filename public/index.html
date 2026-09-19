@@ -2,7 +2,6 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<link rel="icon" href="/favicon.ico">
 <title>БКТ Мессенджер</title>
 <style>
 *{box-sizing:border-box}body{margin:0;background:#020403;color:#f4f7f5;font:15px Arial,sans-serif}
@@ -366,6 +365,37 @@ img,video{max-width:100%}
 }
 </style>
 
+<style id="black-green-status-theme">
+.wa-status-modal{background:#050807!important;color:#f3fff7!important}
+.wa-status-panel{background:#07100c!important;color:#f3fff7!important;box-shadow:0 0 35px #00ff7a18}
+.wa-status-header{background:#08130e!important;border-bottom:1px solid #163a29!important}
+.wa-status-title{color:#f3fff7!important}
+.wa-icon-btn{color:#eafff1!important}
+.wa-my-status-row,.wa-status-row{background:#07100c!important;color:#f3fff7!important}
+.wa-my-status-row:active,.wa-status-row:active{background:#0d1c15!important}
+.wa-status-sub,.wa-status-row-time,.wa-status-empty{color:#91b8a2!important}
+.wa-status-section{background:#0b1a13!important;color:#71d49b!important}
+.wa-status-avatar{background-color:#10251a!important;border-color:#163a29!important}
+.wa-status-row .wa-status-avatar{border-color:#16d878!important}
+.wa-add-badge{background:#16d878!important;color:#031108!important;border-color:#07100c!important}
+.wa-viewer-modal{background:#000!important}
+.wa-composer-modal{background:#000b!important}
+.wa-composer-sheet{background:#07100c!important;color:#f3fff7!important;border:1px solid #163a29}
+.wa-composer-head{color:#f3fff7!important}
+.wa-composer-source button{background:#0d2117!important;color:#bfffd7!important;border:1px solid #195136!important}
+.wa-composer-source button:active{background:#123522!important}
+#statusCaption{background:#050b08!important;color:#f3fff7!important;border-color:#195136!important}
+#statusCaption::placeholder{color:#71907f}
+.wa-publish-btn{background:#16d878!important;color:#031108!important;box-shadow:0 6px 18px #16d87830}
+.wa-publish-btn:disabled{opacity:.6}
+.wa-camera-box{display:none;position:relative;margin:8px 0 12px;background:#000;border-radius:14px;overflow:hidden}
+.wa-camera-box.active{display:block}
+.wa-camera-video{width:100%;max-height:55dvh;display:block;object-fit:cover;background:#000}
+.wa-camera-actions{position:absolute;left:0;right:0;bottom:10px;display:flex;justify-content:center;gap:10px}
+.wa-camera-actions button{border:0;border-radius:999px;padding:12px 18px;font-size:15px;font-weight:700;background:#16d878;color:#031108}
+.wa-camera-actions .secondary{background:#10251a;color:#bfffd7;border:1px solid #195136}
+</style>
+
 </head>
 <body>
 <div id="bktToast" onclick="openToastChat()"></div>
@@ -450,8 +480,15 @@ img,video{max-width:100%}
       <button type="button" class="wa-icon-btn" onclick="closeStatusComposer()">✕</button>
     </div>
     <div class="wa-composer-source">
-      <button type="button" onclick="document.getElementById('statusCameraInput').click()">📷 Камера</button>
+      <button type="button" onclick="startStatusCamera()">📷 Камера</button>
       <button type="button" onclick="document.getElementById('statusPhotoInput').click()">🖼️ Галерея</button>
+    </div>
+    <div id="statusCameraBox" class="wa-camera-box">
+      <video id="statusCameraVideo" class="wa-camera-video" autoplay playsinline muted></video>
+      <div class="wa-camera-actions">
+        <button type="button" onclick="takeStatusPhoto()">● Снять</button>
+        <button type="button" class="secondary" onclick="stopStatusCamera()">Закрыть камеру</button>
+      </div>
     </div>
     <input id="statusCameraInput" type="file" accept="image/*" capture="environment" hidden>
     <input id="statusPhotoInput" type="file" accept="image/*" hidden>
@@ -460,13 +497,6 @@ img,video{max-width:100%}
     </div>
     <textarea id="statusCaption" maxlength="700" placeholder="Добавьте подпись"></textarea>
     <button id="statusPublishButton" class="wa-publish-btn" type="button" onclick="publishStatus()">Опубликовать</button>
-  </div>
-</div>
-<input id="statusPhotoInput" type="file" accept="image/*" hidden>
-      <textarea id="statusText" maxlength="280" placeholder="Добавьте подпись…"></textarea>
-      <div class="status-counter"><span>Фото + подпись</span><span id="statusTextCounter">0/280</span></div>
-      <button class="primary status-publish-button" onclick="publishStatus()">Опубликовать статус</button>
-    </div>
   </div>
 </div>
 <div id="settingsModal" class="modal"><div class="modal-card"><h2 data-i18n="profileSettings">Настройки профиля</h2><label data-i18n="login">Логин</label><input id="profileUsername" autocomplete="username" autocapitalize="none" spellcheck="false" oninput="toggleProfileProtectedCode()"><input id="profileAccessCode" type="password" placeholder="Секретный код" data-i18n-placeholder="secretCode" autocomplete="off" style="display:none"><label data-i18n="about">О себе</label><textarea id="profileBio" maxlength="160"></textarea><label data-i18n="avatar">Аватар</label><div class="settings-avatar"><img id="profileAvatarPreview" src="" alt=""><span data-i18n="chooseSticker">Выберите другой стикер для аватарки.</span><input id="settingsAvatarPreview" type="hidden" value=""></div><div id="settingsAvatarGrid" class="auth-avatar-grid settings-avatar-grid"></div><label data-i18n="language">Язык</label>
@@ -1620,33 +1650,29 @@ document.addEventListener("click", function(e){
 
 <script id="whatsapp-status-js">
 (function(){
-  let waStatuses=[];
-  let waCurrentIndex=0;
-  let waTimer=null;
+  let waStatuses=[], waCurrentIndex=0, waTimer=null, cameraStream=null, cameraShot=null;
 
-  function $(id){return document.getElementById(id)}
-  function esc(v){return typeof escapeHtml==="function"?escapeHtml(v||""):String(v||"")}
+  const $=id=>document.getElementById(id);
+  const esc=v=>typeof escapeHtml==="function"?escapeHtml(v||""):String(v||"");
+  const authHeaders=()=>typeof token!=="undefined"&&token?{Authorization:"Bearer "+token}:{};
 
-  window.openStatuses=function(){
-    const modal=$("statusesModal");
-    if(modal) modal.style.display="flex";
-    loadStatuses();
+  window.openStatuses=async function(){
+    const modal=$("statusesModal"); if(modal) modal.style.display="flex";
+    await loadStatuses();
   };
   window.closeStatuses=function(){
     const modal=$("statusesModal"); if(modal) modal.style.display="none";
   };
   window.focusStatusComposer=function(){
-    const m=$("statusComposerModal");
-    if(m) m.style.display="flex";
-    if($("statusesModal")) $("statusesModal").style.display="none";
+    const m=$("statusComposerModal"); if(m) m.style.display="flex";
+    const old=$("statusesModal"); if(old) old.style.display="none";
   };
   window.closeStatusComposer=function(){
+    stopStatusCamera();
     const m=$("statusComposerModal"); if(m) m.style.display="none";
   };
 
-  function statusAvatar(s){
-    return s.avatar || s.avatar_url || "";
-  }
+  function statusAvatar(s){return s.avatar||s.avatar_url||"";}
   function renderStatusRow(s,i){
     const row=document.createElement("div");
     row.className="wa-status-row";
@@ -1664,110 +1690,138 @@ document.addEventListener("click", function(e){
   }
 
   window.loadStatuses=async function(){
-    const list=$("statusFeed"), empty=$("statusEmpty");
-    if(!list) return;
+    const list=$("statusFeed"), empty=$("statusEmpty"); if(!list)return;
     list.innerHTML="";
     try{
-      const r=await fetch("/api/statuses");
-      waStatuses=await r.json();
-      if(!Array.isArray(waStatuses)) waStatuses=[];
-      if(empty) empty.style.display=waStatuses.length?"none":"block";
+      const r=await fetch("/api/statuses",{headers:authHeaders()});
+      const data=await r.json();
+      if(!r.ok) throw new Error(data.error||"Не удалось загрузить статусы");
+      waStatuses=Array.isArray(data)?data:[];
+      if(empty){empty.style.display=waStatuses.length?"none":"block";empty.textContent="Здесь появятся статусы контактов";}
       waStatuses.forEach((s,i)=>list.appendChild(renderStatusRow(s,i)));
       const my=$("waMyStatusAvatar");
-      if(my && typeof me!=="undefined" && me && (me.avatar||me.avatar_url)){
+      if(my && typeof me!=="undefined" && me && (me.avatar||me.avatar_url))
         my.style.backgroundImage=`url("${me.avatar||me.avatar_url}")`;
-      }
     }catch(e){
-      if(empty){empty.style.display="block";empty.textContent="Не удалось загрузить статусы";}
+      if(empty){empty.style.display="block";empty.textContent=e.message||"Не удалось загрузить статусы";}
     }
   };
 
   window.openStatusViewer=function(i){
-    if(!waStatuses[i]) return;
+    if(!waStatuses[i])return;
     waCurrentIndex=i;
-    const m=$("statusViewerModal");
-    if(m) m.style.display="flex";
-    showStatus(waCurrentIndex);
+    const m=$("statusViewerModal"); if(m)m.style.display="flex";
+    showStatus(i);
   };
   window.closeStatusViewer=function(){
     clearTimeout(waTimer);
-    const m=$("statusViewerModal"); if(m) m.style.display="none";
+    const m=$("statusViewerModal"); if(m)m.style.display="none";
   };
   function showStatus(i){
-    const s=waStatuses[i]; if(!s) return;
-    const media=$("waViewerMedia"), cap=$("waViewerCaption"), author=$("waViewerAuthor"), prog=$("waViewerProgress");
+    const s=waStatuses[i]; if(!s)return;
+    const media=$("waViewerMedia"),cap=$("waViewerCaption"),author=$("waViewerAuthor"),prog=$("waViewerProgress");
     media.innerHTML="";
     if(s.media_url){
-      const img=document.createElement("img");
-      img.src=s.media_url; img.alt="";
-      media.appendChild(img);
+      const img=document.createElement("img"); img.src=s.media_url; img.alt=""; media.appendChild(img);
     }else{
       const box=document.createElement("div");
       box.style.cssText="color:#fff;font-size:26px;padding:30px;text-align:center";
-      box.textContent=s.text||"";
-      media.appendChild(box);
+      box.textContent=s.text||""; media.appendChild(box);
     }
     author.textContent=s.username||"Пользователь";
     cap.textContent=s.text||"";
-    if(prog){prog.innerHTML=""; void prog.offsetWidth; prog.className="wa-viewer-progress";}
+    if(prog){prog.innerHTML="";void prog.offsetWidth;prog.className="wa-viewer-progress";}
     clearTimeout(waTimer);
-    waTimer=setTimeout(()=>{
-      if(waCurrentIndex<waStatuses.length-1){waCurrentIndex++;showStatus(waCurrentIndex)}
-      else closeStatusViewer();
-    },5000);
+    waTimer=setTimeout(()=>{if(waCurrentIndex<waStatuses.length-1){waCurrentIndex++;showStatus(waCurrentIndex)}else closeStatusViewer()},5000);
   }
 
-  // Swipe left/right through statuses on phones.
   let sx=0;
   document.addEventListener("touchstart",e=>{
-    if($("statusViewerModal")?.style.display!=="flex") return;
+    if($("statusViewerModal")?.style.display!=="flex")return;
     sx=e.touches[0].clientX;
   },{passive:true});
   document.addEventListener("touchend",e=>{
-    if($("statusViewerModal")?.style.display!=="flex") return;
+    if($("statusViewerModal")?.style.display!=="flex")return;
     const dx=e.changedTouches[0].clientX-sx;
     if(Math.abs(dx)>60){
-      if(dx<0 && waCurrentIndex<waStatuses.length-1){waCurrentIndex++;showStatus(waCurrentIndex)}
-      if(dx>0 && waCurrentIndex>0){waCurrentIndex--;showStatus(waCurrentIndex)}
+      if(dx<0&&waCurrentIndex<waStatuses.length-1){waCurrentIndex++;showStatus(waCurrentIndex)}
+      if(dx>0&&waCurrentIndex>0){waCurrentIndex--;showStatus(waCurrentIndex)}
     }
   },{passive:true});
 
   function previewFile(file){
-    if(!file) return;
-    const wrap=$("statusPreviewWrap"), img=$("statusPreview");
-    if(!wrap||!img) return;
-    img.src=URL.createObjectURL(file);
-    wrap.style.display="block";
+    if(!file)return;
+    const wrap=$("statusPreviewWrap"),img=$("statusPreview");
+    if(wrap&&img){img.src=URL.createObjectURL(file);wrap.style.display="block";}
   }
   function wireInput(id){
-    const el=$(id); if(!el||el.dataset.waWired) return;
+    const el=$(id); if(!el||el.dataset.waWired)return;
     el.dataset.waWired="1";
     el.addEventListener("change",()=>previewFile(el.files&&el.files[0]));
   }
   wireInput("statusPhotoInput"); wireInput("statusCameraInput");
 
-  window.previewStatusImage=function(ev){
-    const f=ev?.target?.files?.[0]; if(f) previewFile(f);
+  window.previewStatusImage=function(ev){const f=ev?.target?.files?.[0];if(f)previewFile(f);};
+
+  window.startStatusCamera=async function(){
+    const box=$("statusCameraBox"),video=$("statusCameraVideo");
+    if(!box||!video)return;
+    try{
+      cameraStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"}},audio:false});
+      video.srcObject=cameraStream; box.classList.add("active");
+    }catch(e){
+      // On phones that block getUserMedia, open the native camera picker.
+      const input=$("statusCameraInput"); if(input) input.click();
+    }
+  };
+  window.stopStatusCamera=function(){
+    if(cameraStream){cameraStream.getTracks().forEach(t=>t.stop());cameraStream=null;}
+    const v=$("statusCameraVideo"); if(v)v.srcObject=null;
+    const box=$("statusCameraBox"); if(box)box.classList.remove("active");
+  };
+  window.takeStatusPhoto=function(){
+    const video=$("statusCameraVideo"); if(!video||!video.videoWidth)return;
+    const canvas=document.createElement("canvas");
+    canvas.width=video.videoWidth;canvas.height=video.videoHeight;
+    canvas.getContext("2d").drawImage(video,0,0);
+    canvas.toBlob(blob=>{
+      if(!blob)return;
+      cameraShot=new File([blob],"camera-status.jpg",{type:"image/jpeg"});
+      previewFile(cameraShot);
+      stopStatusCamera();
+    },"image/jpeg",0.9);
   };
 
   window.publishStatus=async function(){
-    const photo=$("statusPhotoInput"), camera=$("statusCameraInput"), cap=$("statusCaption");
-    const file=(photo?.files?.[0]) || (camera?.files?.[0]);
+    const photo=$("statusPhotoInput"),camera=$("statusCameraInput"),cap=$("statusCaption");
+    const file=cameraShot || photo?.files?.[0] || camera?.files?.[0];
     if(!file){alert("Выберите фото или сделайте снимок.");return;}
-    const btn=$("statusPublishButton"); if(btn){btn.disabled=true;btn.textContent="Публикация…";}
+    const btn=$("statusPublishButton");
+    if(btn){btn.disabled=true;btn.textContent="Публикация…";}
     try{
-      const fd=new FormData(); fd.append("file",file);
-      const upload=await fetch("/api/statuses/upload",{method:"POST",headers:typeof token!=="undefined"&&token?{Authorization:"Bearer "+token}:{},body:fd});
-      if(!upload.ok) throw new Error("upload");
-      const up=await upload.json();
-      await fetch("/api/statuses",{method:"POST",headers:{"Content-Type":"application/json",...(typeof token!=="undefined"&&token?{Authorization:"Bearer "+token}:{})},body:JSON.stringify({text:cap?.value||"",mediaUrl:up.url||up.mediaUrl})});
-      if(cap) cap.value="";
-      if(photo) photo.value="";
-      if(camera) camera.value="";
-      if($("statusPreviewWrap")) $("statusPreviewWrap").style.display="none";
+      const fd=new FormData();
+      // IMPORTANT: server expects the field name "image".
+      fd.append("image",file,file.name||"status.jpg");
+      const upload=await fetch("/api/statuses/upload",{method:"POST",headers:authHeaders(),body:fd});
+      const up=await upload.json().catch(()=>({}));
+      if(!upload.ok)throw new Error(up.error||"Не удалось загрузить фото");
+      const mediaUrl=up.url||up.mediaUrl;
+      if(!mediaUrl)throw new Error("Сервер не вернул ссылку на фото");
+      const saved=await fetch("/api/statuses",{
+        method:"POST",
+        headers:{"Content-Type":"application/json",...authHeaders()},
+        body:JSON.stringify({text:(cap?.value||"").trim(),mediaUrl})
+      });
+      const data=await saved.json().catch(()=>({}));
+      if(!saved.ok)throw new Error(data.error||"Не удалось сохранить статус");
+      cameraShot=null;
+      if(cap)cap.value="";
+      if(photo)photo.value="";
+      if(camera)camera.value="";
+      if($("statusPreviewWrap"))$("statusPreviewWrap").style.display="none";
       closeStatusComposer();
-      openStatuses();
-    }catch(e){alert("Не удалось опубликовать статус.");}
+      await openStatuses();
+    }catch(e){alert(e.message||"Не удалось опубликовать статус.");}
     finally{if(btn){btn.disabled=false;btn.textContent="Опубликовать";}}
   };
 })();

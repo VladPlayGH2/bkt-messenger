@@ -494,7 +494,7 @@ app.get("/api/statuses", auth, async (req, res) => {
 });
 
 app.post("/api/statuses/upload", auth, uploadStatusImage.single("image"), async (req, res) => {
-  if (!req.file) return res.status(400).json({ error: "Выберите изображение JPG, PNG, WebP или GIF до 8 МБ" });
+  if (!req.file) return res.status(400).json({ error: "Не удалось получить фото. Разрешены JPG, PNG, WebP или GIF до 8 МБ." });
   res.json({ url: `/status-media/${req.file.filename}` });
 });
 
