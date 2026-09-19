@@ -156,12 +156,13 @@ app.patch("/api/profile", auth, (req,res) => {
   const username = String(req.body.username ?? "").trim();
   const bio = String(req.body.bio ?? "").trim().slice(0,160);
   const avatar = String(req.body.avatar ?? "").trim().slice(0,500);
-  if (!/^[a-zA-Z0-9_.-]{3,32}$/.test(username))
+  if (!/^[a-zA-Zа-яА-ЯёЁ0-9_]{3,24}$/.test(username))
     return res.status(400).json({error:"Логин: 3–32 символа, буквы, цифры, _, ., -"});
   const exists = db.prepare("SELECT id FROM users WHERE LOWER(username)=LOWER(?) AND id<>?").get(username, req.user.id);
   if (exists) return res.status(409).json({error:"Этот логин уже занят"});
   db.prepare("UPDATE users SET username=?,bio=?,avatar=? WHERE id=?").run(username,bio,avatar,req.user.id);
-  res.json(db.prepare("SELECT id,username,bio,avatar FROM users WHERE id=?").get(req.user.id));
+  const updated = db.prepare("SELECT id,username,bio,avatar FROM users WHERE id=?").get(req.user.id);
+  res.json({ ...updated, token: tokenFor({id:updated.id, username:updated.username}) });
 });
 
 app.get("/api/users/:id/profile", auth, (req, res) => {
@@ -202,7 +203,7 @@ app.get("/api/users", auth, (req, res) => {
   // Без поискового запроса показываем только людей, с которыми уже есть переписка.
   if (!raw) {
     const chats = db.prepare(`
-      SELECT u.id, u.username, MAX(m.id) AS last_message_id
+      SELECT u.id, u.username, EXISTS(SELECT 1 FROM verified_users v WHERE v.user_id=u.id) AS verified, MAX(m.id) AS last_message_id
       FROM users u
       JOIN messages m ON (m.sender_id=u.id AND m.receiver_id=?)
                      OR (m.receiver_id=u.id AND m.sender_id=?)
@@ -212,19 +213,19 @@ app.get("/api/users", auth, (req, res) => {
       LIMIT 50
     `).all(req.user.id, req.user.id, req.user.id);
     res.set("Cache-Control", "no-store");
-    return res.json(chats.map(({id, username}) => ({id, username})));
+    return res.json(chats.map(({id, username, verified}) => ({id, username, verified: !!verified})));
   }
 
   // При поиске показываем только найденных пользователей.
   const users = db.prepare(`
-    SELECT id, username
-    FROM users
-    WHERE id<>? AND LOWER(username) LIKE LOWER(?)
+    SELECT u.id, u.username, EXISTS(SELECT 1 FROM verified_users v WHERE v.user_id=u.id) AS verified
+    FROM users u
+    WHERE u.id<>? AND LOWER(u.username) LIKE LOWER(?)
     ORDER BY username COLLATE NOCASE
     LIMIT 50
   `).all(req.user.id, `%${raw}%`);
   res.set("Cache-Control", "no-store");
-  res.json(users);
+  res.json(users.map(u => ({...u, verified: !!u.verified})));
 });
 
 app.get("/api/messages/:userId", auth, (req, res) => {
