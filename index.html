@@ -18,6 +18,9 @@ button,input{font:inherit}.app{height:100vh;max-width:1100px;margin:auto;display
 .call-actions .active{background:#0b6630;border-color:#22ff72}
 .call-history{opacity:.8;font-style:italic}
 @media(max-width:700px){.chathead{padding:8px 10px;gap:8px}.call-actions button{width:40px;height:40px;min-width:40px;padding:0}.chat-title b{font-size:14px}.chat-title .status{font-size:11px}}
+
+.quick-actions{display:flex;gap:6px;margin:0 10px 10px}.quick-actions button{flex:1;min-width:0;padding:8px 5px;border:1px solid #24312b;background:#111716;color:#fff;border-radius:10px;cursor:pointer;font-size:12px;white-space:nowrap}.quick-actions .notify-btn{margin:0;width:auto}.avatar-upload,.wallpaper-row{display:flex;gap:7px;align-items:center}.avatar-upload input[type=file]{display:none}.avatar-upload button,.wallpaper-row button{border:0;border-radius:9px;padding:9px;cursor:pointer;background:#18251e;color:#fff}.avatar-upload #profileAvatar,.wallpaper-row input[placeholder]{min-width:0;flex:1}.wallpaper-row input[type=color]{width:46px;height:38px;padding:2px;background:#111716;border:1px solid #24312b;border-radius:8px}.settings-modal .modal-card{}
+@media(max-width:700px){.quick-actions button{font-size:11px;padding:7px 3px}.avatar-upload,.wallpaper-row{flex-wrap:wrap}}
 </style>
 <style id="bkt-mobile-css">
 html,body{width:100%;height:100%;margin:0}
@@ -96,7 +99,7 @@ img,video{max-width:100%}
 <input id="login" placeholder="Логин" autocomplete="username" oninput="toggleBroziCode()"><input id="pass" type="password" placeholder="Пароль" autocomplete="current-password"><input id="accessCode" type="password" inputmode="numeric" maxlength="9" placeholder="Специальный код для Brozi" autocomplete="off" style="display:none">
 <button class="primary" onclick="authAction()" id="authBtn">Войти</button><div class="switch" onclick="toggleAuth()" id="switch">Нет аккаунта? Регистрация</div>
 </div></div><div class="app" id="app" style="display:none">
-<aside class="sidebar"><button id="profileBtn" onclick="openSettings()" style="margin:0 18px 10px;padding:10px;border:1px solid #24312b;background:#111716;color:#fff;border-radius:12px;cursor:pointer">⚙️ Настройки профиля</button><button class="notify-btn" id="notifyBtn" onclick="enableNotifications()">🔔 Включить уведомления</button><button onclick="createGroup()" style="margin:0 18px 10px;padding:10px;border:0;border-radius:12px;cursor:pointer">＋ Создать группу</button><div class="top"><div class="brand"><div class="logo">БКТ</div><div><h1>БКТ</h1><small id="me"></small></div></div></div>
+<aside class="sidebar"><div class="quick-actions"><button id="profileBtn" onclick="openSettings()">⚙️ Настройки</button><button class="notify-btn" id="notifyBtn" onclick="enableNotifications()">🔔 Уведомления</button><button onclick="createGroup()">＋ Группа</button></div><div class="top"><div class="brand"><div class="logo">БКТ</div><div><h1>БКТ</h1><small id="me"></small></div></div></div>
 <div class="search"><input id="search" placeholder="Найти пользователя по @username" oninput="loadUsers()"></div><div id="groups"></div><div id="users" class="users"></div></aside>
 <main class="chat"><div class="chathead"><button class="back" onclick="mobileBack()" style="display:none">‹</button><div class="avatar" id="headAvatar">БКТ</div><div class="chat-title"><b id="headName">Выберите чат</b><span class="status" id="headStatus"></span></div><div class="call-actions"><button id="audioCallButton" title="Аудиозвонок" aria-label="Аудиозвонок">📞</button><button id="videoCallButton" title="Видеозвонок" aria-label="Видеозвонок">📹</button></div></div>
 <div id="messages" class="messages"><div class="empty">Выберите пользователя слева</div></div>
@@ -109,7 +112,7 @@ img,video{max-width:100%}
 <div id="recording" class="modal" style="display:none"><div class="modal-card"><h3>🎙️ Запись голосового</h3><div id="recordTime">0:00</div><div class="modal-actions"><button onclick="finishRecording()">Отправить</button><button onclick="cancelRecording()">Отмена</button></div></div></div>
 <div id="videoRecording" class="modal" style="display:none"><div class="modal-card"><h3>🎥 Видеосообщение</h3><video id="videoPreview" autoplay muted playsinline></video><div id="videoTime">0:00</div><div class="modal-actions"><button onclick="finishVideoRecording()">Отправить</button><button onclick="cancelVideoRecording()">Отмена</button></div></div></div>
 <div id="callModal" class="modal" style="display:none"><div class="modal-card"><h3 id="callTitle">Звонок</h3><video id="remoteVideo" autoplay playsinline style="width:100%;max-height:320px;border-radius:14px;background:#000"></video><audio id="remoteAudio" autoplay></audio><div class="modal-actions"><button id="acceptCall" onclick="acceptIncomingCall()">Принять</button><button onclick="endCall()">Завершить</button></div></div></div></main></div>
-<div id="settingsModal" class="modal"><div class="modal-card"><h2>Настройки профиля</h2><label>Логин</label><input id="profileUsername" oninput="toggleProfileBroziCode()"><input id="profileAccessCode" type="password" inputmode="numeric" maxlength="9" placeholder="Специальный код для Brozi" autocomplete="off" style="display:none"><label>О себе</label><textarea id="profileBio" maxlength="160"></textarea><label>Аватар (ссылка)</label><input id="profileAvatar" placeholder="https://..."><div id="settingsError" class="error"></div><div class="modal-actions"><button onclick="saveSettings()">Сохранить</button><button onclick="closeSettings()">Отмена</button><button onclick="logout()" style="background:#a92323;color:#fff">Выйти</button></div></div></div>
+<div id="settingsModal" class="modal"><div class="modal-card"><h2>Настройки профиля</h2><label>Логин</label><input id="profileUsername" oninput="toggleProfileBroziCode()"><input id="profileAccessCode" type="password" inputmode="numeric" maxlength="9" placeholder="Специальный код для Brozi" autocomplete="off" style="display:none"><label>О себе</label><textarea id="profileBio" maxlength="160"></textarea><label>Аватар</label><div class="avatar-upload"><input id="profileAvatar" placeholder="Ссылка на аватар"><input id="avatarFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif" onchange="uploadAvatarFile(this)"><button type="button" onclick="document.getElementById('avatarFile').click()">📷 Выбрать фото</button></div><label>Обои чата</label><div class="wallpaper-row"><input id="wallpaperColor" type="color" value="#08100c"><input id="wallpaperUrl" placeholder="Ссылка на обои"><button type="button" onclick="applyChatWallpaper()">Применить</button><button type="button" onclick="clearChatWallpaper()">Сбросить</button></div><div id="settingsError" class="error"></div><div class="modal-actions"><button onclick="saveSettings()">Сохранить</button><button onclick="closeSettings()">Отмена</button><button onclick="logout()" style="background:#a92323;color:#fff">Выйти</button></div></div></div>
 <script>
 let token=sessionStorage.getItem("bkt_token")||null, me=null, selected=null, activeGroup=null, socket=null, registering=false;
 // Never reuse a persistent login token left by another person/browser session.
@@ -335,7 +338,7 @@ async function createGroup(){
  for(const n0 of raw.split(',')){const n=n0.trim().replace(/^@+/,'');if(!n)continue;try{const a=await api('/api/users?q='+encodeURIComponent(n));const u=a.find(x=>x.username.toLowerCase()===n.toLowerCase())||a[0];if(u)ids.push(u.id)}catch{}}
  try{const g=await api('/api/groups',{method:'POST',body:JSON.stringify({name:name.trim(),memberIds:ids})});openGroup(g);loadGroups()}catch(e){alert(e.message)}
 }
-async function openGroup(g){activeGroup=g;selected=null;$("app").classList.add('mobile-chat');$("headName").textContent=g.name;$("headAvatar").textContent='👥';$("headStatus").textContent=` ${g.members.length} участников`;const ms=await api('/api/groups/'+g.id+'/messages');$("messages").innerHTML='';ms.forEach(renderGroupMessage)}
+async function openGroup(g){activeGroup=g;selected=null;$("app").classList.add('mobile-chat');$("headName").textContent=g.name;$("headAvatar").textContent='👥';$("headStatus").textContent=` ${g.members.length} участников`;loadChatWallpaper();const ms=await api('/api/groups/'+g.id+'/messages');$("messages").innerHTML='';ms.forEach(renderGroupMessage)}
 function renderGroupMessage(m){
   if($("gm"+m.id))return;
   const d=document.createElement("div"); d.id="gm"+m.id; d.className="bubble "+(Number(m.sender_id)===Number(me.id)?"me":"");
@@ -355,6 +358,7 @@ async function deleteGroupMessage(id){
   catch(e){alert(e.message||"Не удалось удалить сообщение");}
 }
 async function openUser(u){activeGroup=null;selected=u;$("app").classList.add("mobile-chat");$("headName").textContent=u.username;$("headAvatar").textContent=u.username[0].toUpperCase();$("headStatus").textContent=" ● онлайн";let ms=await api("/api/messages/"+u.id);$("messages").innerHTML="";ms.forEach(renderMessage);$("messages").scrollTop=$("messages").scrollHeight;loadUsers()}
+  loadChatWallpaper();
 function renderMessage(m){
   if(document.getElementById("m"+m.id))return;
   const d=document.createElement("div");
@@ -523,6 +527,13 @@ async function uploadMediaFile(blob,kind){
   }catch(e){console.error(e);alert("Не удалось отправить: "+e.message)}
 }
 
+
+function wallpaperKey(){ return activeGroup ? "group:"+activeGroup.id : (selected ? "user:"+selected.id : "none"); }
+function applyWallpaperValue(value){ const v=(value||"").trim(); const el=$("messages"); if(!el)return; if(!v){el.style.background="";return;} const isColor=/^#[0-9a-f]{3,8}$/i.test(v); el.style.background=isColor?v:`linear-gradient(rgba(2,4,3,.35),rgba(2,4,3,.35)),url("${v.replace(/"/g,'\\"')}") center/cover fixed`; }
+function loadChatWallpaper(){ const key=wallpaperKey(); if(key==="none")return; const saved=localStorage.getItem("bkt_wallpaper_"+key)||""; $("wallpaperUrl").value=saved && !/^#[0-9a-f]{3,8}$/i.test(saved)?saved:""; $("wallpaperColor").value=/^#[0-9a-f]{3,8}$/i.test(saved)?saved:"#08100c"; applyWallpaperValue(saved); }
+function applyChatWallpaper(){ const v=$("wallpaperUrl").value.trim() || $("wallpaperColor").value; if(wallpaperKey()==="none")return; localStorage.setItem("bkt_wallpaper_"+wallpaperKey(),v); applyWallpaperValue(v); }
+function clearChatWallpaper(){ if(wallpaperKey()!=="none")localStorage.removeItem("bkt_wallpaper_"+wallpaperKey()); $("wallpaperUrl").value=""; $("wallpaperColor").value="#08100c"; applyWallpaperValue(""); }
+async function uploadAvatarFile(input){ const f=input.files?.[0]; if(!f)return; const form=new FormData(); form.append("avatar",f,f.name); try{ const r=await fetch("/api/profile/avatar",{method:"POST",headers:{Authorization:"Bearer "+token},body:form}); const d=await r.json(); if(!r.ok)throw Error(d.error||"Ошибка загрузки"); $("profileAvatar").value=d.avatar; await saveSettings(); }catch(e){ $("settingsError").style.color="#ff8d8d"; $("settingsError").textContent=e.message; } finally{input.value="";} }
 
 async function openSettings(){
   try{

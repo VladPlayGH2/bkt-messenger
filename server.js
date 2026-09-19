@@ -272,6 +272,18 @@ app.get("/api/profile", auth, (req,res) => {
   res.json(user);
 });
 
+app.post("/api/profile/avatar", auth, uploadMedia.single("avatar"), (req,res) => {
+  try {
+    if (!req.file) return res.status(400).json({error:"Файл аватара не получен"});
+    if (!/^image\/(png|jpeg|webp|gif)$/.test(req.file.mimetype)) { fs.unlinkSync(req.file.path); return res.status(400).json({error:"Аватар должен быть PNG, JPG, WEBP или GIF"}); }
+    const meUser=currentUser(req);
+    if(!meUser){ fs.unlinkSync(req.file.path); return res.status(401).json({error:"Сессия истекла"}); }
+    const url=`/media/${req.file.filename}`;
+    db.prepare("UPDATE users SET avatar=? WHERE id=?").run(url, meUser.id);
+    res.json({avatar:url});
+  } catch(e){ try{if(req.file?.path && fs.existsSync(req.file.path))fs.unlinkSync(req.file.path)}catch{}; res.status(500).json({error:"Не удалось загрузить аватар"}); }
+});
+
 app.patch("/api/profile", auth, (req,res) => {
   const meUser = currentUser(req);
   if (!meUser) return res.status(401).json({error:"Аккаунт не найден в базе данных. Выйдите и войдите снова."});
