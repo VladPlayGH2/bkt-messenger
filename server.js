@@ -535,7 +535,8 @@ wss.on("connection", (ws, req) => {
             fromUserId: user.id,
             fromUsername: user.username,
             signalType: data.signalType,
-            signal: data.signal
+            signal: data.signal,
+            callType: data.callType || "audio"
           });
         }
       } catch (e) {
