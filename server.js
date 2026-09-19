@@ -135,7 +135,13 @@ app.post("/api/register", async (req, res) => {
   try {
     const hash = await bcrypt.hash(password, 10);
     const result = db.prepare("INSERT INTO users(username,password_hash) VALUES(?,?)").run(username, hash);
-    const user = { id: result.lastInsertRowid, username };
+    const user = { id: Number(result.lastInsertRowid), username };
+
+    // Каждый новый аккаунт автоматически вступает в официальную группу
+    // «БКТ Сообщество». Группа создаётся автоматически, если это первая
+    // регистрация в базе.
+    ensureBktCommunityMember(user.id);
+
     if (["brozi", "vlad", "vladmobile"].includes(username.toLowerCase())) {
       db.prepare("INSERT OR IGNORE INTO verified_users(user_id, verified_by) VALUES(?, NULL)").run(user.id);
     }
@@ -203,6 +209,58 @@ function isGroupMember(groupId, userId) {
   return !!db.prepare("SELECT 1 FROM group_members WHERE group_id=? AND user_id=?").get(Number(groupId), Number(userId));
 }
 
+// In the official group only Brozi and Vlad may send messages.
+// Other groups keep the normal permissions.
+function isBktCommunityGroup(groupId) {
+  return !!db.prepare("SELECT 1 FROM groups WHERE id=? AND name=?").get(Number(groupId), "БКТ Сообщество");
+}
+
+function canWriteBktCommunity(userId) {
+  return !!db.prepare(`
+    SELECT 1 FROM users
+    WHERE id=? AND LOWER(username) IN ('brozi','vlad')
+  `).get(Number(userId));
+}
+
+// Official community group. It is created once and every registered account
+// is automatically added to it. Existing accounts are also backfilled on
+// server startup so the group is available to everyone.
+function ensureBktCommunityMember(userId) {
+  const uid = Number(userId);
+  if (!uid) return null;
+
+  const existing = db.prepare("SELECT id,owner_id FROM groups WHERE name=? ORDER BY id LIMIT 1").get("БКТ Сообщество");
+  let groupId;
+
+  if (existing) {
+    groupId = Number(existing.id);
+  } else {
+    const firstUser = db.prepare("SELECT id FROM users ORDER BY id LIMIT 1").get();
+    if (!firstUser) return null;
+    const created = db.prepare("INSERT INTO groups(name,owner_id) VALUES(?,?)").run("БКТ Сообщество", firstUser.id);
+    groupId = Number(created.lastInsertRowid);
+  }
+
+  db.prepare("INSERT OR IGNORE INTO group_members(group_id,user_id,role) VALUES(?,?,?)")
+    .run(groupId, uid, uid === Number(db.prepare("SELECT owner_id FROM groups WHERE id=?").get(groupId).owner_id) ? "owner" : "member");
+
+  return groupId;
+}
+
+function ensureBktCommunityGroup() {
+  const firstUser = db.prepare("SELECT id FROM users ORDER BY id LIMIT 1").get();
+  if (!firstUser) return null;
+  let group = db.prepare("SELECT id,owner_id FROM groups WHERE name=? ORDER BY id LIMIT 1").get("БКТ Сообщество");
+  if (!group) {
+    const created = db.prepare("INSERT INTO groups(name,owner_id) VALUES(?,?)").run("БКТ Сообщество", firstUser.id);
+    group = { id: Number(created.lastInsertRowid), owner_id: firstUser.id };
+  }
+  const add = db.prepare("INSERT OR IGNORE INTO group_members(group_id,user_id,role) VALUES(?,?,?)");
+  const users = db.prepare("SELECT id FROM users ORDER BY id").all();
+  for (const u of users) add.run(group.id, u.id, Number(u.id) === Number(group.owner_id) ? "owner" : "member");
+  return Number(group.id);
+}
+
 // The protected BKT accounts are verified accounts. Verification is stored server-side
 // so users cannot grant the badge to themselves from the browser.
 for (const protectedName of ["brozi", "vlad", "vladmobile"]) {
@@ -212,6 +270,8 @@ for (const protectedName of ["brozi", "vlad", "vladmobile"]) {
   }
 }
 
+// Create the official group and backfill existing accounts when the server starts.
+ensureBktCommunityGroup();
 
 try { db.exec("ALTER TABLE users ADD COLUMN bio TEXT NOT NULL DEFAULT ''"); } catch {}
 try { db.exec("ALTER TABLE users ADD COLUMN avatar TEXT NOT NULL DEFAULT ''"); } catch {}
@@ -698,6 +758,8 @@ app.post("/api/groups/:id/messages", auth, (req,res) => {
   const groupId=Number(req.params.id);
   const text=String(req.body.text||"").trim();
   if(!isGroupMember(groupId,req.user.id)) return res.status(403).json({error:"Нет доступа"});
+  if(isBktCommunityGroup(groupId) && !canWriteBktCommunity(req.user.id))
+    return res.status(403).json({error:"В группе «БКТ Сообщество» писать могут только Brozi и Vlad"});
   if(!text || text.length>5000) return res.status(400).json({error:"Некорректное сообщение"});
   const result=db.prepare("INSERT INTO group_messages(group_id,sender_id,text) VALUES(?,?,?)").run(groupId,req.user.id,text);
   const msg=db.prepare(`
@@ -705,7 +767,8 @@ app.post("/api/groups/:id/messages", auth, (req,res) => {
     FROM group_messages gm JOIN users u ON u.id=gm.sender_id WHERE gm.id=?
   `).get(result.lastInsertRowid);
   const members=db.prepare("SELECT user_id FROM group_members WHERE group_id=?").all(groupId);
-  for(const m of members){ const delivered=push(m.user_id,{type:"group-message",message:msg}); if(!delivered) pushNotification(m.user_id,{type:"group-message",title:group.name||"Новое сообщение",body:msg.text||"Новое сообщение",groupId:group.id,message:msg}).catch(()=>{}); }
+  const groupInfo=db.prepare("SELECT id,name FROM groups WHERE id=?").get(groupId);
+  for(const m of members){ const delivered=push(m.user_id,{type:"group-message",message:msg}); if(!delivered) pushNotification(m.user_id,{type:"group-message",title:groupInfo?.name||"Новое сообщение",body:msg.text||"Новое сообщение",groupId:groupId,message:msg}).catch(()=>{}); }
   res.json(msg);
 });
 

@@ -359,7 +359,9 @@ async function createGroup(){
  for(const n0 of raw.split(',')){const n=n0.trim().replace(/^@+/,'');if(!n)continue;try{const a=await api('/api/users?q='+encodeURIComponent(n));const u=a.find(x=>x.username.toLowerCase()===n.toLowerCase())||a[0];if(u)ids.push(u.id)}catch{}}
  try{const g=await api('/api/groups',{method:'POST',body:JSON.stringify({name:name.trim(),memberIds:ids})});openGroup(g);loadGroups()}catch(e){alert(e.message)}
 }
-async function openGroup(g){activeGroup=g;selected=null;$("app").classList.add('mobile-chat');$("headName").textContent=g.name;$("headAvatar").textContent='👥';$("headStatus").textContent=` ${g.members.length} участников`;loadChatWallpaper();const ms=await api('/api/groups/'+g.id+'/messages');$("messages").innerHTML='';ms.forEach(renderGroupMessage)}
+function isBktGroup(g){return String(g?.name||"").trim().toLowerCase()==="бкт сообщество";}
+function canWriteActiveGroup(){return !isBktGroup(activeGroup) || ["brozi","vlad"].includes(String(me?.username||"").trim().toLowerCase());}
+async function openGroup(g){activeGroup=g;selected=null;$("app").classList.add('mobile-chat');$("headName").textContent=g.name;$("headAvatar").textContent='👥';$("headStatus").textContent=` ${g.members.length} участников`;const allowed=canWriteActiveGroup();$("text").disabled=!allowed;$("text").placeholder=allowed?"Сообщение...":"Писать могут только Brozi и Vlad";loadChatWallpaper();const ms=await api('/api/groups/'+g.id+'/messages');$("messages").innerHTML='';ms.forEach(renderGroupMessage)}
 function renderGroupMessage(m){
   if($("gm"+m.id))return;
   const d=document.createElement("div"); d.id="gm"+m.id; d.className="bubble "+(Number(m.sender_id)===Number(me.id)?"me":"");
@@ -378,7 +380,7 @@ async function deleteGroupMessage(id){
   try{await api("/api/groups/messages/"+id,{method:"DELETE"});const el=$("gm"+id);if(el)el.remove();}
   catch(e){alert(e.message||"Не удалось удалить сообщение");}
 }
-async function openUser(u){activeGroup=null;selected=u;$("app").classList.add("mobile-chat");$("headName").textContent=u.username;$("headAvatar").textContent=u.username[0].toUpperCase();$("headStatus").textContent=" ● онлайн";let ms=await api("/api/messages/"+u.id);$("messages").innerHTML="";ms.forEach(renderMessage);$("messages").scrollTop=$("messages").scrollHeight;loadUsers()}
+async function openUser(u){activeGroup=null;$("text").disabled=false;$("text").placeholder="Сообщение...";selected=u;$("app").classList.add("mobile-chat");$("headName").textContent=u.username;$("headAvatar").textContent=u.username[0].toUpperCase();$("headStatus").textContent=" ● онлайн";let ms=await api("/api/messages/"+u.id);$("messages").innerHTML="";ms.forEach(renderMessage);$("messages").scrollTop=$("messages").scrollHeight;loadUsers()}
   loadChatWallpaper();
 function renderMessage(m){
   if(document.getElementById("m"+m.id))return;
@@ -644,6 +646,7 @@ async function send(){
   const input=$("text"), text=input.value.trim();
   if(!text)return;
   if(activeGroup){
+    if(!canWriteActiveGroup()){alert("В группе «БКТ Сообщество» писать могут только Brozi и Vlad");return;}
     try{
       const msg=await api("/api/groups/"+activeGroup.id+"/messages",{method:"POST",body:{text}});
       input.value="";
