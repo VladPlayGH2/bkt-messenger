@@ -14,6 +14,27 @@ button,input{font:inherit}.app{height:100vh;max-width:1100px;margin:auto;display
 .group-item{padding:12px 16px;border-radius:12px;cursor:pointer;margin:3px 10px}
 .group-item:hover{background:#142019}
 .verified-badge{display:inline-grid;place-items:center;width:17px;height:17px;margin-left:4px;border-radius:50%;background:#2388ff;color:#fff;font-size:11px;font-weight:900;vertical-align:middle}.group-item{padding:10px 18px;cursor:pointer;border-bottom:1px solid #17211c}.modal{position:fixed;inset:0;background:rgba(0,0,0,.7);display:none;place-items:center;z-index:20}.modal-card{width:min(420px,92vw);background:#0c1110;border:1px solid #24312b;border-radius:18px;padding:22px}.modal-card input,.modal-card textarea{width:100%;background:#111716;border:1px solid #24312b;border-radius:10px;padding:11px;color:#fff;margin:6px 0 12px}.modal-actions{display:flex;gap:8px}.modal-actions button{flex:1;padding:11px;border:0;border-radius:10px;cursor:pointer}</style>
+<style id="bkt-mobile-css">
+html,body{width:100%;height:100%;margin:0}
+*{box-sizing:border-box}
+button,input,textarea{font:inherit}
+button{touch-action:manipulation}
+@media (max-width:700px){
+html,body{overflow:hidden}
+#app{width:100vw!important;height:100dvh!important;min-height:100dvh!important}
+input,textarea{font-size:16px!important}
+button{min-height:44px;min-width:44px;padding:9px 12px}
+#messages{padding:10px 8px 90px!important;-webkit-overflow-scrolling:touch}
+#users{overflow-y:auto;-webkit-overflow-scrolling:touch}
+.user,.chat-item,.group-item{min-height:58px;padding:10px 12px}
+.composer,.message-input,.input-row{position:sticky;bottom:0;z-index:20;padding:8px!important;padding-bottom:max(8px,env(safe-area-inset-bottom))!important}
+#text{min-height:44px;max-height:120px}
+.modal,.settings-modal{width:calc(100vw - 20px)!important;max-width:520px!important;max-height:90dvh!important;overflow:auto!important}
+#remoteCallVideo{width:calc(100vw - 30px)!important;max-width:none!important;right:15px!important;bottom:90px!important}
+#callStatus{max-width:calc(100vw - 24px)!important;text-align:center}
+img,video{max-width:100%}
+}
+</style>
 </head>
 <body>
 <div id="auth" class="auth"><div class="card">
@@ -42,15 +63,21 @@ button,input{font:inherit}.app{height:100vh;max-width:1100px;margin:auto;display
 let token=localStorage.getItem("bkt_token"), me=null, selected=null, activeGroup=null, socket=null, registering=false;
 const $=id=>document.getElementById(id);
 function toggleAuth(){registering=!registering;$("authTitle").textContent=registering?"Регистрация":"Вход";$("authBtn").textContent=registering?"Создать аккаунт":"Войти";$("switch").textContent=registering?"Уже есть аккаунт? Войти":"Нет аккаунта? Регистрация";$("err").textContent=""}
-async function api(url,opt={}){opt.headers={...(opt.headers||{}),Authorization:"Bearer "+token,"Content-Type":"application/json"};let r=await fetch(url,opt),d=await r.json().catch(()=>({}));if(!r.ok)throw Error(d.error||"Ошибка");return d}
-async function authAction(){try{let d=await fetch("/api/"+(registering?"register":"login"),{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({username:$("login").value,password:$("pass").value})}).then(async r=>{let x=await r.json();if(!r.ok)throw Error(x.error);return x});token=d.token;localStorage.setItem("bkt_token",token);start()}catch(e){$("err").textContent=e.message}}
-async function start(){try{me=await api("/api/me");$("auth").style.display="none";$("app").style.display="grid";$("me").textContent="@"+me.username;connect();loadUsers()}catch{localStorage.removeItem("bkt_token");token=null}}
-function connect(){socket=new WebSocket((location.protocol==="https:"?"wss://":"ws://")+location.host+"/?token="+encodeURIComponent(token));socket.onmessage=e=>{let d=JSON.parse(e.data);if(d.type==="call-signal"){handleCallSignal(d);return;}if(d.type==="message"&&selected&&(d.message.sender_id===selected.id||d.message.receiver_id===selected.id))renderMessage(d.message)}}
-function verifiedName(name, verified){
-  const safe = escapeHtml(String(name || ""));
-  return safe + (verified
-    ? '<span class="verified-badge" title="Подтверждено">✓</span>'
-    : '');
+async function api(path, options={}){
+  const saved=localStorage.getItem("bkt_token");
+  if(saved) token=saved;
+  const headers={...(options.headers||{})};
+  if(token) headers.Authorization="Bearer "+token;
+  if(options.body && typeof options.body!=="string"){
+    headers["Content-Type"]="application/json";
+    options={...options,body:JSON.stringify(options.body)};
+  }
+  const res=await fetch(path,{...options,headers});
+  const text=await res.text();
+  let data={};
+  try{ data=text?JSON.parse(text):{}; }catch(_){ throw new Error("Сервер вернул неверный ответ ("+res.status+")"); }
+  if(!res.ok) throw new Error(data.error||data.message||("Ошибка "+res.status));
+  return data;
 }
 
 async function loadUsers(){
@@ -293,14 +320,11 @@ async function saveSettings(){
  }
 }
 function logout(){
-  try { if (socket) socket.close(); } catch {}
+  try{socket?.close()}catch(_){}
   localStorage.removeItem("bkt_token");
-  localStorage.removeItem("token");
-  sessionStorage.removeItem("bkt_token");
-  token = null; me = null; selected = null; activeGroup = null;
-  if ($("settingsModal")) $("settingsModal").style.display = "none";
-  if ($("app")) $("app").style.display = "none";
-  if ($("auth")) $("auth").style.display = "grid";
+  token=null; me=null; selected=null; activeGroup=null;
+  if($("app")) $("app").style.display="none";
+  if($("auth")) $("auth").style.display="grid";
 }
 
 
@@ -460,4 +484,39 @@ $("videoCallButton").onclick=()=>startCall("video");
 
 // Автоматически восстанавливаем последний вход после перезагрузки/нового захода.
 if (token) { start(); }
+
+async function restoreSession(){
+  const saved=localStorage.getItem("bkt_token");
+  if(!saved) return;
+  token=saved;
+  try{
+    me=await api("/api/me");
+    if($("auth")) $("auth").style.display="none";
+    if($("app")) $("app").style.display="grid";
+    if($("me")) $("me").textContent="@"+(me.username||"");
+    if(typeof connectSocket==="function") connectSocket();
+    if(typeof loadGroups==="function") loadGroups();
+  }catch(e){
+    localStorage.removeItem("bkt_token");
+    token=null;
+    if($("auth")) $("auth").style.display="grid";
+    if($("app")) $("app").style.display="none";
+  }
+}
+document.addEventListener("DOMContentLoaded",restoreSession);
+
+
+async function addRemoteIce(candidate){
+  if(!peerConnection || !peer && peer.remoteDescription){
+    pendingIceCandidates.push(candidate); return;
+  }
+  try{await peer.addIceCandidate(new RTCIceCandidate(candidate));}catch(_){}
+}
+async function flushRemoteIce(){
+  while(pendingIceCandidates.length && peerConnection && peer && peer.remoteDescription){
+    const c=pendingIceCandidates.shift();
+    try{await peerConnection.addIceCandidate(new RTCIceCandidate(c));}catch(_){}
+  }
+}
+
 </script></body></html>

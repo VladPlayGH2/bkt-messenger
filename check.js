@@ -2,15 +2,21 @@
 let token=localStorage.getItem("bkt_token"), me=null, selected=null, activeGroup=null, socket=null, registering=false;
 const $=id=>document.getElementById(id);
 function toggleAuth(){registering=!registering;$("authTitle").textContent=registering?"Регистрация":"Вход";$("authBtn").textContent=registering?"Создать аккаунт":"Войти";$("switch").textContent=registering?"Уже есть аккаунт? Войти":"Нет аккаунта? Регистрация";$("err").textContent=""}
-async function api(url,opt={}){opt.headers={...(opt.headers||{}),Authorization:"Bearer "+token,"Content-Type":"application/json"};let r=await fetch(url,opt),d=await r.json().catch(()=>({}));if(!r.ok)throw Error(d.error||"Ошибка");return d}
-async function authAction(){try{let d=await fetch("/api/"+(registering?"register":"login"),{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({username:$("login").value,password:$("pass").value})}).then(async r=>{let x=await r.json();if(!r.ok)throw Error(x.error);return x});token=d.token;localStorage.setItem("bkt_token",token);start()}catch(e){$("err").textContent=e.message}}
-async function start(){try{me=await api("/api/me");$("auth").style.display="none";$("app").style.display="grid";$("me").textContent="@"+me.username;connect();loadUsers()}catch{localStorage.removeItem("bkt_token");token=null}}
-function connect(){socket=new WebSocket((location.protocol==="https:"?"wss://":"ws://")+location.host+"/?token="+encodeURIComponent(token));socket.onmessage=e=>{let d=JSON.parse(e.data);if(d.type==="call-signal"){handleCallSignal(d);return;}if(d.type==="message"&&selected&&(d.message.sender_id===selected.id||d.message.receiver_id===selected.id))renderMessage(d.message)}}
-function verifiedName(name, verified){
-  const safe = escapeHtml(String(name || ""));
-  return safe + (verified
-    ? '<span class="verified-badge" title="Подтверждено">✓</span>'
-    : '');
+async function api(path, options={}){
+  const saved=localStorage.getItem("bkt_token");
+  if(saved) token=saved;
+  const headers={...(options.headers||{})};
+  if(token) headers.Authorization="Bearer "+token;
+  if(options.body && typeof options.body!=="string"){
+    headers["Content-Type"]="application/json";
+    options={...options,body:JSON.stringify(options.body)};
+  }
+  const res=await fetch(path,{...options,headers});
+  const text=await res.text();
+  let data={};
+  try{ data=text?JSON.parse(text):{}; }catch(_){ throw new Error("Сервер вернул неверный ответ ("+res.status+")"); }
+  if(!res.ok) throw new Error(data.error||data.message||("Ошибка "+res.status));
+  return data;
 }
 
 async function loadUsers(){
@@ -253,14 +259,11 @@ async function saveSettings(){
  }
 }
 function logout(){
-  try { if (socket) socket.close(); } catch {}
+  try{socket?.close()}catch(_){}
   localStorage.removeItem("bkt_token");
-  localStorage.removeItem("token");
-  sessionStorage.removeItem("bkt_token");
-  token = null; me = null; selected = null; activeGroup = null;
-  if ($("settingsModal")) $("settingsModal").style.display = "none";
-  if ($("app")) $("app").style.display = "none";
-  if ($("auth")) $("auth").style.display = "grid";
+  token=null; me=null; selected=null; activeGroup=null;
+  if($("app")) $("app").style.display="none";
+  if($("auth")) $("auth").style.display="grid";
 }
 
 
@@ -420,3 +423,38 @@ $("videoCallButton").onclick=()=>startCall("video");
 
 // Автоматически восстанавливаем последний вход после перезагрузки/нового захода.
 if (token) { start(); }
+
+async function restoreSession(){
+  const saved=localStorage.getItem("bkt_token");
+  if(!saved) return;
+  token=saved;
+  try{
+    me=await api("/api/me");
+    if($("auth")) $("auth").style.display="none";
+    if($("app")) $("app").style.display="grid";
+    if($("me")) $("me").textContent="@"+(me.username||"");
+    if(typeof connectSocket==="function") connectSocket();
+    if(typeof loadGroups==="function") loadGroups();
+  }catch(e){
+    localStorage.removeItem("bkt_token");
+    token=null;
+    if($("auth")) $("auth").style.display="grid";
+    if($("app")) $("app").style.display="none";
+  }
+}
+document.addEventListener("DOMContentLoaded",restoreSession);
+
+
+async function addRemoteIce(candidate){
+  if(!peerConnection || !peer && peer.remoteDescription){
+    pendingIceCandidates.push(candidate); return;
+  }
+  try{await peer.addIceCandidate(new RTCIceCandidate(candidate));}catch(_){}
+}
+async function flushRemoteIce(){
+  while(pendingIceCandidates.length && peerConnection && peer && peer.remoteDescription){
+    const c=pendingIceCandidates.shift();
+    try{await peerConnection.addIceCandidate(new RTCIceCandidate(c));}catch(_){}
+  }
+}
+
