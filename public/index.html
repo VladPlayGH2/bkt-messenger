@@ -32,6 +32,26 @@ button,input{font:inherit}.app{height:100vh;max-width:1100px;margin:auto;display
 
 @media(max-width:700px){.quick-actions button{font-size:11px;padding:7px 3px}.avatar-upload,.wallpaper-row{flex-wrap:wrap}}
 
+
+/* TikTok-style full-screen status feed */
+.tiktok-status-modal{padding:0!important;background:#000!important;align-items:stretch!important;justify-content:stretch!important}
+.tiktok-feed-shell{position:relative;width:100vw;height:100dvh;background:#000;overflow:hidden}
+.tiktok-feed-top{position:absolute;z-index:30;top:0;left:0;right:0;height:64px;padding:10px 16px;display:flex;align-items:center;justify-content:space-between;color:#fff;background:linear-gradient(rgba(0,0,0,.62),transparent);font-size:18px;pointer-events:none}
+.tiktok-feed-top button{pointer-events:auto}
+.tiktok-status-feed{height:100%;width:100%;overflow-y:auto;scroll-snap-type:y mandatory;overscroll-behavior-y:contain;-webkit-overflow-scrolling:touch}
+.tiktok-status-slide{position:relative;width:100%;height:100dvh;min-height:100dvh;scroll-snap-align:start;scroll-snap-stop:always;background:#050505;overflow:hidden}
+.tiktok-status-photo{width:100%;height:100%;object-fit:cover;display:block}
+.tiktok-status-gradient{position:absolute;inset:0;background:linear-gradient(to bottom,rgba(0,0,0,.28),transparent 28%,transparent 48%,rgba(0,0,0,.82) 100%);pointer-events:none}
+.tiktok-status-info{position:absolute;left:18px;right:68px;bottom:28px;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.75)}
+.tiktok-status-user{display:flex;align-items:center;gap:9px;margin-bottom:9px;font-weight:700}
+.tiktok-status-avatar{width:40px;height:40px;border-radius:50%;object-fit:cover;border:2px solid #fff;background:#174b2d}
+.tiktok-status-caption{font-size:18px;line-height:1.3;white-space:pre-wrap;word-break:break-word}
+.tiktok-status-date{font-size:12px;opacity:.75;margin-top:7px}
+.tiktok-status-actions{position:absolute;right:14px;bottom:30px;display:flex;flex-direction:column;gap:12px;z-index:3}
+.tiktok-status-action{width:46px;height:46px;border-radius:50%;border:0;background:rgba(0,0,0,.48);color:#fff;font-size:22px;display:grid;place-items:center;cursor:pointer;backdrop-filter:blur(5px)}
+.tiktok-status-empty{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:#fff;text-align:center;background:#050505;font-size:16px}
+.tiktok-status-empty>div{font-size:44px}.tiktok-status-empty span{color:#aaa}.tiktok-status-empty button{margin-top:8px}
+
 .statuses-btn{margin:10px 18px 0;width:calc(100% - 36px);padding:11px 14px;border:1px solid #24312b;border-radius:14px;background:#111716;color:#fff;text-align:left;cursor:pointer;font-weight:700}.statuses-btn:hover{background:#16201c}
 .status-modal-card{width:min(560px,94vw);padding:0!important;overflow:hidden}
 .tiktok-status-card{background:#070b09}
@@ -189,24 +209,36 @@ img,video{max-width:100%}
 <div id="recording" class="modal" style="display:none"><div class="modal-card"><h3>🎙️ Запись голосового</h3><div id="recordTime">0:00</div><div class="modal-actions"><button onclick="finishRecording()">Отправить</button><button onclick="cancelRecording()">Отмена</button></div></div></div>
 <div id="videoRecording" class="modal" style="display:none"><div class="modal-card"><h3>🎥 Видеосообщение</h3><video id="videoPreview" autoplay muted playsinline></video><div id="videoTime">0:00</div><div class="modal-actions"><button onclick="finishVideoRecording()">Отправить</button><button onclick="cancelVideoRecording()">Отмена</button></div></div></div>
 <div id="callModal" class="modal" style="display:none"><div class="modal-card"><h3 id="callTitle">Звонок</h3><video id="remoteVideo" autoplay playsinline style="width:100%;max-height:320px;border-radius:14px;background:#000"></video><audio id="remoteAudio" autoplay></audio><div class="modal-actions"><button id="acceptCall" onclick="acceptIncomingCall()">Принять</button><button onclick="endCall()">Завершить</button></div></div></div></main></div>
-<div id="statusesModal" class="modal" style="display:none">
-<div class="modal-card status-modal-card tiktok-status-card">
-  <div class="tiktok-status-head"><h2>🟢 Статусы</h2><button class="status-x" onclick="closeStatuses()" aria-label="Закрыть">×</button></div>
-  <div class="status-create tiktok-status-create">
-    <label class="status-upload-button">📷 Выбрать фото
-      <input id="statusImage" type="file" accept="image/jpeg,image/png,image/webp,image/gif" onchange="previewStatusImage(event)">
-    </label>
-    <div id="statusComposerPreview" class="status-composer-preview">
-      <img id="statusImagePreview" class="status-image-preview" alt="Предпросмотр">
-      <div class="status-caption-overlay"><span id="statusCaptionPreview">Подпись к фото…</span></div>
+<div id="statusesModal" class="modal tiktok-status-modal" style="display:none">
+  <div class="tiktok-feed-shell">
+    <div class="tiktok-feed-top">
+      <b>Статусы</b>
+      <button class="status-x" onclick="closeStatuses()" aria-label="Закрыть">×</button>
     </div>
-    <textarea id="statusText" maxlength="280" placeholder="Добавьте подпись…"></textarea>
-    <div class="status-counter"><span>Фото + подпись</span><span id="statusTextCounter">0/280</span></div>
-    <button class="primary status-publish-button" onclick="publishStatus()">Опубликовать статус</button>
+    <div id="statusFeed" class="tiktok-status-feed"></div>
+    <div id="statusEmpty" class="tiktok-status-empty" style="display:none">
+      <div>📷</div><b>Пока нет статусов</b><span>Добавьте фото с подписью</span>
+      <button class="primary" onclick="focusStatusComposer()">Добавить статус</button>
+    </div>
   </div>
-  <div class="status-feed-title">Последние статусы</div>
-  <div id="statusList" class="status-list"></div>
-</div></div>
+</div>
+<div id="statusComposerModal" class="modal" style="display:none">
+  <div class="modal-card status-modal-card tiktok-status-card">
+    <div class="tiktok-status-head"><h2>Новый статус</h2><button class="status-x" onclick="closeStatusComposer()">×</button></div>
+    <div class="status-create tiktok-status-create">
+      <label class="status-upload-button">📷 Выбрать фото
+        <input id="statusImage" type="file" accept="image/jpeg,image/png,image/webp,image/gif" onchange="previewStatusImage(event)">
+      </label>
+      <div id="statusComposerPreview" class="status-composer-preview">
+        <img id="statusImagePreview" class="status-image-preview" alt="Предпросмотр">
+        <div class="status-caption-overlay"><span id="statusCaptionPreview">Подпись к фото…</span></div>
+      </div>
+      <textarea id="statusText" maxlength="280" placeholder="Добавьте подпись…"></textarea>
+      <div class="status-counter"><span>Фото + подпись</span><span id="statusTextCounter">0/280</span></div>
+      <button class="primary status-publish-button" onclick="publishStatus()">Опубликовать статус</button>
+    </div>
+  </div>
+</div>
 <div id="settingsModal" class="modal"><div class="modal-card"><h2>Настройки профиля</h2><label>Логин</label><input id="profileUsername" autocomplete="username" autocapitalize="none" spellcheck="false" oninput="toggleProfileProtectedCode()"><input id="profileAccessCode" type="password" placeholder="Секретный код" autocomplete="off" style="display:none"><label>О себе</label><textarea id="profileBio" maxlength="160"></textarea><label>Аватар</label><div class="settings-avatar"><img id="profileAvatarPreview" src="" alt=""><span>Выберите другой стикер для аватарки.</span><input id="settingsAvatarPreview" type="hidden" value=""></div><div id="settingsAvatarGrid" class="auth-avatar-grid settings-avatar-grid"></div><label>Обои чата</label><div class="wallpaper-row"><input id="wallpaperColor" type="color" value="#08100c"><input id="wallpaperUrl" placeholder="Ссылка на обои"><button type="button" onclick="applyChatWallpaper()">Применить</button><button type="button" onclick="clearChatWallpaper()">Сбросить</button></div><div id="settingsError" class="error"></div><div class="modal-actions"><button onclick="saveSettings()">Сохранить</button><button onclick="closeSettings()">Отмена</button><button onclick="logout()" style="background:#a92323;color:#fff">Выйти</button></div></div></div>
 <div id="profileViewModal" class="modal" style="display:none">
 <div class="profile-view-card">
@@ -238,20 +270,37 @@ async function openStatuses(){
   const modal=$("statusesModal");
   if(!modal)return;
   modal.style.display="grid";
+  await loadStatuses();
+}
+function closeStatuses(){
+  const modal=$("statusesModal");
+  if(modal) modal.style.display="none";
+}
+function focusStatusComposer(){
+  const m=$("statusComposerModal");
+  if(!m)return;
+  m.style.display="grid";
   $("statusText").value="";
   $("statusImage").value="";
   $("statusImagePreview").src="";
   $("statusComposerPreview").style.display="none";
   $("statusCaptionPreview").textContent="Подпись к фото…";
   $("statusTextCounter").textContent="0/280";
-  await loadStatuses();
 }
-function closeStatuses(){ if($("statusesModal")) $("statusesModal").style.display="none"; }
-function statusTime(v){ const d=new Date(v); return Number.isNaN(d.getTime())?"":d.toLocaleString("ru-RU",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}); }
+function closeStatusComposer(){ const m=$("statusComposerModal"); if(m)m.style.display="none"; }
+function statusTime(v){
+  const d=new Date(v);
+  return Number.isNaN(d.getTime())?"":d.toLocaleString("ru-RU",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"});
+}
 function previewStatusImage(event){
   const file=event.target.files?.[0], preview=$("statusImagePreview"), wrap=$("statusComposerPreview");
-  if(!file){ wrap.style.display="none"; preview.src=""; return; }
-  if(file.size>8*1024*1024){ alert("Фото должно быть не больше 8 МБ"); event.target.value=""; wrap.style.display="none"; return; }
+  if(!file){wrap.style.display="none";preview.src="";return;}
+  if(file.size>8*1024*1024){
+    alert("Фото должно быть не больше 8 МБ");
+    event.target.value="";
+    wrap.style.display="none";
+    return;
+  }
   preview.src=URL.createObjectURL(file);
   wrap.style.display="block";
   $("statusCaptionPreview").textContent=$("statusText").value.trim()||"Подпись к фото…";
@@ -264,42 +313,79 @@ document.addEventListener("input",e=>{
     if(p)p.textContent=text.trim()||"Подпись к фото…";
   }
 });
+function renderStatusSlide(st){
+  const slide=document.createElement("article");
+  slide.className="tiktok-status-slide";
+  const media=st.media_url
+    ? `<img class="tiktok-status-photo" src="${escapeHtml(st.media_url)}" alt="Фото статуса">`
+    : `<div class="tiktok-status-photo" style="background:linear-gradient(135deg,#101c16,#244d36);display:grid;place-items:center;font-size:72px">💬</div>`;
+  const avatar=st.avatar
+    ? `<img class="tiktok-status-avatar" src="${escapeHtml(st.avatar)}" alt="">`
+    : `<div class="tiktok-status-avatar" style="display:grid;place-items:center;font-weight:800">${escapeHtml((st.username||"?")[0].toUpperCase())}</div>`;
+  const caption=st.text ? `<div class="tiktok-status-caption">${escapeHtml(st.text)}</div>` : "";
+  const del=Number(st.user_id)===Number(me?.id)
+    ? `<button class="tiktok-status-action" title="Удалить" onclick="deleteStatus(${Number(st.id)})">🗑️</button>` : "";
+  slide.innerHTML=`${media}
+    <div class="tiktok-status-gradient"></div>
+    <div class="tiktok-status-info">
+      <div class="tiktok-status-user">${avatar}<span>${verifiedName(st.username,false)}</span></div>
+      ${caption}
+      <div class="tiktok-status-date">${statusTime(st.created_at)}</div>
+    </div>
+    <div class="tiktok-status-actions">
+      <button class="tiktok-status-action" title="Новый статус" onclick="focusStatusComposer()">＋</button>
+      ${del}
+    </div>`;
+  return slide;
+}
 async function loadStatuses(){
-  const box=$("statusList"); if(!box)return;
+  const box=$("statusFeed"), empty=$("statusEmpty");
+  if(!box)return;
   try{
     const rows=await api("/api/statuses");
-    if(!rows.length){box.innerHTML='<div style="padding:14px;color:#8d9893">Пока нет активных статусов.</div>';return;}
-    box.innerHTML=rows.map(s=>{
-      const avatar=s.avatar?`<img src="${escapeHtml(s.avatar)}" alt="">`:`<div class="avatar">${escapeHtml((s.username||"?")[0].toUpperCase())}</div>`;
-      const del=Number(s.user_id)===Number(me?.id)?`<button class="status-delete" title="Удалить" onclick="deleteStatus(${Number(s.id)})">×</button>`:"";
-      const media=s.media_url?`<img class="status-card-media" src="${escapeHtml(s.media_url)}" alt="Фото статуса" loading="lazy">`:"";
-      const text=s.text?`<small>${escapeHtml(s.text)}</small>`:"";
-      return `<div class="status-card">${avatar}<div class="status-card-body"><b>${verifiedName(s.username, false)}</b>${media}${text}<small>${statusTime(s.created_at)}</small></div>${del}</div>`;
-    }).join("");
-  }catch(e){box.innerHTML=`<div class="error">${escapeHtml(e.message||"Ошибка загрузки статусов")}</div>`;}
+    box.innerHTML="";
+    if(!rows.length){
+      if(empty)empty.style.display="flex";
+      return;
+    }
+    if(empty)empty.style.display="none";
+    rows.forEach(st=>box.appendChild(renderStatusSlide(st)));
+    box.scrollTop=0;
+  }catch(e){
+    box.innerHTML=`<div style="height:100%;display:grid;place-items:center;color:#fff;padding:20px;text-align:center">${escapeHtml(e.message||"Ошибка загрузки статусов")}</div>`;
+  }
 }
 async function publishStatus(){
   const text=$("statusText").value.trim();
   const file=$("statusImage").files?.[0];
-  if(!text && !file){alert("Добавьте фото или текст");return;}
+  if(!file){
+    alert("Для статуса выберите фото.");
+    return;
+  }
   try{
     let mediaUrl="";
-    if(file){
-      const fd=new FormData(); fd.append("image",file);
-      const headers={}; if(token) headers.Authorization="Bearer "+token;
-      const upload=await fetch("/api/statuses/upload",{method:"POST",headers,body:fd});
-      const data=await upload.json();
-      if(!upload.ok) throw new Error(data.error||"Не удалось загрузить фото");
-      mediaUrl=data.url;
-    }
+    const fd=new FormData();
+    fd.append("image",file);
+    const headers={};
+    if(token)headers.Authorization="Bearer "+token;
+    const upload=await fetch("/api/statuses/upload",{method:"POST",headers,body:fd});
+    const data=await upload.json();
+    if(!upload.ok)throw new Error(data.error||"Не удалось загрузить фото");
+    mediaUrl=data.url;
     await api("/api/statuses",{method:"POST",body:{text,mediaUrl}});
-    $("statusText").value=""; $("statusImage").value=""; $("statusImagePreview").style.display="none"; $("statusImagePreview").src="";
+    closeStatusComposer();
+    const feed=$("statusFeed");
+    if(feed)feed.innerHTML="";
     await loadStatuses();
-  }catch(e){alert(e.message||"Не удалось опубликовать статус");}
+  }catch(e){
+    alert(e.message||"Не удалось опубликовать статус");
+  }
 }
 async function deleteStatus(id){
-  try{await api("/api/statuses/"+id,{method:"DELETE"});await loadStatuses();}
-  catch(e){alert(e.message||"Не удалось удалить статус");}
+  try{
+    await api("/api/statuses/"+id,{method:"DELETE"});
+    await loadStatuses();
+  }catch(e){alert(e.message||"Не удалось удалить статус");}
 }
 
 function renderRegistrationAvatarPicker(){
