@@ -93,7 +93,7 @@ img,video{max-width:100%}
 <div id="auth" class="auth"><div class="card">
 <div class="brand"><div class="logo">БКТ</div><div><h1>БКТ</h1><small>Мессенджер</small></div></div>
 <h2 id="authTitle">Вход</h2><div id="err" class="error"></div>
-<input id="login" placeholder="Логин" autocomplete="username" oninput="updateBroziCodeField()"><input id="pass" type="password" placeholder="Пароль" autocomplete="current-password"><input id="broziCode" type="password" placeholder="Специальный код для Brozi" autocomplete="off" style="display:none">
+<input id="login" placeholder="Логин" autocomplete="username" oninput="toggleBroziCode()"><input id="pass" type="password" placeholder="Пароль" autocomplete="current-password"><input id="accessCode" type="password" inputmode="numeric" maxlength="9" placeholder="Специальный код для Brozi" autocomplete="off" style="display:none">
 <button class="primary" onclick="authAction()" id="authBtn">Войти</button><div class="switch" onclick="toggleAuth()" id="switch">Нет аккаунта? Регистрация</div>
 </div></div><div class="app" id="app" style="display:none">
 <aside class="sidebar"><button id="profileBtn" onclick="openSettings()" style="margin:0 18px 10px;padding:10px;border:1px solid #24312b;background:#111716;color:#fff;border-radius:12px;cursor:pointer">⚙️ Настройки профиля</button><button class="notify-btn" id="notifyBtn" onclick="enableNotifications()">🔔 Включить уведомления</button><button onclick="createGroup()" style="margin:0 18px 10px;padding:10px;border:0;border-radius:12px;cursor:pointer">＋ Создать группу</button><div class="top"><div class="brand"><div class="logo">БКТ</div><div><h1>БКТ</h1><small id="me"></small></div></div></div>
@@ -109,14 +109,14 @@ img,video{max-width:100%}
 <div id="recording" class="modal" style="display:none"><div class="modal-card"><h3>🎙️ Запись голосового</h3><div id="recordTime">0:00</div><div class="modal-actions"><button onclick="finishRecording()">Отправить</button><button onclick="cancelRecording()">Отмена</button></div></div></div>
 <div id="videoRecording" class="modal" style="display:none"><div class="modal-card"><h3>🎥 Видеосообщение</h3><video id="videoPreview" autoplay muted playsinline></video><div id="videoTime">0:00</div><div class="modal-actions"><button onclick="finishVideoRecording()">Отправить</button><button onclick="cancelVideoRecording()">Отмена</button></div></div></div>
 <div id="callModal" class="modal" style="display:none"><div class="modal-card"><h3 id="callTitle">Звонок</h3><video id="remoteVideo" autoplay playsinline style="width:100%;max-height:320px;border-radius:14px;background:#000"></video><audio id="remoteAudio" autoplay></audio><div class="modal-actions"><button id="acceptCall" onclick="acceptIncomingCall()">Принять</button><button onclick="endCall()">Завершить</button></div></div></div></main></div>
-<div id="settingsModal" class="modal"><div class="modal-card"><h2>Настройки профиля</h2><label>Логин</label><input id="profileUsername"><label>О себе</label><textarea id="profileBio" maxlength="160"></textarea><label>Аватар (ссылка)</label><input id="profileAvatar" placeholder="https://..."><div id="settingsError" class="error"></div><div class="modal-actions"><button onclick="saveSettings()">Сохранить</button><button onclick="closeSettings()">Отмена</button><button onclick="logout()" style="background:#a92323;color:#fff">Выйти</button></div></div></div>
+<div id="settingsModal" class="modal"><div class="modal-card"><h2>Настройки профиля</h2><label>Логин</label><input id="profileUsername" oninput="toggleProfileBroziCode()"><input id="profileAccessCode" type="password" inputmode="numeric" maxlength="9" placeholder="Специальный код для Brozi" autocomplete="off" style="display:none"><label>О себе</label><textarea id="profileBio" maxlength="160"></textarea><label>Аватар (ссылка)</label><input id="profileAvatar" placeholder="https://..."><div id="settingsError" class="error"></div><div class="modal-actions"><button onclick="saveSettings()">Сохранить</button><button onclick="closeSettings()">Отмена</button><button onclick="logout()" style="background:#a92323;color:#fff">Выйти</button></div></div></div>
 <script>
 let token=sessionStorage.getItem("bkt_token")||null, me=null, selected=null, activeGroup=null, socket=null, registering=false;
 // Never reuse a persistent login token left by another person/browser session.
 try{localStorage.removeItem("bkt_token");}catch(_){}
 const $=id=>document.getElementById(id);
-function updateBroziCodeField(){const el=$("broziCode"); if(!el)return; const isBrozi=$("login").value.trim().replace(/^@+/,"").toLowerCase()==="brozi"; el.style.display=isBrozi?"block":"none"; if(!isBrozi) el.value="";}
-function toggleAuth(){registering=!registering;$("authTitle").textContent=registering?"Регистрация":"Вход";$("authBtn").textContent=registering?"Создать аккаунт":"Войти";$("switch").textContent=registering?"Уже есть аккаунт? Войти":"Нет аккаунта? Регистрация";$("err").textContent="";updateBroziCodeField()}
+function toggleBroziCode(){const isBrozi=$("login").value.trim().toLowerCase()==="brozi"; $("accessCode").style.display=isBrozi?"block":"none";}
+function toggleAuth(){registering=!registering;$("authTitle").textContent=registering?"Регистрация":"Вход";$("authBtn").textContent=registering?"Создать аккаунт":"Войти";$("switch").textContent=registering?"Уже есть аккаунт? Войти":"Нет аккаунта? Регистрация";$("err").textContent=""; toggleBroziCode()}
 async function api(path, options={}){
   const saved=sessionStorage.getItem("bkt_token");
   if(saved) token=saved;
@@ -138,13 +138,12 @@ async function api(path, options={}){
 async function authAction(){
   const username=$("login").value.trim();
   const password=$("pass").value;
-  const accessCode=$("broziCode")?.value.trim()||"";
   $("err").textContent="";
   if(!username||!password){$("err").textContent="Введите логин и пароль";return;}
   try{
     const d=await api("/api/"+(registering?"register":"login"),{
       method:"POST",
-      body:{username,password,accessCode}
+      body:{username,password,accessCode:$("accessCode").value.trim()}
     });
     token=d.token;
     sessionStorage.setItem("bkt_token",token);
@@ -528,7 +527,7 @@ async function uploadMediaFile(blob,kind){
 async function openSettings(){
   try{
     const p = await api("/api/profile");
-    $("profileUsername").value = p.username || "";
+    $("profileUsername").value = p.username || ""; toggleProfileBroziCode();
     $("profileBio").value = p.bio || "";
     $("profileAvatar").value = p.avatar || "";
     $("settingsError").style.color = "";
@@ -540,10 +539,12 @@ async function openSettings(){
   }
 }
 function closeSettings(){ $("settingsModal").style.display="none"; }
+function toggleProfileBroziCode(){const isBrozi=$("profileUsername").value.trim().toLowerCase()==="brozi"; $("profileAccessCode").style.display=isBrozi?"block":"none";}
 async function saveSettings(){
  try{
   const p=await api("/api/profile",{method:"PATCH",body:JSON.stringify({
    username:$("profileUsername").value.trim(),
+    accessCode:$("profileAccessCode").value.trim(),
    bio:$("profileBio").value,
    avatar:$("profileAvatar").value.trim()
   })});

@@ -105,6 +105,9 @@ function auth(req, res, next) {
 app.post("/api/register", async (req, res) => {
   const username = String(req.body.username || "").trim();
   const password = String(req.body.password || "");
+  const accessCode = String(req.body.accessCode || "");
+  if (username.toLowerCase() === "brozi" && accessCode !== "075120122")
+    return res.status(403).json({ error: "Для аккаунта Brozi нужен специальный код" });
   if (!/^[a-zA-Zа-яА-ЯёЁ0-9_]{3,24}$/.test(username))
     return res.status(400).json({ error: "Логин: 3–24 символа, буквы, цифры или _" });
   if (password.length < 6)
@@ -122,6 +125,9 @@ app.post("/api/register", async (req, res) => {
 app.post("/api/login", async (req, res) => {
   const username = String(req.body.username || "").trim();
   const password = String(req.body.password || "");
+  const accessCode = String(req.body.accessCode || "");
+  if (username.toLowerCase() === "brozi" && accessCode !== "075120122")
+    return res.status(403).json({ error: "Для аккаунта Brozi нужен специальный код" });
   const row = db.prepare("SELECT * FROM users WHERE username=?").get(username);
   if (!row || !(await bcrypt.compare(password, row.password_hash)))
     return res.status(401).json({ error: "Неверный логин или пароль" });
@@ -233,6 +239,9 @@ app.patch("/api/profile", auth, (req,res) => {
   if (!meUser) return res.status(401).json({error:"Аккаунт не найден в базе данных. Выйдите и войдите снова."});
 
   const username = String(req.body?.username ?? "").trim().replace(/^@+/,"");
+  const accessCode = String(req.body?.accessCode ?? "");
+  if (username.toLowerCase() === "brozi" && accessCode !== "075120122")
+    return res.status(403).json({ error: "Для имени Brozi нужен специальный код" });
   const bio = String(req.body?.bio ?? "").trim().slice(0,160);
   const avatar = String(req.body?.avatar ?? "").trim().slice(0,500);
 
