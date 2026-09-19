@@ -407,3 +407,7 @@ function endCall(notify=true){
 $("audioCallButton").onclick=()=>startCall("audio");
 $("videoCallButton").onclick=()=>startCall("video");
 
+
+
+// Автоматически восстанавливаем последний вход после перезагрузки/нового захода.
+if (token) { start(); }
