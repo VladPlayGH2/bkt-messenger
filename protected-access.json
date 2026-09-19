@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "accounts": {
+    "brozi": {
+      "display": "Brozi",
+      "salt": "9f15dc87f7edb07478434158c0985fff",
+      "hash": "3239252a8703446723d3313f01ae709bc403936daacea4341ca32569d8b5a4cc"
+    },
+    "vlad": {
+      "display": "Vlad",
+      "salt": "dc40fd89772b9f0a7dda1d1928473ca7",
+      "hash": "6a1397962e7169dc7f1cd4a35feb07eba3545792e4ef746c1208fdae8f8a7ab6"
+    },
+    "vladmobile": {
+      "display": "vladmobile",
+      "salt": "9f63c5c605e9b5e8401e924392972084",
+      "hash": "a1f625ba1bec136f97196dde73a00d301a79719a7609b8ba99a2755cf67a1f49"
+    }
+  }
+}

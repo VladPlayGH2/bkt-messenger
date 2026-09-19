@@ -1,8 +1,16 @@
-# BKT Messenger — fixed account session
+# BKT Messenger — protected accounts
 
-Исправлено поведение авторизации: токен больше не хранится в `localStorage`.
-При входе используется `sessionStorage`, поэтому старый аккаунт не подставляется при новом сеансе/после закрытия вкладки, а устаревший `bkt_token` из старых версий удаляется.
+Protected accounts in this build:
+- `Brozi` — requires its special access code.
+- `Vlad` — requires `VladBKT69102937!!!`.
+- `vladmobile` — requires `VladBKT69102937!!!`.
 
-Это также уменьшает риск случайного входа в аккаунт другого пользователя на общем устройстве.
+Protection is checked on the server for login, registration, and profile rename. The access codes themselves are not stored in the project; only salted scrypt hashes are stored in `protected-access.json`.
 
-Важно: если несколько человек одновременно используют один и тот же открытый браузерный сеанс, каждому лучше использовать отдельный профиль браузера/вкладку с отдельным сеансом.
+For `Vlad` and `vladmobile`, the same special code is used as requested.
+
+Run:
+```bash
+npm install
+npm start
+```

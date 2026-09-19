@@ -7,10 +7,32 @@ const Database = require("better-sqlite3");
 const { WebSocketServer } = require("ws");
 const multer = require("multer");
 const fs = require("fs");
+const crypto = require("crypto");
 const webpush = require("web-push");
 
 const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || "change-this-secret-in-production";
+
+// Protected accounts: the access code is checked server-side and only salted
+// hashes are stored in protected-access.json.
+const protectedAccess = JSON.parse(fs.readFileSync(path.join(__dirname, "protected-access.json"), "utf8"));
+function protectedAccount(username) {
+  const key = String(username || "").trim().replace(/^@+/, "").toLowerCase();
+  return protectedAccess.accounts?.[key] || null;
+}
+function verifyProtectedCode(username, code) {
+  const entry = protectedAccount(username);
+  if (!entry) return true;
+  const raw = Buffer.from(String(code || ""), "utf8");
+  const salt = Buffer.from(entry.salt, "hex");
+  const derived = crypto.scryptSync(raw, salt, 32);
+  const expected = Buffer.from(entry.hash, "hex");
+  return derived.length === expected.length && crypto.timingSafeEqual(derived, expected);
+}
+function protectedError(username) {
+  const display = protectedAccount(username)?.display || username;
+  return `Для аккаунта ${display} нужен специальный код`;
+}
 
 const db = new Database(path.join(__dirname, "bkt.sqlite"));
 db.pragma("journal_mode = WAL");
@@ -106,8 +128,8 @@ app.post("/api/register", async (req, res) => {
   const username = String(req.body.username || "").trim();
   const password = String(req.body.password || "");
   const accessCode = String(req.body.accessCode || "");
-  if (username.toLowerCase() === "brozi" && accessCode !== "075120122")
-    return res.status(403).json({ error: "Для аккаунта Brozi нужен специальный код" });
+  if (!verifyProtectedCode(username, accessCode))
+    return res.status(403).json({ error: protectedError(username) });
   if (!/^[a-zA-Zа-яА-ЯёЁ0-9_]{3,24}$/.test(username))
     return res.status(400).json({ error: "Логин: 3–24 символа, буквы, цифры или _" });
   if (password.length < 6)
@@ -126,8 +148,8 @@ app.post("/api/login", async (req, res) => {
   const username = String(req.body.username || "").trim();
   const password = String(req.body.password || "");
   const accessCode = String(req.body.accessCode || "");
-  if (username.toLowerCase() === "brozi" && accessCode !== "075120122")
-    return res.status(403).json({ error: "Для аккаунта Brozi нужен специальный код" });
+  if (!verifyProtectedCode(username, accessCode))
+    return res.status(403).json({ error: protectedError(username) });
   const row = db.prepare("SELECT * FROM users WHERE username=?").get(username);
   if (!row || !(await bcrypt.compare(password, row.password_hash)))
     return res.status(401).json({ error: "Неверный логин или пароль" });
@@ -240,8 +262,8 @@ app.patch("/api/profile", auth, (req,res) => {
 
   const username = String(req.body?.username ?? "").trim().replace(/^@+/,"");
   const accessCode = String(req.body?.accessCode ?? "");
-  if (username.toLowerCase() === "brozi" && accessCode !== "075120122")
-    return res.status(403).json({ error: "Для имени Brozi нужен специальный код" });
+  if (protectedAccount(username) && !verifyProtectedCode(username, accessCode))
+    return res.status(403).json({ error: protectedError(username) });
   const bio = String(req.body?.bio ?? "").trim().slice(0,160);
   const avatar = String(req.body?.avatar ?? "").trim().slice(0,500);
 

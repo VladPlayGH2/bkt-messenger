@@ -93,7 +93,7 @@ img,video{max-width:100%}
 <div id="auth" class="auth"><div class="card">
 <div class="brand"><div class="logo">БКТ</div><div><h1>БКТ</h1><small>Мессенджер</small></div></div>
 <h2 id="authTitle">Вход</h2><div id="err" class="error"></div>
-<input id="login" placeholder="Логин" autocomplete="username" oninput="updateBroziCodeField()"><input id="pass" type="password" placeholder="Пароль" autocomplete="current-password"><input id="broziCode" type="password" placeholder="Специальный код для Brozi" autocomplete="off" style="display:none">
+<input id="login" placeholder="Логин" autocomplete="username" oninput="updateBroziCodeField()"><input id="pass" type="password" placeholder="Пароль" autocomplete="current-password"><input id="broziCode" type="password" placeholder="Специальный код" autocomplete="off" style="display:none">
 <button class="primary" onclick="authAction()" id="authBtn">Войти</button><div class="switch" onclick="toggleAuth()" id="switch">Нет аккаунта? Регистрация</div>
 </div></div><div class="app" id="app" style="display:none">
 <aside class="sidebar"><button id="profileBtn" onclick="openSettings()" style="margin:0 18px 10px;padding:10px;border:1px solid #24312b;background:#111716;color:#fff;border-radius:12px;cursor:pointer">⚙️ Настройки профиля</button><button class="notify-btn" id="notifyBtn" onclick="enableNotifications()">🔔 Включить уведомления</button><button onclick="createGroup()" style="margin:0 18px 10px;padding:10px;border:0;border-radius:12px;cursor:pointer">＋ Создать группу</button><div class="top"><div class="brand"><div class="logo">БКТ</div><div><h1>БКТ</h1><small id="me"></small></div></div></div>
@@ -115,7 +115,7 @@ let token=sessionStorage.getItem("bkt_token")||null, me=null, selected=null, act
 // Never reuse a persistent login token left by another person/browser session.
 try{localStorage.removeItem("bkt_token");}catch(_){}
 const $=id=>document.getElementById(id);
-function updateBroziCodeField(){const el=$("broziCode"); if(!el)return; const isBrozi=$("login").value.trim().replace(/^@+/,"").toLowerCase()==="brozi"; el.style.display=isBrozi?"block":"none"; if(!isBrozi) el.value="";}
+function updateBroziCodeField(){const el=$("broziCode"); if(!el)return; const name=$("login").value.trim().replace(/^@+/,"").toLowerCase(); const protectedName=["brozi","vlad","vladmobile"].includes(name); el.style.display=protectedName?"block":"none"; if(!protectedName) el.value="";}
 function toggleAuth(){registering=!registering;$("authTitle").textContent=registering?"Регистрация":"Вход";$("authBtn").textContent=registering?"Создать аккаунт":"Войти";$("switch").textContent=registering?"Уже есть аккаунт? Войти":"Нет аккаунта? Регистрация";$("err").textContent="";updateBroziCodeField()}
 async function api(path, options={}){
   const saved=sessionStorage.getItem("bkt_token");
