@@ -139,11 +139,21 @@ async function initDb() {
       verified_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
 
+    CREATE TABLE IF NOT EXISTS statuses (
+      id BIGSERIAL PRIMARY KEY,
+      user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      text TEXT NOT NULL DEFAULT '',
+      media_url TEXT NOT NULL DEFAULT '',
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      expires_at TIMESTAMPTZ NOT NULL DEFAULT (NOW() + INTERVAL '24 hours')
+    );
+
     CREATE INDEX IF NOT EXISTS idx_messages_pair ON messages(sender_id, receiver_id, id);
     CREATE INDEX IF NOT EXISTS idx_messages_receiver ON messages(receiver_id, id);
     CREATE INDEX IF NOT EXISTS idx_group_messages_group ON group_messages(group_id, id);
     CREATE INDEX IF NOT EXISTS idx_group_members_user ON group_members(user_id);
     CREATE INDEX IF NOT EXISTS idx_call_sessions_callee_status ON call_sessions(callee_id, status, created_at);
+    CREATE INDEX IF NOT EXISTS idx_statuses_expires ON statuses(expires_at, created_at);
   `);
 
   for (const protectedName of ["brozi", "vlad", "vladmobile"]) {
@@ -152,6 +162,7 @@ async function initDb() {
       await query("INSERT INTO verified_users(user_id, verified_by) VALUES($1, NULL) ON CONFLICT(user_id) DO NOTHING", [account.id]);
     }
   }
+  await query("ALTER TABLE statuses ADD COLUMN IF NOT EXISTS media_url TEXT NOT NULL DEFAULT ''");
   await ensureCommunityGroup();
 }
 
@@ -207,6 +218,21 @@ webpush.setVapidDetails(
 app.use(express.json());
 app.use(express.static(path.join(__dirname, "public")));
 app.use("/media", express.static(mediaDir));
+const statusMediaDir = path.join(__dirname, "uploads", "statuses");
+fs.mkdirSync(statusMediaDir, { recursive: true });
+const statusStorage = multer.diskStorage({
+  destination: statusMediaDir,
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname).toLowerCase() || ".jpg";
+    cb(null, `status-${Date.now()}-${crypto.randomBytes(8).toString("hex")}${ext}`);
+  }
+});
+const uploadStatusImage = multer({
+  storage: statusStorage,
+  limits: { fileSize: 8 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => cb(null, /^image\/(jpeg|png|webp|gif)$/i.test(file.mimetype))
+});
+app.use("/status-media", express.static(statusMediaDir));
 
 function tokenFor(user) {
   return jwt.sign({ id: Number(user.id), username: user.username }, JWT_SECRET, { expiresIn: "7d" });
@@ -412,6 +438,53 @@ app.delete("/api/admin/verify/:id", auth, async (req, res) => {
   if (!adminId || Number(req.user.id) !== adminId) return res.status(403).json({ error: "Нет доступа" });
   await query("DELETE FROM verified_users WHERE user_id=$1", [Number(req.params.id)]);
   res.json({ ok: true, verified: false });
+});
+
+app.get("/api/statuses", auth, async (req, res) => {
+  try {
+    const expired = await many("DELETE FROM statuses WHERE expires_at <= NOW() RETURNING media_url");
+    for (const row of expired) {
+      if (row.media_url && row.media_url.startsWith("/status-media/")) {
+        const file = path.join(statusMediaDir, path.basename(row.media_url));
+        fs.unlink(file, () => {});
+      }
+    }
+    const rows = await many(`SELECT s.id, s.user_id, u.username, u.avatar, s.text, s.media_url, s.created_at, s.expires_at
+      FROM statuses s JOIN users u ON u.id=s.user_id
+      WHERE s.expires_at > NOW() ORDER BY s.created_at DESC LIMIT 100`);
+    res.json(rows);
+  } catch (e) { console.error(e); res.status(500).json({ error: "Не удалось загрузить статусы" }); }
+});
+
+app.post("/api/statuses/upload", auth, uploadStatusImage.single("image"), async (req, res) => {
+  if (!req.file) return res.status(400).json({ error: "Выберите изображение JPG, PNG, WebP или GIF до 8 МБ" });
+  res.json({ url: `/status-media/${req.file.filename}` });
+});
+
+app.post("/api/statuses", auth, async (req, res) => {
+  try {
+    const user = await currentUser(req);
+    if (!user) return res.status(401).json({ error: "Аккаунт не найден" });
+    const text = String(req.body.text || "").trim();
+    const mediaUrl = String(req.body.mediaUrl || "").trim();
+    if (text.length > 280) return res.status(400).json({ error: "Текст статуса — максимум 280 символов" });
+    if (!text && !mediaUrl) return res.status(400).json({ error: "Добавьте текст или фото" });
+    if (mediaUrl && !mediaUrl.startsWith("/status-media/")) return res.status(400).json({ error: "Некорректное фото" });
+    await query("DELETE FROM statuses WHERE user_id=$1 OR expires_at <= NOW()", [user.id]);
+    const row = await one(`INSERT INTO statuses(user_id,text,media_url,expires_at) VALUES($1,$2,$3,NOW()+INTERVAL '24 hours')
+      RETURNING id,user_id,text,media_url,created_at,expires_at`, [user.id, text, mediaUrl]);
+    res.json({ ...row, username: user.username });
+  } catch (e) { console.error(e); res.status(500).json({ error: "Не удалось сохранить статус" }); }
+});
+
+app.delete("/api/statuses/:id", auth, async (req, res) => {
+  try {
+    const uid = await currentUserId(req);
+    const row = await one("DELETE FROM statuses WHERE id=$1 AND user_id=$2 RETURNING id,media_url", [Number(req.params.id), uid]);
+    if (!row) return res.status(404).json({ error: "Статус не найден" });
+    if (row.media_url && row.media_url.startsWith("/status-media/")) fs.unlink(path.join(statusMediaDir, path.basename(row.media_url)), () => {});
+    res.json({ ok: true });
+  } catch (e) { console.error(e); res.status(500).json({ error: "Не удалось удалить статус" }); }
 });
 
 app.get("/api/users", auth, async (req, res) => {
