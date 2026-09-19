@@ -100,6 +100,27 @@ img,video{max-width:100%}
 #bktToast b{display:block;margin-bottom:3px}.notify-btn{margin:0 18px 10px;padding:10px;border:1px solid #24312b;background:#111716;color:#fff;border-radius:12px;cursor:pointer;width:calc(100% - 36px)}
 @media(max-width:700px){#bktToast{top:max(10px,env(safe-area-inset-top));right:10px;max-width:calc(100vw - 20px)}}
 </style>
+
+<style id="bkt-stickers-css">
+.sticker-button{border:0;background:#18251e;color:#fff;border-radius:14px;width:44px;height:44px;cursor:pointer;font-size:22px;flex:0 0 44px}
+.sticker-button:hover{background:#223128}
+.sticker-picker{position:fixed;z-index:40;display:none;width:min(390px,calc(100vw - 24px));max-height:min(520px,65vh);background:#0b110f;border:1px solid #26352d;border-radius:18px;box-shadow:0 18px 60px rgba(0,0,0,.55);overflow:hidden}
+.sticker-picker-head{padding:12px 14px;border-bottom:1px solid #202d26;display:flex;align-items:center;justify-content:space-between}
+.sticker-picker-head b{font-size:14px}
+.sticker-close{border:0;background:transparent;color:#aeb9b3;font-size:20px;cursor:pointer}
+.sticker-pack-title{padding:9px 12px;color:#9ba8a1;font-size:12px}
+.sticker-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;padding:10px 12px 14px;overflow:auto;max-height:390px}
+.sticker-item{border:0;background:transparent;border-radius:12px;padding:5px;cursor:pointer;min-width:0}
+.sticker-item:hover{background:#18251e}
+.sticker-item img{width:100%;aspect-ratio:1/1;object-fit:contain;display:block}
+.sticker-msg{width:150px;max-width:45vw;height:auto;display:block;object-fit:contain}
+.bubble.sticker-bubble{background:transparent!important;padding:3px!important}
+@media(max-width:700px){
+ .sticker-picker{left:8px!important;right:8px;width:auto;bottom:72px;top:auto}
+ .sticker-grid{grid-template-columns:repeat(4,1fr);max-height:48vh}
+ .sticker-msg{width:130px;max-width:42vw}
+}
+</style>
 </head>
 <body>
 <div id="bktToast" onclick="openToastChat()"></div>
@@ -116,8 +137,14 @@ img,video{max-width:100%}
 <div class="sendbar">
 <button id="voiceButton" title="Голосовое сообщение">🎙️</button>
 <button id="videoNoteButton" title="Видеосообщение">🎥</button>
+<button id="stickerButton" class="sticker-button" title="Стикеры" aria-label="Стикеры">🧸</button>
 <input id="text" placeholder="Сообщение..." onkeydown="if(event.key==='Enter')send()">
 <button class="send" onclick="send()">➤</button>
+</div>
+<div id="stickerPicker" class="sticker-picker" aria-label="Стикеры">
+  <div class="sticker-picker-head"><b>Стикеры</b><button class="sticker-close" id="stickerClose" aria-label="Закрыть">×</button></div>
+  <div class="sticker-pack-title">Капибара и Туф</div>
+  <div id="stickerGrid" class="sticker-grid"></div>
 </div>
 <div id="recording" class="modal" style="display:none"><div class="modal-card"><h3>🎙️ Запись голосового</h3><div id="recordTime">0:00</div><div class="modal-actions"><button onclick="finishRecording()">Отправить</button><button onclick="cancelRecording()">Отмена</button></div></div></div>
 <div id="videoRecording" class="modal" style="display:none"><div class="modal-card"><h3>🎥 Видеосообщение</h3><video id="videoPreview" autoplay muted playsinline></video><div id="videoTime">0:00</div><div class="modal-actions"><button onclick="finishVideoRecording()">Отправить</button><button onclick="cancelVideoRecording()">Отмена</button></div></div></div>
@@ -359,14 +386,22 @@ async function createGroup(){
  for(const n0 of raw.split(',')){const n=n0.trim().replace(/^@+/,'');if(!n)continue;try{const a=await api('/api/users?q='+encodeURIComponent(n));const u=a.find(x=>x.username.toLowerCase()===n.toLowerCase())||a[0];if(u)ids.push(u.id)}catch{}}
  try{const g=await api('/api/groups',{method:'POST',body:JSON.stringify({name:name.trim(),memberIds:ids})});openGroup(g);loadGroups()}catch(e){alert(e.message)}
 }
-function isBktGroup(g){return String(g?.name||"").trim().toLowerCase()==="бкт сообщество";}
-function canWriteActiveGroup(){return !isBktGroup(activeGroup) || ["brozi","vlad"].includes(String(me?.username||"").trim().toLowerCase());}
-async function openGroup(g){activeGroup=g;selected=null;$("app").classList.add('mobile-chat');$("headName").textContent=g.name;$("headAvatar").textContent='👥';$("headStatus").textContent=` ${g.members.length} участников`;const allowed=canWriteActiveGroup();$("text").disabled=!allowed;$("text").placeholder=allowed?"Сообщение...":"Писать могут только Brozi и Vlad";loadChatWallpaper();const ms=await api('/api/groups/'+g.id+'/messages');$("messages").innerHTML='';ms.forEach(renderGroupMessage)}
+async function openGroup(g){activeGroup=g;selected=null;$("app").classList.add('mobile-chat');$("headName").textContent=g.name;$("headAvatar").textContent='👥';$("headStatus").textContent=` ${g.members.length} участников`;loadChatWallpaper();const ms=await api('/api/groups/'+g.id+'/messages');$("messages").innerHTML='';ms.forEach(renderGroupMessage)}
 function renderGroupMessage(m){
   if($("gm"+m.id))return;
   const d=document.createElement("div"); d.id="gm"+m.id; d.className="bubble "+(Number(m.sender_id)===Number(me.id)?"me":"");
   const w=document.createElement("div"); w.style.fontSize="12px"; w.style.opacity=".7"; w.textContent=m.sender_name; d.appendChild(w);
-  const t=document.createElement("div"); t.textContent=m.text; d.appendChild(t);
+  if(String(m.text).startsWith("[STICKER]")){
+    const img=document.createElement("img");
+    img.className="sticker-msg";
+    img.alt="Стикер Туф";
+    img.src=String(m.text).substring(9);
+    img.loading="lazy";
+    d.classList.add("sticker-bubble");
+    d.appendChild(img);
+  } else {
+    const t=document.createElement("div"); t.textContent=m.text; d.appendChild(t);
+  }
   const meta=document.createElement("div"); meta.style.display="flex"; meta.style.justifyContent="flex-end"; meta.style.gap="6px";
   if(Number(m.sender_id)===Number(me.id)){
     const del=document.createElement("button"); del.type="button"; del.title="Удалить сообщение"; del.textContent="×";
@@ -380,7 +415,7 @@ async function deleteGroupMessage(id){
   try{await api("/api/groups/messages/"+id,{method:"DELETE"});const el=$("gm"+id);if(el)el.remove();}
   catch(e){alert(e.message||"Не удалось удалить сообщение");}
 }
-async function openUser(u){activeGroup=null;$("text").disabled=false;$("text").placeholder="Сообщение...";selected=u;$("app").classList.add("mobile-chat");$("headName").textContent=u.username;$("headAvatar").textContent=u.username[0].toUpperCase();$("headStatus").textContent=" ● онлайн";let ms=await api("/api/messages/"+u.id);$("messages").innerHTML="";ms.forEach(renderMessage);$("messages").scrollTop=$("messages").scrollHeight;loadUsers()}
+async function openUser(u){activeGroup=null;selected=u;$("app").classList.add("mobile-chat");$("headName").textContent=u.username;$("headAvatar").textContent=u.username[0].toUpperCase();$("headStatus").textContent=" ● онлайн";let ms=await api("/api/messages/"+u.id);$("messages").innerHTML="";ms.forEach(renderMessage);$("messages").scrollTop=$("messages").scrollHeight;loadUsers()}
   loadChatWallpaper();
 function renderMessage(m){
   if(document.getElementById("m"+m.id))return;
@@ -388,7 +423,16 @@ function renderMessage(m){
   d.id="m"+m.id;
   d.className="bubble "+(Number(m.sender_id)===Number(me.id)?"me":"");
 
-  if(m.text.startsWith("[VOICE]")){
+  if(String(m.text).startsWith("[STICKER]")){
+    const src=String(m.text).substring(9);
+    const img=document.createElement("img");
+    img.className="sticker-msg";
+    img.alt="Стикер Туф";
+    img.src=src;
+    img.loading="lazy";
+    d.classList.add("sticker-bubble");
+    d.appendChild(img);
+  } else if(m.text.startsWith("[VOICE]")){
     const audio=document.createElement("audio");
     audio.controls=true; audio.preload="metadata"; audio.src=m.text.substring(7);
     audio.style.maxWidth="230px"; d.appendChild(audio);
@@ -642,11 +686,72 @@ if (searchInput) {
 }
 
 
+
+const STICKERS = Array.from({length:12},(_,i)=>`/stickers/${i+1}.png`);
+let stickerPickerReady=false;
+
+function buildStickerPicker(){
+  if(stickerPickerReady)return;
+  const grid=$("stickerGrid");
+  if(!grid)return;
+  STICKERS.forEach((src,i)=>{
+    const b=document.createElement("button");
+    b.type="button";
+    b.className="sticker-item";
+    b.title="Туф";
+    b.setAttribute("aria-label",`Туф, стикер ${i+1}`);
+    const img=document.createElement("img");
+    img.src=src; img.alt="Туф"; img.loading="lazy";
+    b.appendChild(img);
+    b.onclick=()=>sendSticker(src);
+    grid.appendChild(b);
+  });
+  stickerPickerReady=true;
+}
+function positionStickerPicker(){
+  const picker=$("stickerPicker"), btn=$("stickerButton");
+  if(!picker||!btn)return;
+  if(window.matchMedia("(max-width:700px)").matches){picker.style.left="";picker.style.top="";return;}
+  const r=btn.getBoundingClientRect();
+  const width=Math.min(390,window.innerWidth-24);
+  picker.style.left=Math.max(12,Math.min(window.innerWidth-width-12,r.right-width))+"px";
+  picker.style.top=Math.max(12,r.top-Math.min(520,window.innerHeight*.65)-8)+"px";
+}
+function toggleStickerPicker(){
+  if(!selected && !activeGroup){alert("Сначала выберите чат");return;}
+  buildStickerPicker();
+  const p=$("stickerPicker");
+  const open=p.style.display==="block";
+  p.style.display=open?"none":"block";
+  if(!open)positionStickerPicker();
+}
+function closeStickerPicker(){if($("stickerPicker"))$("stickerPicker").style.display="none";}
+async function sendSticker(src){
+  if(!selected && !activeGroup)return;
+  closeStickerPicker();
+  const text="[STICKER]"+src;
+  try{
+    if(activeGroup){
+      const msg=await api("/api/groups/"+activeGroup.id+"/messages",{method:"POST",body:{text}});
+      renderGroupMessage(msg);
+    }else{
+      const msg=await api("/api/messages",{method:"POST",body:{receiverId:Number(selected.id),text}});
+      renderMessage(msg);
+    }
+  }catch(e){alert(e.message||"Не удалось отправить стикер");}
+}
+$("stickerButton").onclick=toggleStickerPicker;
+$("stickerClose").onclick=closeStickerPicker;
+document.addEventListener("click",e=>{
+  const p=$("stickerPicker"), b=$("stickerButton");
+  if(p && p.style.display==="block" && !p.contains(e.target) && e.target!==b)closeStickerPicker();
+});
+window.addEventListener("resize",()=>{if($("stickerPicker")?.style.display==="block")positionStickerPicker();});
+
 async function send(){
   const input=$("text"), text=input.value.trim();
   if(!text)return;
   if(activeGroup){
-    if(!canWriteActiveGroup()){alert("В группе «БКТ Сообщество» писать могут только Brozi и Vlad");return;}
     try{
       const msg=await api("/api/groups/"+activeGroup.id+"/messages",{method:"POST",body:{text}});
       input.value="";
