@@ -167,6 +167,22 @@ function normalizeUsername(v) {
   return String(v ?? "").trim().replace(/^@+/, "").toLowerCase();
 }
 
+
+app.get("/api/rtc-config", auth, (req,res) => {
+  const iceServers = [
+    {urls:"stun:stun.l.google.com:19302"},
+    {urls:"stun:stun1.l.google.com:19302"}
+  ];
+  if (process.env.TURN_URL && process.env.TURN_USERNAME && process.env.TURN_CREDENTIAL) {
+    iceServers.push({
+      urls: process.env.TURN_URL.split(",").map(s=>s.trim()).filter(Boolean),
+      username: process.env.TURN_USERNAME,
+      credential: process.env.TURN_CREDENTIAL
+    });
+  }
+  res.json({iceServers});
+});
+
 app.get("/api/me", auth, (req, res) => res.json(req.user));
 
 
@@ -355,6 +371,24 @@ function sendSignal(toUserId, payload) {
 }
 
 
+
+app.delete("/api/messages/:id", auth, (req,res) => {
+  const id=Number(req.params.id);
+  const msg=db.prepare("SELECT id,sender_id,receiver_id,text FROM messages WHERE id=?").get(id);
+  if(!msg) return res.status(404).json({error:"Сообщение не найдено"});
+  if(Number(msg.sender_id)!==Number(req.user.id))
+    return res.status(403).json({error:"Можно удалить только своё сообщение"});
+  db.prepare("DELETE FROM messages WHERE id=?").run(id);
+  const mediaMatch=String(msg.text||"").match(/^\[(?:VOICE|VIDEO_NOTE)\](\/media\/[^?\s]+)$/);
+  if(mediaMatch){
+    const file=path.join(mediaDir,path.basename(mediaMatch[1]));
+    try{if(fs.existsSync(file))fs.unlinkSync(file)}catch{}
+  }
+  push(msg.receiver_id,{type:"message-deleted",messageId:id});
+  push(msg.sender_id,{type:"message-deleted",messageId:id});
+  res.json({ok:true});
+});
+
 app.post("/api/media", auth, uploadMedia.single("media"), (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ error: "Файл не получен" });
@@ -503,6 +537,19 @@ app.get("/api/groups/:id/messages", auth, (req,res) => {
     WHERE gm.group_id=? ORDER BY gm.id ASC LIMIT 500
   `).all(groupId);
   res.json(messages);
+});
+
+
+app.delete("/api/groups/messages/:id", auth, (req,res) => {
+  const id=Number(req.params.id);
+  const msg=db.prepare("SELECT id,group_id,sender_id FROM group_messages WHERE id=?").get(id);
+  if(!msg) return res.status(404).json({error:"Сообщение не найдено"});
+  if(Number(msg.sender_id)!==Number(req.user.id))
+    return res.status(403).json({error:"Можно удалить только своё сообщение"});
+  db.prepare("DELETE FROM group_messages WHERE id=?").run(id);
+  const members=db.prepare("SELECT user_id FROM group_members WHERE group_id=?").all(msg.group_id);
+  for(const m of members) push(m.user_id,{type:"group-message-deleted",messageId:id});
+  res.json({ok:true});
 });
 
 app.post("/api/groups/:id/messages", auth, (req,res) => {

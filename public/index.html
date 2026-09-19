@@ -35,6 +35,17 @@ button{min-height:44px;min-width:44px;padding:9px 12px}
 img,video{max-width:100%}
 }
 </style>
+
+<style id="bkt-usability-css">
+.bubble{position:relative;word-break:break-word}
+.bubble audio,.bubble video{max-width:100%}
+@media(max-width:700px){
+  .sidebar{min-height:100dvh}
+  .sendbar{padding-bottom:max(12px,env(safe-area-inset-bottom))}
+  .chat{height:100dvh;min-height:100dvh}
+  .messages{min-height:0}
+}
+</style>
 </head>
 <body>
 <div id="auth" class="auth"><div class="card">
@@ -78,6 +89,82 @@ async function api(path, options={}){
   try{ data=text?JSON.parse(text):{}; }catch(_){ throw new Error("Сервер вернул неверный ответ ("+res.status+")"); }
   if(!res.ok) throw new Error(data.error||data.message||("Ошибка "+res.status));
   return data;
+}
+
+
+async function authAction(){
+  const username=$("login").value.trim();
+  const password=$("pass").value;
+  $("err").textContent="";
+  if(!username||!password){$("err").textContent="Введите логин и пароль";return;}
+  try{
+    const d=await api("/api/"+(registering?"register":"login"),{
+      method:"POST",
+      body:{username,password}
+    });
+    token=d.token;
+    localStorage.setItem("bkt_token",token);
+    await start();
+  }catch(e){
+    $("err").textContent=e.message||"Ошибка авторизации";
+  }
+}
+
+async function start(){
+  if(!token) return;
+  try{
+    me=await api("/api/me");
+    $("auth").style.display="none";
+    $("app").style.display="grid";
+    $("me").textContent="@"+(me.username||"");
+    connectSocket();
+    loadUsers();
+    loadGroups();
+  }catch(e){
+    localStorage.removeItem("bkt_token");
+    token=null;
+    me=null;
+    $("app").style.display="none";
+    $("auth").style.display="grid";
+    $("err").textContent="";
+  }
+}
+
+function connectSocket(){
+  try{ if(socket) socket.close(); }catch(_){}
+  const scheme=location.protocol==="https:"?"wss://":"ws://";
+  socket=new WebSocket(scheme+location.host+"/?token="+encodeURIComponent(token));
+  socket.onopen=()=>{};
+  socket.onmessage=e=>{
+    try{
+      const d=JSON.parse(e.data);
+      if(d.type==="call-signal"){handleCallSignal(d);return;}
+      if(d.type==="message" && d.message) {
+        if(selected && (Number(d.message.sender_id)===Number(selected.id) || Number(d.message.receiver_id)===Number(selected.id)))
+          renderMessage(d.message);
+        return;
+      }
+      if(d.type==="message-deleted"){
+        const el=document.getElementById("m"+d.messageId); if(el) el.remove();
+        return;
+      }
+      if(d.type==="group-message" && d.message && activeGroup && Number(d.message.group_id)===Number(activeGroup.id)){
+        renderGroupMessage(d.message);
+        return;
+      }
+      if(d.type==="group-message-deleted"){
+        const el=document.getElementById("gm"+d.messageId); if(el) el.remove();
+        return;
+      }
+    }catch(err){console.error("WebSocket message error:",err);}
+  };
+  socket.onclose=()=>{};
+  socket.onerror=()=>{};
+}
+
+function verifiedName(name, verified){
+  const safe=escapeHtml(String(name||""));
+  return safe+(verified?'<span class="verified-badge" title="Подтверждено">✓</span>':"");
 }
 
 async function loadUsers(){
@@ -126,48 +213,74 @@ async function createGroup(){
  try{const g=await api('/api/groups',{method:'POST',body:JSON.stringify({name:name.trim(),memberIds:ids})});openGroup(g);loadGroups()}catch(e){alert(e.message)}
 }
 async function openGroup(g){activeGroup=g;selected=null;$("app").classList.add('mobile-chat');$("headName").textContent=g.name;$("headAvatar").textContent='👥';$("headStatus").textContent=` ${g.members.length} участников`;const ms=await api('/api/groups/'+g.id+'/messages');$("messages").innerHTML='';ms.forEach(renderGroupMessage)}
-function renderGroupMessage(m){if($("gm"+m.id))return;const d=document.createElement('div');d.id='gm'+m.id;d.className='bubble '+(m.sender_id===me.id?'me':'');const w=document.createElement('div');w.style.fontSize='12px';w.style.opacity='.7';w.textContent=m.sender_name;d.appendChild(w);const t=document.createElement('div');t.textContent=m.text;d.appendChild(t);$("messages").appendChild(d);$("messages").scrollTop=$("messages").scrollHeight}
-async function openUser(u){activeGroup=null;selected=u;$("headName").textContent=u.username;$("headAvatar").textContent=u.username[0].toUpperCase();$("headStatus").textContent=" ● онлайн";let ms=await api("/api/messages/"+u.id);$("messages").innerHTML="";ms.forEach(renderMessage);$("messages").scrollTop=$("messages").scrollHeight;loadUsers()}
+function renderGroupMessage(m){
+  if($("gm"+m.id))return;
+  const d=document.createElement("div"); d.id="gm"+m.id; d.className="bubble "+(Number(m.sender_id)===Number(me.id)?"me":"");
+  const w=document.createElement("div"); w.style.fontSize="12px"; w.style.opacity=".7"; w.textContent=m.sender_name; d.appendChild(w);
+  const t=document.createElement("div"); t.textContent=m.text; d.appendChild(t);
+  const meta=document.createElement("div"); meta.style.display="flex"; meta.style.justifyContent="flex-end"; meta.style.gap="6px";
+  if(Number(m.sender_id)===Number(me.id)){
+    const del=document.createElement("button"); del.type="button"; del.title="Удалить сообщение"; del.textContent="×";
+    del.style.cssText="border:0;background:transparent;color:#a1b0a7;cursor:pointer;font-size:16px;padding:0 2px";
+    del.onclick=()=>deleteGroupMessage(m.id); meta.appendChild(del);
+  }
+  d.appendChild(meta); $("messages").appendChild(d); $("messages").scrollTop=$("messages").scrollHeight;
+}
+async function deleteGroupMessage(id){
+  if(!confirm("Удалить это сообщение?"))return;
+  try{await api("/api/groups/messages/"+id,{method:"DELETE"});const el=$("gm"+id);if(el)el.remove();}
+  catch(e){alert(e.message||"Не удалось удалить сообщение");}
+}
+async function openUser(u){activeGroup=null;selected=u;$("app").classList.add("mobile-chat");$("headName").textContent=u.username;$("headAvatar").textContent=u.username[0].toUpperCase();$("headStatus").textContent=" ● онлайн";let ms=await api("/api/messages/"+u.id);$("messages").innerHTML="";ms.forEach(renderMessage);$("messages").scrollTop=$("messages").scrollHeight;loadUsers()}
 function renderMessage(m){
   if(document.getElementById("m"+m.id))return;
   const d=document.createElement("div");
   d.id="m"+m.id;
-  d.className="bubble "+(m.sender_id===me.id?"me":"");
+  d.className="bubble "+(Number(m.sender_id)===Number(me.id)?"me":"");
 
   if(m.text.startsWith("[VOICE]")){
     const audio=document.createElement("audio");
-    audio.controls=true;
-    audio.preload="metadata";
-    audio.src=m.text.substring(7);
-    audio.style.maxWidth="230px";
-    d.appendChild(audio);
+    audio.controls=true; audio.preload="metadata"; audio.src=m.text.substring(7);
+    audio.style.maxWidth="230px"; d.appendChild(audio);
   } else if(m.text.startsWith("[VIDEO_NOTE]")){
     const video=document.createElement("video");
-    video.controls=true;
-    video.playsInline=true;
-    video.preload="metadata";
-    video.src=m.text.substring(12);
-    video.style.width="180px";
-    video.style.height="180px";
-    video.style.objectFit="cover";
-    video.style.borderRadius="50%";
-    video.style.display="block";
+    video.controls=true; video.playsInline=true; video.preload="metadata";
+    video.src=m.text.substring(12); video.style.width="180px"; video.style.height="180px";
+    video.style.objectFit="cover"; video.style.borderRadius="50%"; video.style.display="block";
     d.appendChild(video);
   } else {
-    d.textContent=m.text;
+    const body=document.createElement("div");
+    body.textContent=m.text; d.appendChild(body);
   }
 
+  const meta=document.createElement("div");
+  meta.style.display="flex"; meta.style.alignItems="center"; meta.style.justifyContent="flex-end"; meta.style.gap="6px";
   const t=document.createElement("time");
   t.textContent=new Date(m.created_at.replace(" ","T")+"Z").toLocaleTimeString("ru-RU",{hour:"2-digit",minute:"2-digit"});
-  d.appendChild(t);
-  document.getElementById("messages").appendChild(d);
-  document.getElementById("messages").scrollTop=document.getElementById("messages").scrollHeight;
+  meta.appendChild(t);
+  if(Number(m.sender_id)===Number(me.id)){
+    const del=document.createElement("button");
+    del.type="button"; del.title="Удалить сообщение"; del.textContent="×";
+    del.style.cssText="border:0;background:transparent;color:#a1b0a7;cursor:pointer;font-size:16px;padding:0 2px;line-height:1";
+    del.onclick=()=>deleteMessage(m.id);
+    meta.appendChild(del);
+  }
+  d.appendChild(meta);
+  $("messages").appendChild(d);
+  $("messages").scrollTop=$("messages").scrollHeight;
 }
+
+async function deleteMessage(id){
+  if(!confirm("Удалить это сообщение?"))return;
+  try{
+    await api("/api/messages/"+id,{method:"DELETE"});
+    const el=document.getElementById("m"+id); if(el) el.remove();
+  }catch(e){alert(e.message||"Не удалось удалить сообщение");}
+}
+
 function escapeHtml(s){return s.replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]))}
 function mobileBack(){$("app").classList.remove("mobile-chat");loadUsers();}
-start();
-setTimeout(loadGroups,700);
-setTimeout(loadGroups, 500);
+
 
 let voiceRecorder=null, voiceChunks=[], voiceStream=null, voiceTimer=null, voiceSeconds=0;
 let videoRecorder=null, videoChunks=[], videoStream=null, videoTimer=null, videoSeconds=0;
@@ -361,7 +474,7 @@ async function send(){
 }
 
 
-let peer=null, localCallStream=null, incomingCall=null, callType="audio", pendingIceCandidates=[];
+let peer=null, localCallStream=null, incomingCall=null, callType="audio", pendingIceCandidates=[], incomingIceCandidates=[], callPeerUserId=null;
 
 function callSocket(data){
   if(!socket || socket.readyState!==WebSocket.OPEN){
@@ -376,11 +489,14 @@ async function startCall(type){
     return alert("Звонки не поддерживаются этим браузером");
   try{
     callType=type;
+    await loadRtcConfig();
     localCallStream=await navigator.mediaDevices.getUserMedia(
       type==="video"?{audio:true,video:true}:{audio:true}
     );
     peer=createPeer();
     pendingIceCandidates=[];
+    incomingIceCandidates=[];
+    callPeerUserId=Number(selected.id);
     localCallStream.getTracks().forEach(t=>peer.addTrack(t,localCallStream));
     $("callTitle").textContent=type==="video"?"📹 Видеозвонок":"📞 Аудиозвонок";
     $("callModal").style.display="grid";
@@ -400,14 +516,18 @@ async function startCall(type){
   }
 }
 
+let rtcConfig={iceServers:[
+  {urls:"stun:stun.l.google.com:19302"},
+  {urls:"stun:stun1.l.google.com:19302"}
+]};
+async function loadRtcConfig(){
+  try{ const c=await api("/api/rtc-config"); if(Array.isArray(c.iceServers)&&c.iceServers.length) rtcConfig=c; }catch(_){}
+}
 function createPeer(){
-  const pc=new RTCPeerConnection({iceServers:[
-    {urls:"stun:stun.l.google.com:19302"},
-    {urls:"stun:stun1.l.google.com:19302"}
-  ]});
+  const pc=new RTCPeerConnection(rtcConfig);
   pc.onicecandidate=e=>{
-    if(e.candidate && selected)
-      callSocket({type:"call-signal",toUserId:Number(selected.id),signalType:"ice",signal:e.candidate});
+    if(e.candidate && callPeerUserId)
+      callSocket({type:"call-signal",toUserId:Number(callPeerUserId),signalType:"ice",signal:e.candidate});
   };
   pc.ontrack=e=>{
     const stream=e.streams[0];
@@ -432,11 +552,11 @@ async function acceptIncomingCall(){
       callType==="video"?{audio:true,video:true}:{audio:true}
     );
     peer=createPeer();
-    pendingIceCandidates=[];
+    callPeerUserId=Number(from);
     localCallStream.getTracks().forEach(t=>peer.addTrack(t,localCallStream));
     await peer.setRemoteDescription(new RTCSessionDescription(incomingCall.signal));
-    for(const c of pendingIceCandidates){try{await peer.addIceCandidate(c)}catch(e){}}
-    pendingIceCandidates=[];
+    for(const c of incomingIceCandidates){try{await peer.addIceCandidate(new RTCIceCandidate(c))}catch(e){}}
+    incomingIceCandidates=[];
     const answer=await peer.createAnswer();
     await peer.setLocalDescription(answer);
     callSocket({type:"call-signal",toUserId:from,signalType:"answer",signal:{sdp:peer.localDescription.sdp,type:peer.localDescription.type},callType});
@@ -459,18 +579,26 @@ async function handleCallSignal(d){
     $("callModal").style.display="grid";
   }else if(d.signalType==="answer" && peer){
     await peer.setRemoteDescription(new RTCSessionDescription(d.signal));
-  }else if(d.signalType==="ice" && peer){
-    try{await peer.addIceCandidate(new RTCIceCandidate(d.signal));}catch(e){}
+  }else if(d.signalType==="ice"){
+    if(peer && peer.remoteDescription){
+      try{await peer.addIceCandidate(new RTCIceCandidate(d.signal));}catch(e){}
+    }else{
+      incomingIceCandidates.push(d.signal);
+    }
+  }else if(d.signalType==="unavailable"){
+    alert("Пользователь сейчас не в сети или не подключён к звонкам.");
+    endCall(false);
   }else if(d.signalType==="hangup"){
     endCall(false);
   }
 }
 
 function endCall(notify=true){
-  if(notify && selected) callSocket({type:"call-signal",toUserId:Number(selected.id),signalType:"hangup",signal:{}});
+  if(notify && callPeerUserId && socket && socket.readyState===WebSocket.OPEN)
+    callSocket({type:"call-signal",toUserId:Number(callPeerUserId),signalType:"hangup",signal:{}});
   try{if(peer)peer.close()}catch(e){}
   if(localCallStream)localCallStream.getTracks().forEach(t=>t.stop());
-  peer=null;localCallStream=null;incomingCall=null;pendingIceCandidates=[];
+  peer=null;localCallStream=null;incomingCall=null;pendingIceCandidates=[];incomingIceCandidates=[];callPeerUserId=null;
   $("callModal").style.display="none";
   $("remoteVideo").srcObject=null;
   $("remoteAudio").srcObject=null;
@@ -482,41 +610,15 @@ $("videoCallButton").onclick=()=>startCall("video");
 
 
 
-// Автоматически восстанавливаем последний вход после перезагрузки/нового захода.
-if (token) { start(); }
+// Сессия восстанавливается один раз после загрузки DOM.
 
 async function restoreSession(){
   const saved=localStorage.getItem("bkt_token");
   if(!saved) return;
   token=saved;
-  try{
-    me=await api("/api/me");
-    if($("auth")) $("auth").style.display="none";
-    if($("app")) $("app").style.display="grid";
-    if($("me")) $("me").textContent="@"+(me.username||"");
-    if(typeof connectSocket==="function") connectSocket();
-    if(typeof loadGroups==="function") loadGroups();
-  }catch(e){
-    localStorage.removeItem("bkt_token");
-    token=null;
-    if($("auth")) $("auth").style.display="grid";
-    if($("app")) $("app").style.display="none";
-  }
+  await start();
 }
 document.addEventListener("DOMContentLoaded",restoreSession);
 
-
-async function addRemoteIce(candidate){
-  if(!peerConnection || !peer && peer.remoteDescription){
-    pendingIceCandidates.push(candidate); return;
-  }
-  try{await peer.addIceCandidate(new RTCIceCandidate(candidate));}catch(_){}
-}
-async function flushRemoteIce(){
-  while(pendingIceCandidates.length && peerConnection && peer && peer.remoteDescription){
-    const c=pendingIceCandidates.shift();
-    try{await peerConnection.addIceCandidate(new RTCIceCandidate(c));}catch(_){}
-  }
-}
 
 </script></body></html>
