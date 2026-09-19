@@ -305,7 +305,7 @@ app.post("/api/register", async (req, res) => {
     if (!avatar) avatar = "/stickers/1.webp";
     if (!verifyProtectedCode(username, accessCode)) return res.status(403).json({ error: protectedError(username) });
     if (password.length < 6) return res.status(400).json({ error: "Пароль должен быть не короче 6 символов" });
-    if (!/^\/stickers\/(?:[1-9]|1[0-2])\.png$/.test(avatar)) avatar = "/stickers/1.webp";
+    if (!/^\/stickers\/(?:[1-9]|1[0-2])\.webp$/.test(avatar)) avatar = "/stickers/1.webp";
     const hash = await bcrypt.hash(password, 10);
     const user = await one("INSERT INTO users(username,password_hash,avatar) VALUES($1,$2,$3) RETURNING id,username,avatar", [username, hash, avatar]);
     if (["brozi", "vlad", "vladmobile"].includes(username.toLowerCase())) {
@@ -357,8 +357,8 @@ app.patch("/api/profile", auth, async (req, res) => {
   const accessCode = String(req.body?.accessCode ?? "");
   if (protectedAccount(username) && !verifyProtectedCode(username, accessCode)) return res.status(403).json({ error: protectedError(username) });
   const bio = String(req.body?.bio ?? "").trim().slice(0, 160);
-  const avatar = String(req.body?.avatar ?? "").trim();
-  if (!/^\/stickers\/(?:[1-9]|1[0-2])\.png$/.test(avatar)) avatar = "/stickers/1.webp";
+  let avatar = String(req.body?.avatar ?? "").trim();
+  if (!/^\/stickers\/(?:[1-9]|1[0-2])\.webp$/.test(avatar)) avatar = "/stickers/1.webp";
   const exists = await one("SELECT id FROM users WHERE LOWER(username)=LOWER($1) AND id<>$2", [username, meUser.id]);
   const usernameToSave = exists ? meUser.username : username;
   const updated = await one(`UPDATE users SET username=$1,bio=$2,avatar=$3 WHERE id=$4
