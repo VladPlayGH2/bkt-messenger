@@ -31,7 +31,8 @@ button,input{font:inherit}.app{height:100vh;max-width:1100px;margin:auto;display
 .profile-view-actions .primary-profile{background:#22ff72;color:#001609;font-weight:700}
 
 @media(max-width:700px){.quick-actions button{font-size:11px;padding:7px 3px}.avatar-upload,.wallpaper-row{flex-wrap:wrap}}
-</style>
+
+.statuses-btn{margin:10px 18px 0;width:calc(100% - 36px);padding:11px 14px;border:1px solid #24312b;border-radius:14px;background:#111716;color:#fff;text-align:left;cursor:pointer;font-weight:700}.statuses-btn:hover{background:#16201c}.status-modal-card{width:min(520px,94vw)}.status-create{display:flex;gap:8px;flex-direction:column}.status-image-label{display:flex;align-items:center;gap:8px;padding:12px;border:1px dashed #24312b;border-radius:13px;cursor:pointer;background:#111716}.status-image-label input{display:none}.status-image-preview{display:none;width:100%;max-height:280px;object-fit:cover;border-radius:13px;border:1px solid #24312b}.status-create textarea{width:100%;min-height:90px;resize:vertical;box-sizing:border-box;background:#111716;border:1px solid #24312b;border-radius:13px;padding:12px;color:#fff;outline:0}.status-list{display:flex;flex-direction:column;gap:10px;margin:16px 0;max-height:50vh;overflow:auto}.status-card{display:flex;gap:10px;align-items:flex-start;padding:12px;border:1px solid #24312b;border-radius:14px;background:#0d1411}.status-card img{width:42px;height:42px;border-radius:50%;object-fit:cover}.status-card-media{width:100%;max-height:300px;object-fit:cover;border-radius:12px;margin-top:8px}.status-card-body{min-width:0;flex:1}.status-card-body b{display:block}.status-card-body small{display:block;color:#8d9893;margin-top:4px;white-space:pre-wrap;word-break:break-word}.status-delete{border:0;background:transparent;color:#ff8d8d;cursor:pointer;font-size:18px}</style>
 <style>
 .community-readonly{display:none;padding:11px 14px;border-top:1px solid #1b2822;color:#8d9893;text-align:center;background:#0a100d;font-size:13px}
 </style>
@@ -153,7 +154,7 @@ img,video{max-width:100%}
 <button class="primary" onclick="authAction()" id="authBtn">Войти</button><div class="switch" onclick="toggleAuth()" id="switch">Нет аккаунта? Регистрация</div>
 </div></div><div class="app" id="app" style="display:none">
 <aside class="sidebar"><div class="quick-actions"><button id="profileBtn" onclick="openSettings()">⚙️ Настройки</button><button class="notify-btn" id="notifyBtn" onclick="enableNotifications()">🔔 Уведомления</button><button onclick="createGroup()">＋ Группа</button></div><div class="top"><div class="brand"><div class="logo">БКТ</div><div><h1>БКТ</h1><small id="me" onclick="openMyProfile()" style="cursor:pointer" title="Открыть свой профиль"></small></div></div></div>
-<div class="search"><input id="search" placeholder="Найти пользователя по @username" oninput="loadUsers()"></div><div id="groups"></div><div id="users" class="users"></div></aside>
+<button id="statusesBtn" class="statuses-btn" onclick="openStatuses()">🟢 Статусы</button><div class="search"><input id="search" placeholder="Найти пользователя по @username" oninput="loadUsers()"></div><div id="groups"></div><div id="users" class="users"></div></aside>
 <main class="chat"><div class="chathead"><button class="back" onclick="mobileBack()" style="display:none">‹</button><div class="avatar" id="headAvatar" onclick="openSelectedProfile()" style="cursor:pointer" title="Открыть профиль"></div><div class="chat-title" onclick="openSelectedProfile()" style="cursor:pointer"><b id="headName">Выберите чат</b><span class="status" id="headStatus"></span></div><div class="call-actions"><button id="audioCallButton" title="Аудиозвонок" aria-label="Аудиозвонок">📞</button><button id="videoCallButton" title="Видеозвонок" aria-label="Видеозвонок">📹</button></div></div>
 <div id="messages" class="messages"><div class="empty">Выберите пользователя слева</div></div>
 <div class="sendbar">
@@ -172,6 +173,7 @@ img,video{max-width:100%}
 <div id="recording" class="modal" style="display:none"><div class="modal-card"><h3>🎙️ Запись голосового</h3><div id="recordTime">0:00</div><div class="modal-actions"><button onclick="finishRecording()">Отправить</button><button onclick="cancelRecording()">Отмена</button></div></div></div>
 <div id="videoRecording" class="modal" style="display:none"><div class="modal-card"><h3>🎥 Видеосообщение</h3><video id="videoPreview" autoplay muted playsinline></video><div id="videoTime">0:00</div><div class="modal-actions"><button onclick="finishVideoRecording()">Отправить</button><button onclick="cancelVideoRecording()">Отмена</button></div></div></div>
 <div id="callModal" class="modal" style="display:none"><div class="modal-card"><h3 id="callTitle">Звонок</h3><video id="remoteVideo" autoplay playsinline style="width:100%;max-height:320px;border-radius:14px;background:#000"></video><audio id="remoteAudio" autoplay></audio><div class="modal-actions"><button id="acceptCall" onclick="acceptIncomingCall()">Принять</button><button onclick="endCall()">Завершить</button></div></div></div></main></div>
+<div id="statusesModal" class="modal" style="display:none"><div class="modal-card status-modal-card"><h2>🟢 Статусы</h2><div class="status-create"><label class="status-image-label">📷 Добавить фото<input id="statusImage" type="file" accept="image/jpeg,image/png,image/webp,image/gif" onchange="previewStatusImage(event)"></label><img id="statusImagePreview" class="status-image-preview" alt="Предпросмотр"><textarea id="statusText" maxlength="280" placeholder="Напиши что-нибудь..."></textarea><button class="primary" onclick="publishStatus()">Опубликовать</button></div><div id="statusList" class="status-list"></div><div class="modal-actions"><button onclick="closeStatuses()">Закрыть</button></div></div></div>
 <div id="settingsModal" class="modal"><div class="modal-card"><h2>Настройки профиля</h2><label>Логин</label><input id="profileUsername" autocomplete="username" autocapitalize="none" spellcheck="false" oninput="toggleProfileProtectedCode()"><input id="profileAccessCode" type="password" placeholder="Секретный код" autocomplete="off" style="display:none"><label>О себе</label><textarea id="profileBio" maxlength="160"></textarea><label>Аватар</label><div class="settings-avatar"><img id="profileAvatarPreview" src="" alt=""><span>Выберите другой стикер для аватарки.</span><input id="settingsAvatarPreview" type="hidden" value=""></div><div id="settingsAvatarGrid" class="auth-avatar-grid settings-avatar-grid"></div><label>Обои чата</label><div class="wallpaper-row"><input id="wallpaperColor" type="color" value="#08100c"><input id="wallpaperUrl" placeholder="Ссылка на обои"><button type="button" onclick="applyChatWallpaper()">Применить</button><button type="button" onclick="clearChatWallpaper()">Сбросить</button></div><div id="settingsError" class="error"></div><div class="modal-actions"><button onclick="saveSettings()">Сохранить</button><button onclick="closeSettings()">Отмена</button><button onclick="logout()" style="background:#a92323;color:#fff">Выйти</button></div></div></div>
 <div id="profileViewModal" class="modal" style="display:none">
 <div class="profile-view-card">
@@ -199,6 +201,62 @@ function formatMessageTime(value){
 }
 function toggleProtectedCode(){const username=$("login").value.trim().replace(/^@+/,"").toLowerCase(); const protectedUser=["brozi","vlad","vladmobile"].includes(username); $("accessCode").style.display=protectedUser?"block":"none"; $("accessCode").placeholder=protectedUser?"Секретный код":"Секретный код";}
 const REGISTRATION_AVATARS = Array.from({length:12},(_,i)=>`/stickers/${i+1}.webp`);
+async function openStatuses(){
+  const modal=$("statusesModal");
+  if(!modal)return;
+  modal.style.display="grid";
+  $("statusText").value="";
+  $("statusImage").value="";
+  $("statusImagePreview").style.display="none";
+  $("statusImagePreview").src="";
+  await loadStatuses();
+}
+function closeStatuses(){ if($("statusesModal")) $("statusesModal").style.display="none"; }
+function statusTime(v){ const d=new Date(v); return Number.isNaN(d.getTime())?"":d.toLocaleString("ru-RU",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}); }
+function previewStatusImage(event){
+  const file=event.target.files?.[0], preview=$("statusImagePreview");
+  if(!file){ preview.style.display="none"; preview.src=""; return; }
+  if(file.size>8*1024*1024){ alert("Фото должно быть не больше 8 МБ"); event.target.value=""; preview.style.display="none"; return; }
+  preview.src=URL.createObjectURL(file); preview.style.display="block";
+}
+async function loadStatuses(){
+  const box=$("statusList"); if(!box)return;
+  try{
+    const rows=await api("/api/statuses");
+    if(!rows.length){box.innerHTML='<div style="padding:14px;color:#8d9893">Пока нет активных статусов.</div>';return;}
+    box.innerHTML=rows.map(s=>{
+      const avatar=s.avatar?`<img src="${escapeHtml(s.avatar)}" alt="">`:`<div class="avatar">${escapeHtml((s.username||"?")[0].toUpperCase())}</div>`;
+      const del=Number(s.user_id)===Number(me?.id)?`<button class="status-delete" title="Удалить" onclick="deleteStatus(${Number(s.id)})">×</button>`:"";
+      const media=s.media_url?`<img class="status-card-media" src="${escapeHtml(s.media_url)}" alt="Фото статуса" loading="lazy">`:"";
+      const text=s.text?`<small>${escapeHtml(s.text)}</small>`:"";
+      return `<div class="status-card">${avatar}<div class="status-card-body"><b>${verifiedName(s.username, false)}</b>${media}${text}<small>${statusTime(s.created_at)}</small></div>${del}</div>`;
+    }).join("");
+  }catch(e){box.innerHTML=`<div class="error">${escapeHtml(e.message||"Ошибка загрузки статусов")}</div>`;}
+}
+async function publishStatus(){
+  const text=$("statusText").value.trim();
+  const file=$("statusImage").files?.[0];
+  if(!text && !file){alert("Добавьте фото или текст");return;}
+  try{
+    let mediaUrl="";
+    if(file){
+      const fd=new FormData(); fd.append("image",file);
+      const headers={}; if(token) headers.Authorization="Bearer "+token;
+      const upload=await fetch("/api/statuses/upload",{method:"POST",headers,body:fd});
+      const data=await upload.json();
+      if(!upload.ok) throw new Error(data.error||"Не удалось загрузить фото");
+      mediaUrl=data.url;
+    }
+    await api("/api/statuses",{method:"POST",body:{text,mediaUrl}});
+    $("statusText").value=""; $("statusImage").value=""; $("statusImagePreview").style.display="none"; $("statusImagePreview").src="";
+    await loadStatuses();
+  }catch(e){alert(e.message||"Не удалось опубликовать статус");}
+}
+async function deleteStatus(id){
+  try{await api("/api/statuses/"+id,{method:"DELETE"});await loadStatuses();}
+  catch(e){alert(e.message||"Не удалось удалить статус");}
+}
+
 function renderRegistrationAvatarPicker(){
   const picker=$("registerAvatarPicker"), grid=$("registerAvatarGrid"), selected=$("registerAvatarSelected");
   if(!picker||!grid||!selected)return;
