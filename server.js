@@ -38,6 +38,15 @@ CREATE TABLE IF NOT EXISTS messages (
   FOREIGN KEY(sender_id) REFERENCES users(id),
   FOREIGN KEY(receiver_id) REFERENCES users(id)
 );
+CREATE TABLE IF NOT EXISTS call_sessions (
+  id TEXT PRIMARY KEY,
+  caller_id INTEGER NOT NULL,
+  callee_id INTEGER NOT NULL,
+  call_type TEXT NOT NULL,
+  offer_json TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'ringing',
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
 `);
 
 const app = express();
@@ -638,6 +647,23 @@ app.post("/api/groups/:id/messages", auth, (req,res) => {
 });
 
 
+app.get("/api/calls/pending", auth, (req,res) => {
+  const rows=db.prepare(`SELECT c.id,c.caller_id,c.callee_id,c.call_type,c.offer_json,c.created_at,u.username caller_username
+    FROM call_sessions c JOIN users u ON u.id=c.caller_id
+    WHERE c.callee_id=? AND c.status='ringing' ORDER BY c.created_at DESC LIMIT 5`).all(Number(req.user.id));
+  res.json(rows.map(r=>({...r, offer:JSON.parse(r.offer_json)})));
+});
+
+function addCallHistory(callerId, calleeId, callType){
+  const text=callType==="video"?"📹 Видеозвонок":"📞 Аудиозвонок";
+  const result=db.prepare("INSERT INTO messages(sender_id,receiver_id,text) VALUES(?,?,?)").run(callerId,calleeId,text);
+  return db.prepare(`SELECT m.id,m.sender_id,m.receiver_id,m.text,m.created_at,u.username sender_name FROM messages m JOIN users u ON u.id=m.sender_id WHERE m.id=?`).get(result.lastInsertRowid);
+}
+
+function notifyCall(calleeId, callerUsername, callType, callId){
+  pushNotification(calleeId,{type:"incoming-call",title:callType==="video"?"📹 Входящий видеозвонок":"📞 Входящий аудиозвонок",body:`@${callerUsername} звонит вам`,callId,callerUsername,callType}).catch(()=>{});
+}
+
 wss.on("connection", (ws, req) => {
   const url = new URL(req.url, "http://localhost");
   try {
@@ -649,18 +675,34 @@ wss.on("connection", (ws, req) => {
       try {
         const data = JSON.parse(raw.toString());
         if (data.type === "call-signal" && data.toUserId) {
-          const target = sockets.get(Number(data.toUserId));
-          if (!target || target.readyState !== 1) {
-            ws.send(JSON.stringify({type:"call-signal",signalType:"unavailable",toUserId:Number(data.toUserId)}));
+          const toUserId=Number(data.toUserId);
+          const callType=data.callType || "audio";
+          if(data.signalType === "offer") {
+            const callId=`${Date.now()}-${Math.random().toString(36).slice(2)}`;
+            db.prepare("INSERT INTO call_sessions(id,caller_id,callee_id,call_type,offer_json,status) VALUES(?,?,?,?,?,?)")
+              .run(callId,user.id,toUserId,callType,JSON.stringify(data.signal),"ringing");
+            const message=addCallHistory(user.id,toUserId,callType);
+            push(user.id,{type:"call-history",message});
+            push(toUserId,{type:"call-history",message});
+            notifyCall(toUserId,user.username,callType,callId);
+            const target=sockets.get(toUserId);
+            if(target && target.readyState===1) {
+              sendSignal(toUserId,{callId,fromUserId:user.id,fromUsername:user.username,signalType:"offer",signal:data.signal,callType});
+            }
+            else {
+              ws.send(JSON.stringify({type:"call-signal",signalType:"ringing",toUserId,callId}));
+            }
             return;
           }
-          sendSignal(data.toUserId, {
-            fromUserId: user.id,
-            fromUsername: user.username,
-            signalType: data.signalType,
-            signal: data.signal,
-            callType: data.callType || "audio"
-          });
+          const target=sockets.get(toUserId);
+          if(!target || target.readyState!==1) {
+            if(data.signalType === "hangup" && data.callId) db.prepare("UPDATE call_sessions SET status='ended' WHERE id=?").run(data.callId);
+            ws.send(JSON.stringify({type:"call-signal",signalType:"unavailable",toUserId}));
+            return;
+          }
+          if(data.signalType === "answer" && data.callId) db.prepare("UPDATE call_sessions SET status='accepted' WHERE id=?").run(data.callId);
+          if(data.signalType === "hangup" && data.callId) db.prepare("UPDATE call_sessions SET status='ended' WHERE id=?").run(data.callId);
+          sendSignal(toUserId,{callId:data.callId,fromUserId:user.id,fromUsername:user.username,signalType:data.signalType,signal:data.signal,callType});
         }
       } catch (e) {
         console.error("WebSocket message error:", e);

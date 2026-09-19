@@ -13,7 +13,12 @@ button,input{font:inherit}.app{height:100vh;max-width:1100px;margin:auto;display
 .verified-badge{display:inline-grid;place-items:center;width:17px;height:17px;margin-left:4px;border-radius:50%;background:#2388ff;color:#fff;font-size:11px;font-weight:900;vertical-align:middle}
 .group-item{padding:12px 16px;border-radius:12px;cursor:pointer;margin:3px 10px}
 .group-item:hover{background:#142019}
-.verified-badge{display:inline-grid;place-items:center;width:17px;height:17px;margin-left:4px;border-radius:50%;background:#2388ff;color:#fff;font-size:11px;font-weight:900;vertical-align:middle}.group-item{padding:10px 18px;cursor:pointer;border-bottom:1px solid #17211c}.modal{position:fixed;inset:0;background:rgba(0,0,0,.7);display:none;place-items:center;z-index:20}.modal-card{width:min(420px,92vw);background:#0c1110;border:1px solid #24312b;border-radius:18px;padding:22px}.modal-card input,.modal-card textarea{width:100%;background:#111716;border:1px solid #24312b;border-radius:10px;padding:11px;color:#fff;margin:6px 0 12px}.modal-actions{display:flex;gap:8px}.modal-actions button{flex:1;padding:11px;border:0;border-radius:10px;cursor:pointer}</style>
+.verified-badge{display:inline-grid;place-items:center;width:17px;height:17px;margin-left:4px;border-radius:50%;background:#2388ff;color:#fff;font-size:11px;font-weight:900;vertical-align:middle}.group-item{padding:10px 18px;cursor:pointer;border-bottom:1px solid #17211c}.modal{position:fixed;inset:0;background:rgba(0,0,0,.7);display:none;place-items:center;z-index:20}.modal-card{width:min(420px,92vw);background:#0c1110;border:1px solid #24312b;border-radius:18px;padding:22px}.modal-card input,.modal-card textarea{width:100%;background:#111716;border:1px solid #24312b;border-radius:10px;padding:11px;color:#fff;margin:6px 0 12px}.modal-actions{display:flex;gap:8px}.modal-actions button{flex:1;padding:11px;border:0;border-radius:10px;cursor:pointer}
+.chat-title{min-width:0;flex:1}.chat-title b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.call-actions{display:flex;gap:6px;margin-left:auto}.call-actions button{width:42px;height:42px;min-width:42px;border:1px solid #24312b;border-radius:12px;background:#111716;color:#fff;cursor:pointer}.call-actions button:hover{background:#17231c}.call-actions button:disabled{opacity:.45;cursor:not-allowed}
+.call-actions .active{background:#0b6630;border-color:#22ff72}
+.call-history{opacity:.8;font-style:italic}
+@media(max-width:700px){.chathead{padding:8px 10px;gap:8px}.call-actions button{width:40px;height:40px;min-width:40px;padding:0}.chat-title b{font-size:14px}.chat-title .status{font-size:11px}}
+</style>
 <style id="bkt-mobile-css">
 html,body{width:100%;height:100%;margin:0}
 *{box-sizing:border-box}
@@ -61,7 +66,6 @@ img,video{max-width:100%}
     padding:8px 0;
   }
   /* На узком экране оставляем место для поля и всегда видимой кнопки «Отправить». */
-  #audioCallButton,#videoCallButton{display:none}
   .send{
     display:grid!important;
     place-items:center;
@@ -94,13 +98,11 @@ img,video{max-width:100%}
 </div></div><div class="app" id="app" style="display:none">
 <aside class="sidebar"><button id="profileBtn" onclick="openSettings()" style="margin:0 18px 10px;padding:10px;border:1px solid #24312b;background:#111716;color:#fff;border-radius:12px;cursor:pointer">⚙️ Настройки профиля</button><button class="notify-btn" id="notifyBtn" onclick="enableNotifications()">🔔 Включить уведомления</button><button onclick="createGroup()" style="margin:0 18px 10px;padding:10px;border:0;border-radius:12px;cursor:pointer">＋ Создать группу</button><div class="top"><div class="brand"><div class="logo">БКТ</div><div><h1>БКТ</h1><small id="me"></small></div></div></div>
 <div class="search"><input id="search" placeholder="Найти пользователя по @username" oninput="loadUsers()"></div><div id="groups"></div><div id="users" class="users"></div></aside>
-<main class="chat"><div class="chathead"><button class="back" onclick="mobileBack()" style="display:none">‹</button><div class="avatar" id="headAvatar">БКТ</div><div><b id="headName">Выберите чат</b><span class="status" id="headStatus"></span></div></div>
+<main class="chat"><div class="chathead"><button class="back" onclick="mobileBack()" style="display:none">‹</button><div class="avatar" id="headAvatar">БКТ</div><div class="chat-title"><b id="headName">Выберите чат</b><span class="status" id="headStatus"></span></div><div class="call-actions"><button id="audioCallButton" title="Аудиозвонок" aria-label="Аудиозвонок">📞</button><button id="videoCallButton" title="Видеозвонок" aria-label="Видеозвонок">📹</button></div></div>
 <div id="messages" class="messages"><div class="empty">Выберите пользователя слева</div></div>
 <div class="sendbar">
 <button id="voiceButton" title="Голосовое сообщение">🎙️</button>
 <button id="videoNoteButton" title="Видеосообщение">🎥</button>
-<button id="audioCallButton" title="Аудиозвонок">📞</button>
-<button id="videoCallButton" title="Видеозвонок">📹</button>
 <input id="text" placeholder="Сообщение..." onkeydown="if(event.key==='Enter')send()">
 <button class="send" onclick="send()">➤</button>
 </div>
@@ -234,15 +236,29 @@ async function loadUserAndOpen(userId){
   if(u) openUser(u);
 }
 
+async function loadPendingCalls(){
+  try{
+    const calls=await api("/api/calls/pending");
+    if(Array.isArray(calls) && calls.length && !incomingCall){
+      const c=calls[0];
+      handleCallSignal({type:"call-signal",signalType:"offer",callId:c.id,fromUserId:c.caller_id,fromUsername:c.caller_username,signal:c.offer,callType:c.call_type});
+    }
+  }catch(e){}
+}
+
 function connectSocket(){
   try{ if(socket) socket.close(); }catch(_){}
   const scheme=location.protocol==="https:"?"wss://":"ws://";
   socket=new WebSocket(scheme+location.host+"/?token="+encodeURIComponent(token));
-  socket.onopen=()=>{};
+  socket.onopen=()=>{ loadPendingCalls(); };
   socket.onmessage=e=>{
     try{
       const d=JSON.parse(e.data);
       if(d.type==="call-signal"){handleCallSignal(d);return;}
+      if(d.type==="call-history" && d.message) {
+        if(selected && (Number(d.message.sender_id)===Number(selected.id) || Number(d.message.receiver_id)===Number(selected.id))) renderMessage(d.message);
+        return;
+      }
       if(d.type==="message" && d.message) {
         notifyIncomingMessage(d.message);
         if(selected && (Number(d.message.sender_id)===Number(selected.id) || Number(d.message.receiver_id)===Number(selected.id)))
@@ -354,7 +370,9 @@ function renderMessage(m){
     d.appendChild(video);
   } else {
     const body=document.createElement("div");
-    body.textContent=m.text; d.appendChild(body);
+    body.textContent=m.text;
+    if(String(m.text).startsWith("📞") || String(m.text).startsWith("📹")) d.classList.add("call-history");
+    d.appendChild(body);
   }
 
   const meta=document.createElement("div");
@@ -578,7 +596,7 @@ async function send(){
 }
 
 
-let peer=null, localCallStream=null, incomingCall=null, callType="audio", pendingIceCandidates=[], incomingIceCandidates=[], callPeerUserId=null;
+let peer=null, localCallStream=null, incomingCall=null, callType="audio", pendingIceCandidates=[], incomingIceCandidates=[], callPeerUserId=null, localCallId=null;
 
 function callSocket(data){
   if(!socket || socket.readyState!==WebSocket.OPEN){
@@ -589,35 +607,22 @@ function callSocket(data){
 
 async function startCall(type){
   if(!selected)return alert("Сначала выберите чат");
-  if(!navigator.mediaDevices || !window.RTCPeerConnection)
-    return alert("Звонки не поддерживаются этим браузером");
+  if(!navigator.mediaDevices || !window.RTCPeerConnection) return alert("Звонки не поддерживаются этим браузером");
+  if(!window.isSecureContext) return alert("Для звонков нужен HTTPS (или localhost).");
   try{
     callType=type;
     await loadRtcConfig();
-    localCallStream=await navigator.mediaDevices.getUserMedia(
-      type==="video"?{audio:true,video:true}:{audio:true}
-    );
-    peer=createPeer();
-    pendingIceCandidates=[];
-    incomingIceCandidates=[];
-    callPeerUserId=Number(selected.id);
+    localCallStream=await navigator.mediaDevices.getUserMedia(type==="video"?{audio:true,video:true}:{audio:true});
+    peer=createPeer(); pendingIceCandidates=[]; incomingIceCandidates=[]; callPeerUserId=Number(selected.id);
     localCallStream.getTracks().forEach(t=>peer.addTrack(t,localCallStream));
     $("callTitle").textContent=type==="video"?"📹 Видеозвонок":"📞 Аудиозвонок";
     $("callModal").style.display="grid";
-    if(type==="video"){
-      $("remoteVideo").style.display="block";
-      $("remoteVideo").muted=true;
-      $("remoteVideo").srcObject=localCallStream;
-    }else{
-      $("remoteVideo").style.display="none";
-    }
-    const offer=await peer.createOffer();
-    await peer.setLocalDescription(offer);
+    $("acceptCall").style.display="none";
+    if(type==="video"){ $("remoteVideo").style.display="block"; $("remoteVideo").muted=true; $("remoteVideo").srcObject=localCallStream; }
+    else $("remoteVideo").style.display="none";
+    const offer=await peer.createOffer(); await peer.setLocalDescription(offer);
     callSocket({type:"call-signal",toUserId:Number(selected.id),signalType:"offer",signal:{sdp:peer.localDescription.sdp,type:peer.localDescription.type},callType:type});
-  }catch(e){
-    console.error(e); endCall(false);
-    alert("Не удалось начать звонок. Разреши доступ к микрофону/камере.");
-  }
+  }catch(e){ console.error(e); endCall(false); alert("Не удалось начать звонок. Разреши доступ к микрофону/камере."); }
 }
 
 let rtcConfig={iceServers:[
@@ -657,13 +662,14 @@ async function acceptIncomingCall(){
     );
     peer=createPeer();
     callPeerUserId=Number(from);
+    localCallId=incomingCall.callId||null;
     localCallStream.getTracks().forEach(t=>peer.addTrack(t,localCallStream));
     await peer.setRemoteDescription(new RTCSessionDescription(incomingCall.signal));
     for(const c of incomingIceCandidates){try{await peer.addIceCandidate(new RTCIceCandidate(c))}catch(e){}}
     incomingIceCandidates=[];
     const answer=await peer.createAnswer();
     await peer.setLocalDescription(answer);
-    callSocket({type:"call-signal",toUserId:from,signalType:"answer",signal:{sdp:peer.localDescription.sdp,type:peer.localDescription.type},callType});
+    callSocket({type:"call-signal",toUserId:from,signalType:"answer",callId:localCallId,signal:{sdp:peer.localDescription.sdp,type:peer.localDescription.type},callType});
     incomingCall=null;
     $("acceptCall").style.display="none";
     $("callTitle").textContent=callType==="video"?"📹 Видеозвонок":"📞 Аудиозвонок";
@@ -673,14 +679,28 @@ async function acceptIncomingCall(){
   }
 }
 
+function showIncomingCallNotification(d){
+  const title=d.callType==="video"?"📹 Входящий видеозвонок":"📞 Входящий аудиозвонок";
+  const body=`@${d.fromUsername||"Пользователь"} звонит вам`;
+  const toast=$("bktToast"); if(toast){ toast.innerHTML=`<b>${escapeHtml(title)}</b><span>${escapeHtml(body)}</span>`; toast.style.display="block"; clearTimeout(toastTimer); toastTimer=setTimeout(()=>toast.style.display="none",8000); }
+  if("Notification" in window && Notification.permission==="granted") {
+    try { const n=new Notification(title,{body,tag:"bkt-call-"+d.fromUserId,requireInteraction:true,icon:"/icon.svg",data:{call:true}}); n.onclick=()=>{window.focus(); n.close();}; } catch(e){}
+  }
+}
+
 async function handleCallSignal(d){
   if(d.signalType==="offer"){
     incomingCall=d;
     callType=d.callType||"audio";
+    callPeerUserId=Number(d.fromUserId);
+    localCallId=d.callId||null;
     $("callTitle").textContent=`Входящий ${callType==="video"?"видеозвонок":"аудиозвонок"} от @${d.fromUsername||""}`;
     $("acceptCall").style.display="block";
     $("remoteVideo").style.display=callType==="video"?"block":"none";
     $("callModal").style.display="grid";
+    showIncomingCallNotification(d);
+  }else if(d.signalType==="ringing"){
+    localCallId=d.callId||null;
   }else if(d.signalType==="answer" && peer){
     await peer.setRemoteDescription(new RTCSessionDescription(d.signal));
   }else if(d.signalType==="ice"){
@@ -702,7 +722,7 @@ function endCall(notify=true){
     callSocket({type:"call-signal",toUserId:Number(callPeerUserId),signalType:"hangup",signal:{}});
   try{if(peer)peer.close()}catch(e){}
   if(localCallStream)localCallStream.getTracks().forEach(t=>t.stop());
-  peer=null;localCallStream=null;incomingCall=null;pendingIceCandidates=[];incomingIceCandidates=[];callPeerUserId=null;
+  peer=null;localCallStream=null;incomingCall=null;pendingIceCandidates=[];incomingIceCandidates=[];callPeerUserId=null;localCallId=null;
   $("callModal").style.display="none";
   $("remoteVideo").srcObject=null;
   $("remoteAudio").srcObject=null;
