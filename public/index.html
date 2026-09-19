@@ -281,6 +281,40 @@ img,video{max-width:100%}
 <style id="language-settings-style">
 #languageSelect{font-size:16px;min-height:44px}
 </style>
+
+<style id="phone-statuses-style">
+@media (max-width: 700px){
+  .tiktok-status-modal{padding:0!important}
+  .tiktok-feed-shell{width:100vw!important;height:100dvh!important;border-radius:0!important}
+  .tiktok-status-feed{height:100dvh!important}
+  .tiktok-status-slide{height:100dvh!important;min-height:100dvh!important}
+  .tiktok-status-photo{object-fit:cover!important;width:100%!important;height:100%!important}
+  .tiktok-feed-top{padding-top:max(10px,env(safe-area-inset-top))!important}
+  .tiktok-status-composer{
+    width:100vw!important;max-width:none!important;max-height:92dvh!important;
+    position:fixed!important;left:0!important;bottom:0!important;
+    border-radius:22px 22px 0 0!important;
+    padding:18px 16px max(18px,env(safe-area-inset-bottom))!important;
+  }
+  .phone-status-source{display:grid!important;grid-template-columns:1fr 1fr;gap:10px;margin:10px 0 14px}
+  .phone-status-source button{
+    min-height:54px;border:0;border-radius:14px;font-size:16px;font-weight:600;
+    touch-action:manipulation;
+  }
+  .phone-status-source button:active{transform:scale(.98)}
+  .phone-status-preview{
+    width:100%;max-height:52dvh;object-fit:contain;border-radius:14px;background:#111;display:block
+  }
+  #statusPhotoInput,#statusCameraInput{display:none!important}
+  .phone-status-publish{
+    width:100%;min-height:52px;border:0;border-radius:14px;font-size:17px;font-weight:700;
+    margin-top:10px;touch-action:manipulation;
+  }
+  .tiktok-status-composer textarea{font-size:16px!important;min-height:82px!important}
+}
+.phone-status-source{display:none}
+</style>
+
 </head>
 <body>
 <div id="bktToast" onclick="openToastChat()"></div>
@@ -328,7 +362,12 @@ img,video{max-width:100%}
     </div>
   </div>
 </div>
-<div id="statusComposerModal" class="modal" style="display:none">
+<div id="statusComposerModal" class="modal" style="display:none"><div class="phone-status-source">
+          <button type="button" onclick="document.getElementById('statusCameraInput').click()">📷 Камера</button>
+          <button type="button" onclick="document.getElementById('statusPhotoInput').click()">🖼️ Галерея</button>
+        </div>
+        <input id="statusCameraInput" type="file" accept="image/*" capture="environment" hidden>
+        
   <div class="modal-card status-modal-card tiktok-status-card">
     <div class="tiktok-status-head"><h2>Новый статус</h2><button class="status-x" onclick="closeStatusComposer()">×</button></div>
     <div class="status-create tiktok-status-create">
@@ -338,7 +377,7 @@ img,video{max-width:100%}
       <div id="statusComposerPreview" class="status-composer-preview">
         <img id="statusImagePreview" class="status-image-preview" alt="Предпросмотр">
         <div class="status-caption-overlay"><span id="statusCaptionPreview">Подпись к фото…</span></div>
-      </div>
+      </div><input id="statusPhotoInput" type="file" accept="image/*" hidden>
       <textarea id="statusText" maxlength="280" placeholder="Добавьте подпись…"></textarea>
       <div class="status-counter"><span>Фото + подпись</span><span id="statusTextCounter">0/280</span></div>
       <button class="primary status-publish-button" onclick="publishStatus()">Опубликовать статус</button>
@@ -1463,4 +1502,34 @@ document.addEventListener("click", function(e){
 })();
 </script>
 
+
+<script id="phone-status-inputs">
+(function(){
+  function wire(id){
+    const el=document.getElementById(id);
+    if(!el || el.dataset.wired) return;
+    el.dataset.wired="1";
+    el.addEventListener("change",function(){
+      if(!this.files || !this.files[0]) return;
+      // Use the existing status preview logic when available.
+      if(typeof window.previewStatusImage === "function"){
+        const dt=new DataTransfer();
+        dt.items.add(this.files[0]);
+        const target=document.getElementById("statusPhotoInput");
+        if(target && target!==this){
+          try{ target.files=dt.files; }catch(e){}
+        }
+        window.previewStatusImage({target:this});
+      } else {
+        const img=document.querySelector(".phone-status-preview,#statusPreview");
+        if(img) img.src=URL.createObjectURL(this.files[0]);
+      }
+    });
+  }
+  function init(){wire("statusPhotoInput");wire("statusCameraInput");}
+  if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",init);
+  else init();
+  new MutationObserver(init).observe(document.body,{childList:true,subtree:true});
+})();
+</script>
 </body></html>
