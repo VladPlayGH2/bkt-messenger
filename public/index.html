@@ -6,7 +6,7 @@
 <style>
 *{box-sizing:border-box}body{margin:0;background:#020403;color:#f4f7f5;font:15px Arial,sans-serif}
 button,input{font:inherit}.app{height:100vh;max-width:1100px;margin:auto;display:grid;grid-template-columns:330px 1fr;background:#050807}
-.sidebar{border-right:1px solid #1b2822;display:flex;flex-direction:column}.top{padding:22px 20px 12px}.brand{display:flex;gap:12px;align-items:center}.logo{width:50px;height:50px;border-radius:15px;background:linear-gradient(145deg,#2aff78,#07963b);color:#031108;display:grid;place-items:center;font-weight:900}.brand h1{margin:0;font-size:24px}.brand small{color:#8d9893}.search{margin:12px 18px;background:#111716;border:1px solid #202b27;border-radius:16px;padding:12px}.search input,.auth input{width:100%;background:transparent;border:0;outline:0;color:#fff}.users{overflow:auto}.user{padding:14px 18px;border-bottom:1px solid #17211c;cursor:pointer}.user:hover,.user.active{background:#0d1812}.dot{color:#22ff72}.chat{display:flex;flex-direction:column;min-width:0}.chathead{height:76px;padding:12px 18px;border-bottom:1px solid #1b2822;display:flex;align-items:center;gap:12px}.chathead b{display:block}.status{color:#22ff72;font-size:12px}.avatar{width:45px;height:45px;border-radius:50%;background:#0c6630;display:grid;place-items:center;font-weight:bold}.messages{flex:1;overflow:auto;padding:24px;background:radial-gradient(circle at 80% 20%,rgba(0,255,90,.05),transparent 30%)}.bubble{max-width:70%;padding:10px 13px;margin:0 0 10px;border-radius:15px;background:#111816}.bubble.me{margin-left:auto;background:#0b6630}.bubble time{display:block;text-align:right;color:#a1b0a7;font-size:10px;margin-top:4px}.sendbar{display:flex;gap:8px;padding:12px;border-top:1px solid #1b2822}.sendbar input{flex:1;background:#111716;border:1px solid #24312b;border-radius:22px;padding:12px 15px;color:white;outline:0}.send{border:0;border-radius:50%;width:45px;background:#22ff72;cursor:pointer}.empty{margin:auto;text-align:center;color:#8d9893}.auth{position:fixed;inset:0;background:#020403;display:grid;place-items:center}.card{width:min(390px,92vw);background:#0c1110;border:1px solid #1b2822;border-radius:22px;padding:28px;box-shadow:0 0 60px rgba(0,255,90,.08)}.card h2{margin-top:0}.auth input{background:#111716;border:1px solid #24312b;border-radius:13px;padding:13px;margin:7px 0}.primary{width:100%;border:0;border-radius:13px;padding:13px;margin-top:10px;background:#22ff72;color:#001609;font-weight:bold;cursor:pointer}.switch{color:#22ff72;text-align:center;cursor:pointer;margin-top:16px}.error{color:#ff8d8d;min-height:20px}@media(max-width:700px){.app{grid-template-columns:1fr}.sidebar{display:flex}.chat{display:none}.app.mobile-chat .sidebar{display:none}.app.mobile-chat .chat{display:flex}.chathead .back{display:block!important}.chathead{height:68px}.bubble{max-width:82%}}
+.sidebar{border-right:1px solid #1b2822;display:flex;flex-direction:column}.top{padding:22px 20px 12px}.brand{display:flex;gap:12px;align-items:center}.logo{width:50px;height:50px;border-radius:15px;background:linear-gradient(145deg,#2aff78,#07963b);color:#031108;display:grid;place-items:center;font-weight:900}.brand h1{margin:0;font-size:24px}.brand small{color:#8d9893}.search{margin:12px 18px;background:#111716;border:1px solid #202b27;border-radius:16px;padding:12px}.search input,.auth input{width:100%;background:transparent;border:0;outline:0;color:#fff}.users{overflow:auto}.user{padding:14px 18px;border-bottom:1px solid #17211c;cursor:pointer}.user:hover,.user.active{background:#0d1812}.dot{color:#22ff72}.chat{display:flex;flex-direction:column;min-width:0}.chathead{height:76px;padding:12px 18px;border-bottom:1px solid #1b2822;display:flex;align-items:center;gap:12px}.chathead b{display:block}.status{color:#22ff72;font-size:12px}.avatar{width:45px;height:45px;border-radius:50%;background:#0c6630;display:grid;place-items:center;font-weight:bold}.messages{flex:1;overflow:auto;padding:24px;background:radial-gradient(circle at 80% 20%,rgba(0,255,90,.05),transparent 30%)}.bubble{max-width:70%;padding:10px 13px;margin:0 0 10px;border-radius:15px;background:#111816}.bubble.me{margin-left:auto;background:#0b6630}.bubble time{display:block;text-align:right;color:#a1b0a7;font-size:10px;margin-top:4px}.message-status{display:inline-block;font-size:11px;line-height:1;margin-left:2px;vertical-align:middle}.message-status.unread{color:#8f9893}.message-status.read{color:#ff9800}.presence-dot{font-size:10px;margin-right:4px}.presence-dot.online{color:#22ff72}.presence-dot.offline{color:#68736d}.sendbar{display:flex;gap:8px;padding:12px;border-top:1px solid #1b2822}.sendbar input{flex:1;background:#111716;border:1px solid #24312b;border-radius:22px;padding:12px 15px;color:white;outline:0}.send{border:0;border-radius:50%;width:45px;background:#22ff72;cursor:pointer}.empty{margin:auto;text-align:center;color:#8d9893}.auth{position:fixed;inset:0;background:#020403;display:grid;place-items:center}.card{width:min(390px,92vw);background:#0c1110;border:1px solid #1b2822;border-radius:22px;padding:28px;box-shadow:0 0 60px rgba(0,255,90,.08)}.card h2{margin-top:0}.auth input{background:#111716;border:1px solid #24312b;border-radius:13px;padding:13px;margin:7px 0}.primary{width:100%;border:0;border-radius:13px;padding:13px;margin-top:10px;background:#22ff72;color:#001609;font-weight:bold;cursor:pointer}.switch{color:#22ff72;text-align:center;cursor:pointer;margin-top:16px}.error{color:#ff8d8d;min-height:20px}@media(max-width:700px){.app{grid-template-columns:1fr}.sidebar{display:flex}.chat{display:none}.app.mobile-chat .sidebar{display:none}.app.mobile-chat .chat{display:flex}.chathead .back{display:block!important}.chathead{height:68px}.bubble{max-width:82%}}
 #videoPreview{width:110px;height:110px;border-radius:50%;object-fit:cover;background:#020403}
 #videoRecording{align-items:center}
 @media(max-width:700px){.app.mobile-chat .sidebar{display:none}.app.mobile-chat .chat{display:flex}}
@@ -866,47 +866,96 @@ async function loadPendingCalls(){
     const calls=await api("/api/calls/pending");
     if(Array.isArray(calls) && calls.length && !incomingCall){
       const c=calls[0];
-      handleCallSignal({type:"call-signal",signalType:"offer",callId:c.id,fromUserId:c.caller_id,fromUsername:c.caller_username,signal:c.offer,callType:c.call_type});
+      handleCallSignal({type:"call-signal",signalType:"offer",callId:c.id,fromUserId:c.caller_id,fromUsername:c.caller_username,signal:c.offer,callType:c.call_type,iceCandidates:c.iceCandidates||[]});
     }
   }catch(e){}
 }
 
+let callPollTimer=null;
+let socketReconnectTimer=null;
+let socketReconnectDelay=1000;
+const presenceState=new Map();
+function startCallPolling(){
+  clearInterval(callPollTimer);
+  callPollTimer=setInterval(async()=>{
+    if(document.hidden && !incomingCall) return;
+    await loadPendingCalls();
+  }, 3000);
+}
+
+function updatePresenceUI(userId, online){
+  const id=Number(userId);
+  presenceState.set(id, !!online);
+  document.querySelectorAll('[data-user-id=\"'+id+'\"]').forEach(row=>{
+    const dot=row.querySelector('.presence-dot');
+    const label=row.querySelector('.presence-label');
+    if(dot){dot.className='presence-dot '+(online?'online':'offline');dot.textContent='●';}
+    if(label) label.innerHTML='<span class="presence-dot '+(online?'online':'offline')+'">●</span>'+(online?'онлайн':'не в сети');
+  });
+  if(selected && Number(selected.id)===id){
+    selected.online=!!online;
+    const hs=$('headStatus');
+    if(hs) hs.innerHTML=online?' <span class="presence-dot online">●</span> онлайн':' <span class="presence-dot offline">●</span> не в сети';
+  }
+}
+
+function applyOnlineList(ids){
+  presenceState.clear();
+  (Array.isArray(ids)?ids:[]).forEach(id=>presenceState.set(Number(id),true));
+  document.querySelectorAll('[data-user-id]').forEach(row=>{
+    const id=Number(row.getAttribute('data-user-id'));
+    updatePresenceUI(id,presenceState.get(id)===true);
+  });
+}
+
+function setMessageRead(id, read){
+  const el=document.getElementById('m'+id);
+  const status=el?.querySelector('.message-status');
+  if(status){status.className='message-status '+(read?'read':'unread');status.textContent='●';status.title=read?'Прочитано':'Отправлено, не прочитано';}
+}
+
+async function markSelectedChatRead(){
+  if(!selected || activeGroup || document.visibilityState!=='visible') return;
+  try{
+    const result=await api('/api/messages/'+selected.id+'/read',{method:'POST'});
+    (result.ids||[]).forEach(id=>setMessageRead(id,true));
+  }catch(e){console.debug('read receipt:',e.message)}
+}
+
+function scheduleSocketReconnect(){
+  if(socketReconnectTimer || !token) return;
+  socketReconnectTimer=setTimeout(()=>{socketReconnectTimer=null;connectSocket();},socketReconnectDelay);
+  socketReconnectDelay=Math.min(socketReconnectDelay*2,10000);
+}
+
 function connectSocket(){
   try{ if(socket) socket.close(); }catch(_){}
-  const scheme=location.protocol==="https:"?"wss://":"ws://";
-  socket=new WebSocket(scheme+location.host+"/?token="+encodeURIComponent(token));
-  socket.onopen=()=>{ loadPendingCalls(); };
+  const scheme=location.protocol==='https:'?'wss://':'ws://';
+  socket=new WebSocket(scheme+location.host+'/?token='+encodeURIComponent(token));
+  socket.onopen=()=>{socketReconnectDelay=1000;loadPendingCalls();startCallPolling();};
   socket.onmessage=e=>{
     try{
       const d=JSON.parse(e.data);
-      if(d.type==="call-signal"){handleCallSignal(d);return;}
-      if(d.type==="call-history" && d.message) {
-        if(selected && (Number(d.message.sender_id)===Number(selected.id) || Number(d.message.receiver_id)===Number(selected.id))) renderMessage(d.message);
-        return;
-      }
-      if(d.type==="message" && d.message) {
+      if(d.type==='connected'){applyOnlineList(d.onlineUserIds||[]);if(selected)updatePresenceUI(selected.id,presenceState.get(Number(selected.id))===true);return;}
+      if(d.type==='presence'){updatePresenceUI(d.userId,d.online);return;}
+      if(d.type==='messages-read'){(d.messageIds||[]).forEach(id=>setMessageRead(id,true));return;}
+      if(d.type==='call-signal'){handleCallSignal(d);return;}
+      if(d.type==='call-history' && d.message){if(selected&&(Number(d.message.sender_id)===Number(selected.id)||Number(d.message.receiver_id)===Number(selected.id)))renderMessage(d.message);return;}
+      if(d.type==='message' && d.message){
         notifyIncomingMessage(d.message);
-        if(selected && (Number(d.message.sender_id)===Number(selected.id) || Number(d.message.receiver_id)===Number(selected.id)))
+        if(selected&&(Number(d.message.sender_id)===Number(selected.id)||Number(d.message.receiver_id)===Number(selected.id))){
           renderMessage(d.message);
-        if(Number(d.message.sender_id)!==Number(me?.id)) maybeOpenBktGame(d.message.text, true);
+          if(Number(d.message.sender_id)!==Number(me?.id)&&document.visibilityState==='visible')markSelectedChatRead();
+        }
+        if(Number(d.message.sender_id)!==Number(me?.id))maybeOpenBktGame(d.message.text,true);
         return;
       }
-      if(d.type==="message-deleted"){
-        const el=document.getElementById("m"+d.messageId); if(el) el.remove();
-        return;
-      }
-      if(d.type==="group-message" && d.message && activeGroup && Number(d.message.group_id)===Number(activeGroup.id)){
-        renderGroupMessage(d.message);
-        if(Number(d.message.sender_id)!==Number(me?.id)) maybeOpenBktGame(d.message.text, true);
-        return;
-      }
-      if(d.type==="group-message-deleted"){
-        const el=document.getElementById("gm"+d.messageId); if(el) el.remove();
-        return;
-      }
-    }catch(err){console.error("WebSocket message error:",err);}
+      if(d.type==='message-deleted'){const el=document.getElementById('m'+d.messageId);if(el)el.remove();return;}
+      if(d.type==='group-message'&&d.message&&activeGroup&&Number(d.message.group_id)===Number(activeGroup.id)){renderGroupMessage(d.message);if(Number(d.message.sender_id)!==Number(me?.id))maybeOpenBktGame(d.message.text,true);return;}
+      if(d.type==='group-message-deleted'){const el=document.getElementById('gm'+d.messageId);if(el)el.remove();return;}
+    }catch(err){console.error('WebSocket message error:',err);}
   };
-  socket.onclose=()=>{};
+  socket.onclose=()=>{if(token)scheduleSocketReconnect();};
   socket.onerror=()=>{};
 }
 
@@ -936,14 +985,17 @@ async function loadUsers(){
     for (const u of list) {
       const row = document.createElement("div");
       row.className = "user";
+      row.dataset.userId = String(u.id);
       row.onclick = () => openUser(u);
       const initial = escapeHtml((u.username || "?")[0].toUpperCase());
       const avatar = u.avatar
         ? `<img src="${escapeHtml(u.avatar)}" style="width:42px;height:42px;border-radius:50%;object-fit:cover">`
         : initial;
+      const online = presenceState.has(Number(u.id)) ? presenceState.get(Number(u.id)) : !!u.online;
+      presenceState.set(Number(u.id), online);
       row.innerHTML =
         `<div class="avatar">${avatar}</div>` +
-        `<div><b>${verifiedName(u.username, !!u.verified)}</b><small>@${escapeHtml(u.username)}</small></div>`;
+        `<div><b>${verifiedName(u.username, !!u.verified)}</b><small>@${escapeHtml(u.username)}</small><small class="presence-label" style="display:block;color:${online?'#22ff72':'#68736d'}"> <span class="presence-dot ${online?'online':'offline'}">●</span>${online?'онлайн':'не в сети'}</small></div>`;
       box.appendChild(row);
     }
   } catch(e) {
@@ -998,7 +1050,7 @@ async function deleteGroupMessage(id){
   try{await api("/api/groups/messages/"+id,{method:"DELETE"});const el=$("gm"+id);if(el)el.remove();}
   catch(e){alert(e.message||"Не удалось удалить сообщение");}
 }
-async function openUser(u){activeGroup=null;selected=u;$("app").classList.add("mobile-chat");$("headName").textContent=u.username;$("headAvatar").textContent=u.username[0].toUpperCase();$("headStatus").textContent=" ● онлайн";updateComposerAccess();let ms=await api("/api/messages/"+u.id);$("messages").innerHTML="";ms.forEach(renderMessage);$("messages").scrollTop=$("messages").scrollHeight;loadUsers()}
+async function openUser(u){activeGroup=null;selected=u;$('app').classList.add('mobile-chat');$('headName').textContent=u.username;$('headAvatar').textContent=u.username[0].toUpperCase();const online=presenceState.has(Number(u.id))?presenceState.get(Number(u.id)):!!u.online;$('headStatus').innerHTML=online?' <span class="presence-dot online">●</span> онлайн':' <span class="presence-dot offline">●</span> не в сети';updateComposerAccess();let ms=await api("/api/messages/"+u.id);$('messages').innerHTML="";ms.forEach(renderMessage);$('messages').scrollTop=$('messages').scrollHeight;await markSelectedChatRead();loadUsers()}
   loadChatWallpaper();
 function renderMessage(m){
   if(document.getElementById("m"+m.id))return;
@@ -1037,6 +1089,13 @@ function renderMessage(m){
   const t=document.createElement("time");
   t.textContent=formatMessageTime(m.created_at);
   meta.appendChild(t);
+  if(Number(m.sender_id)===Number(me.id)){
+    const status=document.createElement("span");
+    status.className='message-status '+(m.read_at?'read':'unread');
+    status.textContent='●';
+    status.title=m.read_at?'Прочитано':'Отправлено, не прочитано';
+    meta.appendChild(status);
+  }
   if(Number(m.sender_id)===Number(me.id)){
     const del=document.createElement("button");
     del.type="button"; del.title="Удалить сообщение"; del.textContent="×";
@@ -1445,8 +1504,10 @@ async function startCall(type){
     $("acceptCall").style.display="none";
     if(type==="video"){ $("remoteVideo").style.display="block"; $("remoteVideo").muted=true; $("remoteVideo").srcObject=localCallStream; }
     else $("remoteVideo").style.display="none";
+    const callId=`${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    localCallId=callId;
     const offer=await peer.createOffer(); await peer.setLocalDescription(offer);
-    callSocket({type:"call-signal",toUserId:Number(selected.id),signalType:"offer",signal:{sdp:peer.localDescription.sdp,type:peer.localDescription.type},callType:type});
+    callSocket({type:"call-signal",toUserId:Number(selected.id),signalType:"offer",callId,signal:{sdp:peer.localDescription.sdp,type:peer.localDescription.type},callType:type});
   }catch(e){ console.error(e); endCall(false); alert("Не удалось начать звонок. Разреши доступ к микрофону/камере."); }
 }
 
@@ -1499,12 +1560,14 @@ async function acceptIncomingCall(){
     localCallStream=await navigator.mediaDevices.getUserMedia(
       callType==="video"?{audio:true,video:true}:{audio:true}
     );
+    await loadRtcConfig();
     peer=createPeer();
     callPeerUserId=Number(from);
     clearTimeout(callTimeout); callTimeout=setTimeout(()=>{ if(peer && !["connected","completed"].includes(peer.iceConnectionState)) { endCall(true); alert("Не удалось установить соединение. Проверьте интернет или настройки TURN."); } },45000);
     localCallId=incomingCall.callId||null;
     localCallStream.getTracks().forEach(t=>peer.addTrack(t,localCallStream));
     await peer.setRemoteDescription(new RTCSessionDescription(incomingCall.signal));
+    for(const c of (incomingCall.iceCandidates||[])){try{await peer.addIceCandidate(new RTCIceCandidate(c))}catch(e){}}
     for(const c of incomingIceCandidates){try{await peer.addIceCandidate(new RTCIceCandidate(c))}catch(e){}}
     incomingIceCandidates=[];
     const answer=await peer.createAnswer();
@@ -1529,8 +1592,11 @@ function showIncomingCallNotification(d){
 }
 
 async function handleCallSignal(d){
-  if(d.signalType==="offer"){
+  if(d.signalType==="call-created"){
+    localCallId=d.callId||localCallId;
+  }else if(d.signalType==="offer"){
     incomingCall=d;
+    incomingIceCandidates=[];
     callType=d.callType||"audio";
     callPeerUserId=Number(d.fromUserId);
     localCallId=d.callId||null;
@@ -1542,6 +1608,7 @@ async function handleCallSignal(d){
   }else if(d.signalType==="ringing"){
     localCallId=d.callId||null;
   }else if(d.signalType==="answer" && peer){
+    localCallId=d.callId||localCallId;
     await peer.setRemoteDescription(new RTCSessionDescription(d.signal));
     for(const c of incomingIceCandidates){try{await peer.addIceCandidate(new RTCIceCandidate(c));}catch(e){}}
     incomingIceCandidates=[];
@@ -1913,4 +1980,5 @@ document.addEventListener("click", function(e){
   };
 })();
 </script>
+<script>document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')markSelectedChatRead();});</script>
 </body></html>

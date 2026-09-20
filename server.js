@@ -110,6 +110,15 @@ async function initDb() {
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
 
+    CREATE TABLE IF NOT EXISTS call_ice_candidates (
+      id BIGSERIAL PRIMARY KEY,
+      call_id TEXT NOT NULL REFERENCES call_sessions(id) ON DELETE CASCADE,
+      sender_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      candidate_json TEXT NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+    CREATE INDEX IF NOT EXISTS idx_call_ice_call ON call_ice_candidates(call_id, id);
+
     CREATE TABLE IF NOT EXISTS groups (
       id BIGSERIAL PRIMARY KEY,
       name TEXT NOT NULL,
@@ -173,6 +182,8 @@ async function initDb() {
     }
   }
   await query("ALTER TABLE statuses ADD COLUMN IF NOT EXISTS media_url TEXT NOT NULL DEFAULT ''");
+  await query("ALTER TABLE messages ADD COLUMN IF NOT EXISTS read_at TIMESTAMPTZ");
+  await query("CREATE INDEX IF NOT EXISTS idx_messages_unread ON messages(receiver_id, sender_id, read_at, id)");
   await ensureCommunityGroup();
 }
 
@@ -224,7 +235,26 @@ const uploadMedia = multer({ storage: mediaStorage, limits: { fileSize: 25 * 102
 
 const server = http.createServer(app);
 const wss = new WebSocketServer({ server });
+// One account can be open on a PC and a phone at the same time.
+// Keep every live WebSocket instead of replacing the previous device.
 const sockets = new Map();
+function addSocket(userId, ws){
+  const id=Number(userId);
+  let set=sockets.get(id);
+  if(!set){ set=new Set(); sockets.set(id,set); }
+  set.add(ws);
+}
+function removeSocket(userId, ws){
+  const id=Number(userId);
+  const set=sockets.get(id);
+  if(!set) return;
+  set.delete(ws);
+  if(!set.size) sockets.delete(id);
+}
+function hasLiveSocket(userId){
+  const set=sockets.get(Number(userId));
+  return !!set && [...set].some(ws=>ws.readyState===1);
+}
 
 const vapidFile = path.join(__dirname, "vapid.json");
 let vapidKeys;
@@ -317,10 +347,28 @@ async function isGroupMember(groupId, userId) {
   return !!(await one("SELECT 1 FROM group_members WHERE group_id=$1 AND user_id=$2", [Number(groupId), Number(userId)]));
 }
 function push(userId, payload) {
-  const ws = sockets.get(Number(userId));
-  const deliveredBySocket = !!(ws && ws.readyState === 1);
-  if (deliveredBySocket) ws.send(JSON.stringify(payload));
-  return deliveredBySocket;
+  const set = sockets.get(Number(userId));
+  if(!set) return false;
+  let delivered=false;
+  for(const ws of [...set]){
+    if(ws.readyState===1){
+      try{ ws.send(JSON.stringify(payload)); delivered=true; }catch(_){}
+    }
+  }
+  return delivered;
+}
+function onlineUserIds(){
+  const ids=new Set();
+  for(const [id,set] of sockets.entries()){
+    if([...set].some(ws=>ws.readyState===1)) ids.add(Number(id));
+  }
+  return ids;
+}
+function broadcastPresence(userId, online){
+  const payload=JSON.stringify({type:"presence",userId:Number(userId),online:!!online});
+  for(const set of sockets.values()) for(const ws of [...set]){
+    if(ws.readyState===1){ try{ws.send(payload)}catch(_){} }
+  }
 }
 async function pushNotification(userId, payload) {
   const rows = await many("SELECT id, endpoint, subscription_json FROM push_subscriptions WHERE user_id=$1", [Number(userId)]);
@@ -451,7 +499,8 @@ app.get("/api/users/search", auth, async (req, res) => {
     ORDER BY CASE WHEN LOWER(u.username)=LOWER($3) THEN 0 WHEN LOWER(u.username) LIKE LOWER($4) THEN 1 ELSE 2 END, LOWER(u.username)
     LIMIT 50`, [meUser.id, `%${q}%`, q, `${q}%`]);
   res.set("Cache-Control", "no-store");
-  res.json(users);
+  const online=onlineUserIds();
+  res.json(users.map(u => ({ ...u, online: online.has(Number(u.id)) })));
 });
 
 app.get("/api/users/by-username/:username", auth, async (req, res) => {
@@ -592,7 +641,8 @@ app.get("/api/users", auth, async (req, res) => {
         )
       GROUP BY u.id,u.username ORDER BY last_message_id DESC LIMIT 50`, [req.user.id, req.user.id, req.user.id]);
     res.set("Cache-Control", "no-store");
-    return res.json(chats.map(({ id, username, verified }) => ({ id, username, verified: !!verified })));
+    const online=onlineUserIds();
+    return res.json(chats.map(({ id, username, verified }) => ({ id, username, verified: !!verified, online: online.has(Number(id)) })));
   }
   const users = await many(`SELECT u.id,u.username,EXISTS(SELECT 1 FROM verified_users v WHERE v.user_id=u.id) AS verified
     FROM users u
@@ -605,17 +655,29 @@ app.get("/api/users", auth, async (req, res) => {
       )
     ORDER BY LOWER(username) LIMIT 50`, [req.user.id, `%${raw}%`]);
   res.set("Cache-Control", "no-store");
-  res.json(users.map(u => ({ ...u, verified: !!u.verified })));
+  const online=onlineUserIds();
+  res.json(users.map(u => ({ ...u, verified: !!u.verified, online: online.has(Number(u.id)) })));
 });
 
 app.get("/api/messages/:userId", auth, async (req, res) => {
   const other = Number(req.params.userId);
   if (await isBlockedBetween(req.user.id, other)) return res.json([]);
-  const rows = await many(`SELECT m.id,m.sender_id,m.receiver_id,m.text,m.created_at,u.username sender_name
+  const rows = await many(`SELECT m.id,m.sender_id,m.receiver_id,m.text,m.created_at,m.read_at,u.username sender_name
     FROM messages m JOIN users u ON u.id=m.sender_id
     WHERE (m.sender_id=$1 AND m.receiver_id=$2) OR (m.sender_id=$3 AND m.receiver_id=$4)
     ORDER BY m.id ASC LIMIT 500`, [req.user.id, other, other, req.user.id]);
   res.json(rows);
+});
+
+app.post("/api/messages/:userId/read", auth, async (req, res) => {
+  const other = Number(req.params.userId);
+  if (!other || await isBlockedBetween(req.user.id, other)) return res.json({ ok:true, ids:[] });
+  const rows = await many(`UPDATE messages SET read_at=NOW()
+    WHERE sender_id=$1 AND receiver_id=$2 AND read_at IS NULL
+    RETURNING id`, [other, req.user.id]);
+  const ids=rows.map(r=>Number(r.id));
+  if(ids.length) push(other,{type:"messages-read",messageIds:ids,readerId:Number(req.user.id)});
+  res.json({ok:true,ids});
 });
 
 app.get("/api/push/public-key", auth, (req, res) => res.json({ publicKey: vapidKeys.publicKey }));
@@ -652,7 +714,7 @@ app.post("/api/messages", auth, async (req, res) => {
     if (!target) return res.status(404).json({ error: "Пользователь не найден" });
     if (await isBlockedBetween(req.user.id, receiver)) return res.status(403).json({ error: "Нельзя отправить сообщение: пользователь заблокирован" });
     const inserted = await one("INSERT INTO messages(sender_id,receiver_id,text) VALUES($1,$2,$3) RETURNING id", [req.user.id, receiver, text]);
-    const message = await one(`SELECT m.id,m.sender_id,m.receiver_id,m.text,m.created_at,u.username sender_name
+    const message = await one(`SELECT m.id,m.sender_id,m.receiver_id,m.text,m.created_at,m.read_at,u.username sender_name
       FROM messages m JOIN users u ON u.id=m.sender_id WHERE m.id=$1`, [inserted.id]);
     const delivered = push(receiver, { type: "message", message });
     if (!delivered) pushNotification(receiver, { type: "message", title: message.sender_name || "Новое сообщение", body: message.text || "Новое сообщение", senderId: message.sender_id, message }).catch(() => {});
@@ -697,7 +759,7 @@ app.post("/api/media", auth, uploadMedia.single("media"), async (req, res) => {
     const url = `/media/${req.file.filename}`;
     const text = kind === "audio" ? `[VOICE]${url}` : `[VIDEO_NOTE]${url}`;
     const inserted = await one("INSERT INTO messages(sender_id,receiver_id,text) VALUES($1,$2,$3) RETURNING id", [req.user.id, receiverId, text]);
-    const message = await one(`SELECT m.id,m.sender_id,m.receiver_id,m.text,m.created_at,u.username sender_name
+    const message = await one(`SELECT m.id,m.sender_id,m.receiver_id,m.text,m.created_at,m.read_at,u.username sender_name
       FROM messages m JOIN users u ON u.id=m.sender_id WHERE m.id=$1`, [inserted.id]);
     push(receiverId, { type: "message", message });
     push(req.user.id, { type: "message", message });
@@ -813,16 +875,24 @@ app.post("/api/groups/:id/messages", auth, async (req, res) => {
 app.get("/api/calls/pending", auth, async (req, res) => {
   const rows = await many(`SELECT c.id,c.caller_id,c.callee_id,c.call_type,c.offer_json,c.created_at,u.username caller_username
     FROM call_sessions c JOIN users u ON u.id=c.caller_id WHERE c.callee_id=$1 AND c.status='ringing'
+      AND c.created_at > NOW() - INTERVAL '90 seconds'
     ORDER BY c.created_at DESC LIMIT 5`, [Number(req.user.id)]);
-  res.json(rows.map(r => ({ ...r, offer: JSON.parse(r.offer_json) })));
+  const out=[];
+  for(const r of rows){
+    const candidates=await many(`SELECT candidate_json FROM call_ice_candidates WHERE call_id=$1 ORDER BY id`, [r.id]);
+    out.push({ ...r, offer: JSON.parse(r.offer_json), iceCandidates:candidates.map(x=>JSON.parse(x.candidate_json)) });
+  }
+  res.json(out);
 });
 
 wss.on("connection", (ws, req) => {
   const url = new URL(req.url, "http://localhost");
   try {
     const user = jwt.verify(url.searchParams.get("token") || "", JWT_SECRET);
-    sockets.set(Number(user.id), ws);
-    ws.send(JSON.stringify({ type: "connected" }));
+    const wasOnline=hasLiveSocket(user.id);
+    addSocket(Number(user.id), ws);
+    if(!wasOnline) broadcastPresence(user.id,true);
+    ws.send(JSON.stringify({ type: "connected", onlineUserIds:[...onlineUserIds()] }));
 
     ws.on("message", async raw => {
       try {
@@ -835,33 +905,45 @@ wss.on("connection", (ws, req) => {
             return;
           }
           if (data.signalType === "offer") {
-            const callId = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+            const callId = String(data.callId || `${Date.now()}-${Math.random().toString(36).slice(2)}`);
             await query(`INSERT INTO call_sessions(id,caller_id,callee_id,call_type,offer_json,status)
               VALUES($1,$2,$3,$4,$5,'ringing')`, [callId, user.id, toUserId, callType, JSON.stringify(data.signal)]);
             const message = await addCallHistory(user.id, toUserId, callType);
             push(user.id, { type: "call-history", message });
             push(toUserId, { type: "call-history", message });
             notifyCall(toUserId, user.username, callType, callId);
-            const target = sockets.get(toUserId);
-            if (target && target.readyState === 1) sendSignal(toUserId, { callId, fromUserId: user.id, fromUsername: user.username, signalType: "offer", signal: data.signal, callType });
+            sendSignal(user.id, { callId, toUserId, signalType: "call-created" });
+            if (hasLiveSocket(toUserId)) sendSignal(toUserId, { callId, fromUserId: user.id, fromUsername: user.username, signalType: "offer", signal: data.signal, callType });
             else ws.send(JSON.stringify({ type: "call-signal", signalType: "ringing", toUserId, callId }));
             return;
           }
-          const target = sockets.get(toUserId);
-          if (!target || target.readyState !== 1) {
-            if (data.signalType === "hangup" && data.callId) await query("UPDATE call_sessions SET status='ended' WHERE id=$1", [data.callId]);
+
+          if (data.signalType === "ice" && data.callId && data.signal) {
+            await query(`INSERT INTO call_ice_candidates(call_id,sender_id,candidate_json) VALUES($1,$2,$3)`, [data.callId, user.id, JSON.stringify(data.signal)]).catch(()=>{});
+          }
+          if (data.signalType === "answer" && data.callId) await query("UPDATE call_sessions SET status='accepted' WHERE id=$1", [data.callId]);
+          if (data.signalType === "hangup" && data.callId) {
+            await query("UPDATE call_sessions SET status='ended' WHERE id=$1", [data.callId]);
+            await query("DELETE FROM call_ice_candidates WHERE call_id=$1", [data.callId]).catch(()=>{});
+          }
+
+          // ICE can arrive before the other device reconnects. Store it above;
+          // do not immediately fail the call just because the phone WebSocket is sleeping.
+          if (data.signalType === "ice" && !hasLiveSocket(toUserId)) return;
+          if ((data.signalType === "answer" || data.signalType === "hangup") && !hasLiveSocket(toUserId)) {
             ws.send(JSON.stringify({ type: "call-signal", signalType: "unavailable", toUserId }));
             return;
           }
-          if (data.signalType === "answer" && data.callId) await query("UPDATE call_sessions SET status='accepted' WHERE id=$1", [data.callId]);
-          if (data.signalType === "hangup" && data.callId) await query("UPDATE call_sessions SET status='ended' WHERE id=$1", [data.callId]);
           sendSignal(toUserId, { callId: data.callId, fromUserId: user.id, fromUsername: user.username, signalType: data.signalType, signal: data.signal, callType });
         }
       } catch (e) {
         console.error("WebSocket message error:", e);
       }
     });
-    ws.on("close", () => { if (sockets.get(Number(user.id)) === ws) sockets.delete(Number(user.id)); });
+    ws.on("close", () => {
+      removeSocket(Number(user.id), ws);
+      if(!hasLiveSocket(user.id)) broadcastPresence(user.id,false);
+    });
   } catch {
     ws.close();
   }
