@@ -6,7 +6,8 @@
 <style>
 *{box-sizing:border-box}body{margin:0;background:#020403;color:#f4f7f5;font:15px Arial,sans-serif}
 button,input{font:inherit}.app{height:100vh;max-width:1100px;margin:auto;display:grid;grid-template-columns:330px 1fr;background:#050807}
-.sidebar{border-right:1px solid #1b2822;display:flex;flex-direction:column}.top{padding:22px 20px 12px}.brand{display:flex;gap:12px;align-items:center}.logo{width:50px;height:50px;border-radius:15px;background:linear-gradient(145deg,#2aff78,#07963b);color:#031108;display:grid;place-items:center;font-weight:900}.brand h1{margin:0;font-size:24px}.brand small{color:#8d9893}.search{margin:12px 18px;background:#111716;border:1px solid #202b27;border-radius:16px;padding:12px}.search input,.auth input{width:100%;background:transparent;border:0;outline:0;color:#fff}.users{overflow:auto}.user{padding:14px 18px;border-bottom:1px solid #17211c;cursor:pointer}.user:hover,.user.active{background:#0d1812}.dot{color:#22ff72}.chat{display:flex;flex-direction:column;min-width:0}.chathead{height:76px;padding:12px 18px;border-bottom:1px solid #1b2822;display:flex;align-items:center;gap:12px}.chathead b{display:block}.status{color:#22ff72;font-size:12px}.avatar{width:45px;height:45px;border-radius:50%;background:#0c6630;display:grid;place-items:center;font-weight:bold}.messages{flex:1;overflow:auto;padding:24px;background:radial-gradient(circle at 80% 20%,rgba(0,255,90,.05),transparent 30%)}.bubble{max-width:70%;padding:10px 13px;margin:0 0 10px;border-radius:15px;background:#111816}.bubble.me{margin-left:auto;background:#0b6630}.bubble time{display:block;text-align:right;color:#a1b0a7;font-size:10px;margin-top:4px}.message-status{display:inline-block;font-size:11px;line-height:1;margin-left:2px;vertical-align:middle}.message-status.unread{color:#000}.message-status.read{color:#fff}.presence-dot{font-size:10px;margin-right:4px}.presence-dot.online{color:#22ff72}.presence-dot.offline{color:#68736d}.sendbar{display:flex;gap:8px;padding:12px;border-top:1px solid #1b2822}.sendbar input{flex:1;background:#111716;border:1px solid #24312b;border-radius:22px;padding:12px 15px;color:white;outline:0}.send{border:0;border-radius:50%;width:45px;background:#22ff72;cursor:pointer}.empty{margin:auto;text-align:center;color:#8d9893}.auth{position:fixed;inset:0;background:#020403;display:grid;place-items:center}.card{width:min(390px,92vw);background:#0c1110;border:1px solid #1b2822;border-radius:22px;padding:28px;box-shadow:0 0 60px rgba(0,255,90,.08)}.card h2{margin-top:0}.auth input{background:#111716;border:1px solid #24312b;border-radius:13px;padding:13px;margin:7px 0}.primary{width:100%;border:0;border-radius:13px;padding:13px;margin-top:10px;background:#22ff72;color:#001609;font-weight:bold;cursor:pointer}.switch{color:#22ff72;text-align:center;cursor:pointer;margin-top:16px}.error{color:#ff8d8d;min-height:20px}@media(max-width:700px){.app{grid-template-columns:1fr}.sidebar{display:flex}.chat{display:none}.app.mobile-chat .sidebar{display:none}.app.mobile-chat .chat{display:flex}.chathead .back{display:block!important}.chathead{height:68px}.bubble{max-width:82%}}
+.sidebar{border-right:1px solid #1b2822;display:flex;flex-direction:column}.top{padding:22px 20px 12px}.brand{display:flex;gap:12px;align-items:center}.logo{width:50px;height:50px;border-radius:15px;background:linear-gradient(145deg,#2aff78,#07963b);color:#031108;display:grid;place-items:center;font-weight:900}.brand h1{margin:0;font-size:24px}.brand small{color:#8d9893}.search{margin:12px 18px;background:#111716;border:1px solid #202b27;border-radius:16px;padding:12px}.search input,.auth input{width:100%;background:transparent;border:0;outline:0;color:#fff}.users{overflow:auto}.user{padding:14px 18px;border-bottom:1px solid #17211c;cursor:pointer}.user:hover,.user.active{background:#0d1812}.dot{color:#22ff72}.chat{display:flex;flex-direction:column;min-width:0}.chathead{height:76px;padding:12px 18px;border-bottom:1px solid #1b2822;display:flex;align-items:center;gap:12px}.chathead b{display:block}.status{color:#22ff72;font-size:12px}.avatar{width:45px;height:45px;border-radius:50%;background:#0c6630;display:grid;place-items:center;font-weight:bold}.messages{flex:1;overflow:auto;padding:24px;background:radial-gradient(circle at 80% 20%,rgba(0,255,90,.05),transparent 30%)}.bubble{max-width:70%;padding:10px 13px;margin:0 0 10px;border-radius:15px;background:#111816}.bubble.me{margin-left:auto;background:#0b6630}.bubble time{display:block;text-align:right;color:#a1b0a7;font-size:10px;margin-top:4px}.message-status{display:inline-block;font-size:11px;line-height:1;margin-left:2px;vertical-align:middle}.message-status.unread{color:#000}.message-status.read{color:#fff}
+.reward-btn{position:relative}.reward-count{color:#ff9a2e;font-weight:800;margin-left:3px}.captcha-card{max-width:430px}.captcha-expression{font-size:28px;font-weight:900;text-align:center;padding:18px;border-radius:16px;background:#111716;margin:12px 0}.captcha-options{display:grid;grid-template-columns:1fr 1fr;gap:10px}.captcha-options button{font-size:18px;padding:14px}.reward-sticker-preview{width:130px;height:130px;object-fit:contain;background:#0b0f0d;border-radius:18px;padding:8px}.profile-gifts{margin:14px 0;padding:12px;border-radius:16px;background:#0b100d;border:1px solid #1b2822}.profile-gifts-title{font-weight:800;margin-bottom:8px}.profile-gift{width:82px;height:82px;object-fit:contain;border-radius:14px;background:#111716;padding:5px}.gift-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}.presence-dot{font-size:10px;margin-right:4px}.presence-dot.online{color:#22ff72}.presence-dot.offline{color:#68736d}.sendbar{display:flex;gap:8px;padding:12px;border-top:1px solid #1b2822}.sendbar input{flex:1;background:#111716;border:1px solid #24312b;border-radius:22px;padding:12px 15px;color:white;outline:0}.send{border:0;border-radius:50%;width:45px;background:#22ff72;cursor:pointer}.empty{margin:auto;text-align:center;color:#8d9893}.auth{position:fixed;inset:0;background:#020403;display:grid;place-items:center}.card{width:min(390px,92vw);background:#0c1110;border:1px solid #1b2822;border-radius:22px;padding:28px;box-shadow:0 0 60px rgba(0,255,90,.08)}.card h2{margin-top:0}.auth input{background:#111716;border:1px solid #24312b;border-radius:13px;padding:13px;margin:7px 0}.primary{width:100%;border:0;border-radius:13px;padding:13px;margin-top:10px;background:#22ff72;color:#001609;font-weight:bold;cursor:pointer}.switch{color:#22ff72;text-align:center;cursor:pointer;margin-top:16px}.error{color:#ff8d8d;min-height:20px}@media(max-width:700px){.app{grid-template-columns:1fr}.sidebar{display:flex}.chat{display:none}.app.mobile-chat .sidebar{display:none}.app.mobile-chat .chat{display:flex}.chathead .back{display:block!important}.chathead{height:68px}.bubble{max-width:82%}}
 #videoPreview{width:110px;height:110px;border-radius:50%;object-fit:cover;background:#020403}
 #videoRecording{align-items:center}
 @media(max-width:700px){.app.mobile-chat .sidebar{display:none}.app.mobile-chat .chat{display:flex}}
@@ -410,7 +411,7 @@ img,video{max-width:100%}
 </div>
 <button class="primary" onclick="authAction()" id="authBtn">Войти</button><div class="switch" onclick="toggleAuth()" id="switch">Нет аккаунта? Регистрация</div>
 </div></div><div class="app" id="app" style="display:none">
-<aside class="sidebar"><div class="quick-actions"><button id="profileBtn" onclick="openSettings()">⚙️ <span data-i18n="settings">Настройки</span></button><button class="notify-btn" id="notifyBtn" onclick="enableNotifications()">🔔 <span data-i18n="notifications">Уведомления</span></button><button onclick="createGroup()">＋ <span data-i18n="group">Группа</span></button></div><div class="top"><div class="brand"><div class="logo">БКТ</div><div><h1>БКТ</h1><small id="me" onclick="openMyProfile()" style="cursor:pointer" title="Открыть свой профиль"></small></div></div></div>
+<aside class="sidebar"><div class="quick-actions"><button id="profileBtn" onclick="openSettings()">⚙️ <span data-i18n="settings">Настройки</span></button><button class="notify-btn" id="notifyBtn" onclick="enableNotifications()">🔔 <span data-i18n="notifications">Уведомления</span></button><button onclick="createGroup()">＋ <span data-i18n="group">Группа</span></button><button id="rewardBtn" class="reward-btn" onclick="openRewards()">🍊 Награды <span id="rewardCount" class="reward-count">0</span></button></div><div class="top"><div class="brand"><div class="logo">БКТ</div><div><h1>БКТ</h1><small id="me" onclick="openMyProfile()" style="cursor:pointer" title="Открыть свой профиль"></small></div></div></div>
 <button id="statusesBtn" class="statuses-btn" onclick="openStatuses()">🟢 Статусы</button><div class="search"><input id="search" placeholder="Найти пользователя по @username" oninput="loadUsers()"></div><div id="groups"></div><div id="users" class="users"></div></aside>
 <main class="chat"><div class="chathead"><button class="back" onclick="mobileBack()" style="display:none">‹</button><div class="avatar" id="headAvatar" onclick="openSelectedProfile()" style="cursor:pointer" title="Открыть профиль"></div><div class="chat-title" onclick="openSelectedProfile()" style="cursor:pointer"><b id="headName" data-i18n="chooseChat">Выберите чат</b><span class="status" id="headStatus"></span></div><div class="call-actions"><button id="audioCallButton" title="Аудиозвонок" aria-label="Аудиозвонок">📞</button><button id="videoCallButton" title="Видеозвонок" aria-label="Видеозвонок">📹</button></div></div>
 <div id="messages" class="messages"><div class="empty">Выберите пользователя слева</div></div>
@@ -421,7 +422,7 @@ img,video{max-width:100%}
 <input id="text" placeholder="Сообщение..." onkeydown="if(event.key==='Enter')send()">
 <button class="send" onclick="send()">➤</button>
 </div>
-<div id="communityReadonly" class="community-readonly">🔒 В этой группе могут писать только Brozi и vlad</div>
+<div id="communityReadonly" class="community-readonly">🔒 В этой группе могут писать только Brozi и Vlad</div>
 <div id="stickerPicker" class="sticker-picker" aria-label="Стикеры">
   <div class="sticker-picker-head"><b>Стикеры</b><button class="sticker-close" id="stickerClose" aria-label="Закрыть">×</button></div>
   <div class="sticker-pack-title">Капибара и Туф • Новые стикеры</div>
@@ -513,12 +514,20 @@ img,video{max-width:100%}
   <div id="profileViewName" class="profile-view-name">Профиль</div>
   <div id="profileViewUsername" class="profile-view-username"></div>
   <div id="profileViewBio" class="profile-view-bio"></div>
+  <div id="profileViewGifts" class="profile-gifts" style="display:none"></div>
   <div id="profileViewBlockState" class="profile-block-state"></div>
   <div class="profile-view-actions">
     <button id="profileViewChat" class="primary-profile" onclick="chatFromProfile()">💬 Написать</button>
     <button id="profileViewBlock" onclick="toggleProfileBlock()">🚫 Заблокировать</button>
     <button onclick="closeProfileView()">Закрыть</button>
   </div>
+</div></div>
+<div id="rewardsModal" class="modal" style="display:none"><div class="modal-card captcha-card">
+  <h2>🍊 Награды</h2>
+  <div style="text-align:center;font-size:18px">Апельсины: <b id="rewardsOrangeCount">0</b> 🍊</div>
+  <p style="color:#a1b0a7">Пройди сложную CAPTCHA — получишь <b>5 🍊</b>. На 50 🍊 открывается эксклюзивный стикер.</p>
+  <div id="captchaArea"><button class="primary" onclick="startRewardCaptcha()">Пройти CAPTCHA</button></div>
+  <div style="margin-top:16px;text-align:center"><img id="rewardStickerPreview" class="reward-sticker-preview" src="/stickers/29.webp" alt="Эксклюзивный стикер"><div id="rewardStickerState" style="margin-top:6px;color:#a1b0a7">Нужно 50 🍊</div><div class="gift-actions"><button id="rewardProfileButton" onclick="addRewardStickerToProfile()" style="display:none">🎁 Добавить в профиль</button><button onclick="closeRewards()">Закрыть</button></div></div>
 </div></div>
 <script>
 let token=sessionStorage.getItem("bkt_token")||null, me=null, selected=null, activeGroup=null, socket=null, registering=false, selectedRegistrationAvatar="";
@@ -534,7 +543,7 @@ function formatMessageTime(value){
   return date.toLocaleTimeString("ru-RU",{hour:"2-digit",minute:"2-digit"});
 }
 function toggleProtectedCode(){const username=$("login").value.trim().replace(/^@+/,"").toLowerCase(); const protectedUser=["brozi","vlad","vladmobile"].includes(username); $("accessCode").style.display=protectedUser?"block":"none"; $("accessCode").placeholder=protectedUser?"Секретный код":"Секретный код";}
-const REGISTRATION_AVATARS = Array.from({length:29},(_,i)=>`/stickers/${i+1}.webp`);
+const REGISTRATION_AVATARS = Array.from({length:28},(_,i)=>`/stickers/${i+1}.webp`);
 let statusRows=[];
 let statusViewerIndex=0;
 let statusViewerTimer=null;
@@ -785,6 +794,7 @@ async function start(){
     connectSocket();
     loadUsers();
     loadGroups();
+    loadRewards();
     updateNotifyButton();
     if("Notification" in window && Notification.permission === "granted") setupPush().catch(()=>{});
   }catch(e){
@@ -1258,6 +1268,12 @@ async function openProfileView(userId, isMe=false){
     $("profileViewName").innerHTML = verifiedName(p.username, !!p.verified);
     $("profileViewUsername").textContent = "@"+p.username;
     $("profileViewBio").textContent = p.bio || "О себе пока ничего не указано.";
+    const giftsBox=$("profileViewGifts");
+    const gifts=p.gifts||[];
+    if(giftsBox){
+      giftsBox.style.display=gifts.length?"block":"none";
+      giftsBox.innerHTML=gifts.length?`<div class="profile-gifts-title">🎁 Подарки в профиле</div><div style="display:flex;gap:8px;flex-wrap:wrap">${gifts.map(g=>`<img class="profile-gift" src="${escapeHtml(g.src)}" alt="Подарок">`).join("")}</div>`:"";
+    }
     const av=$("profileViewAvatar");
     av.innerHTML="";
     if(p.avatar){
@@ -1394,23 +1410,28 @@ if (searchInput) {
 
 
 
-const STICKERS = Array.from({length:29},(_,i)=>`/stickers/${i+1}.webp`);
+const STICKERS = Array.from({length:30},(_,i)=>`/stickers/${i+1}.webp`);
+let rewardState={oranges:0,owned:false,profileGift:false};
 let stickerPickerReady=false;
 
 function buildStickerPicker(){
   if(stickerPickerReady)return;
   const grid=$("stickerGrid");
   if(!grid)return;
+  grid.innerHTML="";
   STICKERS.forEach((src,i)=>{
+    const id=i+1;
     const b=document.createElement("button");
     b.type="button";
     b.className="sticker-item";
-    b.title="Туф";
-    b.setAttribute("aria-label",`Туф, стикер ${i+1}`);
+    b.title=id===29?(rewardState.owned?"Эксклюзивный стикер":"Нужно 50 🍊"):"Туф";
+    b.setAttribute("aria-label",id===29?"Эксклюзивный стикер":"Туф, стикер "+id);
     const img=document.createElement("img");
-    img.src=src; img.alt="Туф"; img.loading="lazy";
+    img.src=src; img.alt=id===29?"Эксклюзивный стикер":"Туф"; img.loading="lazy";
     b.appendChild(img);
-    b.onclick=()=>sendSticker(src);
+    if(id===29 && !rewardState.owned){
+      b.style.opacity=".35"; b.style.filter="grayscale(1)"; b.onclick=()=>alert("Пройдите CAPTCHA и накопите 50 🍊, чтобы получить этот стикер.");
+    }else{ b.onclick=()=>sendSticker(src); }
     grid.appendChild(b);
   });
   stickerPickerReady=true;
@@ -1434,7 +1455,7 @@ function toggleStickerPicker(){
 }
 function closeStickerPicker(){if($("stickerPicker"))$("stickerPicker").style.display="none";}
 async function sendSticker(src){
-  if(activeGroup && activeGroup.name === "БКТ Сообщество" && !["brozi","vlad"].includes(String(me?.username || "").toLowerCase())){alert("В этой группе могут писать только Brozi и vlad");return;}
+  if(activeGroup && activeGroup.name === "БКТ Сообщество" && !["brozi","vlad"].includes(String(me?.username || "").toLowerCase())){alert("В этой группе могут писать только Brozi и Vlad");return;}
   if(!selected && !activeGroup)return;
   closeStickerPicker();
   const text="[STICKER]"+src;
@@ -1443,7 +1464,9 @@ async function sendSticker(src){
       const msg=await api("/api/groups/"+activeGroup.id+"/messages",{method:"POST",body:{text}});
       renderGroupMessage(msg);
     }else{
-      const msg=await api("/api/messages",{method:"POST",body:{receiverId:Number(selected.id),text}});
+      const msg = src === "/stickers/29.webp"
+        ? await api("/api/stickers/29/send",{method:"POST",body:{receiverId:Number(selected.id)}})
+        : await api("/api/messages",{method:"POST",body:{receiverId:Number(selected.id),text}});
       renderMessage(msg);
     }
   }catch(e){alert(e.message||"Не удалось отправить стикер");}
@@ -1456,9 +1479,47 @@ document.addEventListener("click",e=>{
 });
 window.addEventListener("resize",()=>{if($("stickerPicker")?.style.display==="block")positionStickerPicker();});
 
+async function loadRewards(){
+  try{
+    rewardState=await api("/api/rewards");
+    const count=Number(rewardState.oranges||0);
+    if($("rewardCount")) $("rewardCount").textContent=count;
+    if($("rewardsOrangeCount")) $("rewardsOrangeCount").textContent=count;
+    const state=$("rewardStickerState"), btn=$("rewardProfileButton");
+    if(rewardState.owned){
+      state.textContent=rewardState.profileGift?"Стикер уже добавлен в профиль":"Стикер получен — его можно отправлять и добавить в профиль";
+      if(btn) btn.style.display=rewardState.profileGift?"none":"inline-block";
+    }else state.textContent=`Нужно ${Math.max(0,50-count)} 🍊`;
+    if(stickerPickerReady){ stickerPickerReady=false; buildStickerPicker(); }
+  }catch(e){ console.debug("rewards:",e.message); }
+}
+function openRewards(){ $("rewardsModal").style.display="grid"; loadRewards(); }
+function closeRewards(){ $("rewardsModal").style.display="none"; }
+async function startRewardCaptcha(){
+  try{
+    const c=await api("/api/captcha/challenge",{method:"POST"});
+    const area=$("captchaArea");
+    area.innerHTML=`<div class="captcha-expression">${escapeHtml(c.expression)}</div><div style="color:#a1b0a7;margin-bottom:10px">Выбери правильный ответ</div><div id="captchaOptions" class="captcha-options"></div>`;
+    const box=$("captchaOptions");
+    c.options.forEach(v=>{ const b=document.createElement("button"); b.textContent=v; b.onclick=()=>verifyRewardCaptcha(c.token,v); box.appendChild(b); });
+  }catch(e){alert(e.message||"Не удалось запустить CAPTCHA");}
+}
+async function verifyRewardCaptcha(challengeToken,answer){
+  try{
+    const r=await api("/api/captcha/verify",{method:"POST",body:{token:challengeToken,answer:Number(answer)}});
+    rewardState={...rewardState,...r};
+    $("captchaArea").innerHTML=`<div style="padding:14px;text-align:center;color:#22ff72;font-weight:800">✓ CAPTCHA пройдена! +5 🍊</div><button class="primary" onclick="startRewardCaptcha()">Пройти ещё раз</button>`;
+    await loadRewards();
+  }catch(e){alert(e.message||"Неверный ответ"); startRewardCaptcha();}
+}
+async function addRewardStickerToProfile(){
+  try{ await api("/api/stickers/29/profile",{method:"POST"}); await loadRewards(); if(window.profileViewUser) openProfileView(window.profileViewUser.id,false); }
+  catch(e){alert(e.message||"Не удалось добавить стикер в профиль");}
+}
+
 async function send(){
   const input=$("text"), text=input.value.trim();
-  if(activeGroup && activeGroup.name === "БКТ Сообщество" && !["brozi","vlad"].includes(String(me?.username || "").toLowerCase())){alert("В этой группе могут писать только Brozi и vlad");return;}
+  if(activeGroup && activeGroup.name === "БКТ Сообщество" && !["brozi","vlad"].includes(String(me?.username || "").toLowerCase())){alert("В этой группе могут писать только Brozi и Vlad");return;}
   if(!text)return;
   if(activeGroup){
     try{

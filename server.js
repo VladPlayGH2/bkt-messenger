@@ -165,6 +165,34 @@ async function initDb() {
       CHECK (blocker_id <> blocked_id)
     );
 
+    CREATE TABLE IF NOT EXISTS reward_wallets (
+      user_id BIGINT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+      oranges INTEGER NOT NULL DEFAULT 0 CHECK (oranges >= 0),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+
+    CREATE TABLE IF NOT EXISTS captcha_challenges (
+      token TEXT PRIMARY KEY,
+      user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      answer INTEGER NOT NULL,
+      expires_at TIMESTAMPTZ NOT NULL,
+      used BOOLEAN NOT NULL DEFAULT FALSE
+    );
+
+    CREATE TABLE IF NOT EXISTS user_stickers (
+      user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      sticker_id INTEGER NOT NULL,
+      obtained_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      PRIMARY KEY (user_id, sticker_id)
+    );
+
+    CREATE TABLE IF NOT EXISTS profile_gifts (
+      user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      sticker_id INTEGER NOT NULL,
+      added_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      PRIMARY KEY (user_id, sticker_id)
+    );
+
     CREATE INDEX IF NOT EXISTS idx_messages_pair ON messages(sender_id, receiver_id, id);
     CREATE INDEX IF NOT EXISTS idx_messages_receiver ON messages(receiver_id, id);
     CREATE INDEX IF NOT EXISTS idx_group_messages_group ON group_messages(group_id, id);
@@ -173,6 +201,7 @@ async function initDb() {
     CREATE INDEX IF NOT EXISTS idx_statuses_expires ON statuses(expires_at, created_at);
     CREATE INDEX IF NOT EXISTS idx_user_blocks_blocker ON user_blocks(blocker_id, blocked_id);
     CREATE INDEX IF NOT EXISTS idx_user_blocks_blocked ON user_blocks(blocked_id, blocker_id);
+    CREATE INDEX IF NOT EXISTS idx_captcha_user ON captcha_challenges(user_id, expires_at);
   `);
 
   for (const protectedName of ["brozi", "vlad", "vladmobile"]) {
@@ -185,6 +214,7 @@ async function initDb() {
   await query("ALTER TABLE messages ADD COLUMN IF NOT EXISTS read_at TIMESTAMPTZ");
   await query("CREATE INDEX IF NOT EXISTS idx_messages_unread ON messages(receiver_id, sender_id, read_at, id)");
   await ensureCommunityGroup();
+  await ensureSpecialAccountsRewards();
 }
 
 const protectedAccess = JSON.parse(fs.readFileSync(path.join(__dirname, "protected-access.json"), "utf8"));
@@ -204,6 +234,26 @@ function verifyProtectedCode(username, code) {
 function protectedError(username) {
   const display = protectedAccount(username)?.display || username;
   return `Для аккаунта ${display} нужен специальный код`;
+}
+
+const REWARD_STICKER_ID = 29;
+const REWARD_STICKER_SRC = `/stickers/${REWARD_STICKER_ID}.webp`;
+
+async function ensureRewardWallet(userId) {
+  await query(`INSERT INTO reward_wallets(user_id,oranges) VALUES($1,0) ON CONFLICT(user_id) DO NOTHING`, [Number(userId)]);
+}
+async function grantRewardSticker(userId, addToProfile=false) {
+  await query(`INSERT INTO user_stickers(user_id,sticker_id) VALUES($1,$2) ON CONFLICT DO NOTHING`, [Number(userId), REWARD_STICKER_ID]);
+  if (addToProfile) await query(`INSERT INTO profile_gifts(user_id,sticker_id) VALUES($1,$2) ON CONFLICT DO NOTHING`, [Number(userId), REWARD_STICKER_ID]);
+}
+async function ensureSpecialAccountsRewards() {
+  for (const username of ['brozi','vlad']) {
+    const u = await one(`SELECT id FROM users WHERE LOWER(username)=LOWER($1)`, [username]);
+    if (u) {
+      await ensureRewardWallet(u.id);
+      await grantRewardSticker(u.id, true);
+    }
+  }
 }
 
 const app = express();
@@ -433,6 +483,8 @@ app.post("/api/register", async (req, res) => {
       await query("INSERT INTO verified_users(user_id, verified_by) VALUES($1, NULL) ON CONFLICT(user_id) DO NOTHING", [user.id]);
     }
     await addUserToCommunityGroup(user.id);
+    await ensureRewardWallet(user.id);
+    if (['brozi','vlad'].includes(username.toLowerCase())) await grantRewardSticker(user.id, true);
     res.json({ token: tokenFor(user), user });
   } catch (e) {
     if (e.code === "23505") return res.status(409).json({ error: "Такой пользователь уже существует" });
@@ -518,7 +570,8 @@ app.get("/api/users/:id/profile", auth, async (req, res) => {
   const userId = Number(req.params.id);
   const user = await one("SELECT id,username,COALESCE(bio,'') AS bio,COALESCE(avatar,'') AS avatar FROM users WHERE id=$1", [userId]);
   if (!user) return res.status(404).json({ error: "Пользователь не найден" });
-  res.json({ ...user, verified: await isVerified(userId) });
+  const gifts = await many(`SELECT sticker_id,added_at FROM profile_gifts WHERE user_id=$1 ORDER BY added_at DESC`, [userId]);
+  res.json({ ...user, verified: await isVerified(userId), gifts: gifts.map(g=>({stickerId:Number(g.sticker_id),src:`/stickers/${Number(g.sticker_id)}.webp`,addedAt:g.added_at})) });
 });
 
 app.post("/api/admin/verify/:id", auth, async (req, res) => {
@@ -678,6 +731,87 @@ app.post("/api/messages/:userId/read", auth, async (req, res) => {
   const ids=rows.map(r=>Number(r.id));
   if(ids.length) push(other,{type:"messages-read",messageIds:ids,readerId:Number(req.user.id)});
   res.json({ok:true,ids});
+});
+
+app.get("/api/rewards", auth, async (req, res) => {
+  await ensureRewardWallet(req.user.id);
+  const wallet = await one("SELECT oranges FROM reward_wallets WHERE user_id=$1", [req.user.id]);
+  const owned = !!(await one("SELECT 1 FROM user_stickers WHERE user_id=$1 AND sticker_id=$2", [req.user.id, REWARD_STICKER_ID]));
+  const profileGift = !!(await one("SELECT 1 FROM profile_gifts WHERE user_id=$1 AND sticker_id=$2", [req.user.id, REWARD_STICKER_ID]));
+  res.json({ oranges: Number(wallet?.oranges || 0), stickerId: REWARD_STICKER_ID, stickerSrc: REWARD_STICKER_SRC, owned, profileGift, unlockAt: 50 });
+});
+
+app.post("/api/captcha/challenge", auth, async (req, res) => {
+  await ensureRewardWallet(req.user.id);
+  await query("DELETE FROM captcha_challenges WHERE user_id=$1 OR expires_at < NOW()", [req.user.id]);
+  const a = crypto.randomInt(12, 48);
+  const b = crypto.randomInt(3, 18);
+  const c = crypto.randomInt(2, 12);
+  const d = crypto.randomInt(1, 9);
+  const op = crypto.randomInt(0, 2);
+  const answer = op === 0 ? (a * b) + c - d : (a + b) * c - d;
+  const expression = op === 0 ? `(${a} × ${b}) + ${c} − ${d}` : `(${a} + ${b}) × ${c} − ${d}`;
+  const options = new Set([answer]);
+  while (options.size < 4) {
+    const delta = crypto.randomInt(-15, 16) || 1;
+    options.add(Math.max(1, answer + delta));
+  }
+  const shuffled = [...options].sort(() => crypto.randomInt(-1, 2));
+  const token = crypto.randomBytes(24).toString("hex");
+  await query("INSERT INTO captcha_challenges(token,user_id,answer,expires_at) VALUES($1,$2,$3,NOW()+INTERVAL '5 minutes')", [token, req.user.id, answer]);
+  res.json({ token, expression, options: shuffled });
+});
+
+app.post("/api/captcha/verify", auth, async (req, res) => {
+  const token = String(req.body?.token || "");
+  const answer = Number(req.body?.answer);
+  if (!token || !Number.isInteger(answer)) return res.status(400).json({ error: "Некорректная CAPTCHA" });
+  const ch = await one("SELECT token,answer FROM captcha_challenges WHERE token=$1 AND user_id=$2 AND used=FALSE AND expires_at>NOW()", [token, req.user.id]);
+  if (!ch || Number(ch.answer) !== answer) return res.status(400).json({ error: "Неверный ответ CAPTCHA" });
+  await query("UPDATE captcha_challenges SET used=TRUE WHERE token=$1", [token]);
+  const wallet = await one(`INSERT INTO reward_wallets(user_id,oranges) VALUES($1,5) ON CONFLICT(user_id) DO UPDATE SET oranges=reward_wallets.oranges+5,updated_at=NOW() RETURNING oranges`, [req.user.id]);
+  if (Number(wallet.oranges) >= 50) await grantRewardSticker(req.user.id, false);
+  const owned = !!(await one("SELECT 1 FROM user_stickers WHERE user_id=$1 AND sticker_id=$2", [req.user.id, REWARD_STICKER_ID]));
+  res.json({ ok:true, oranges:Number(wallet.oranges), owned, stickerSrc:REWARD_STICKER_SRC });
+});
+
+app.post("/api/stickers/:id/profile", auth, async (req, res) => {
+  const stickerId = Number(req.params.id);
+  if (stickerId !== REWARD_STICKER_ID) return res.status(404).json({ error: "Стикер не найден" });
+  const owned = await one("SELECT 1 FROM user_stickers WHERE user_id=$1 AND sticker_id=$2", [req.user.id, stickerId]);
+  if (!owned) return res.status(403).json({ error: "Сначала получите этот стикер" });
+  await query("INSERT INTO profile_gifts(user_id,sticker_id) VALUES($1,$2) ON CONFLICT DO NOTHING", [req.user.id, stickerId]);
+  res.json({ ok:true });
+});
+
+app.delete("/api/stickers/:id/profile", auth, async (req, res) => {
+  const stickerId = Number(req.params.id);
+  await query("DELETE FROM profile_gifts WHERE user_id=$1 AND sticker_id=$2", [req.user.id, stickerId]);
+  res.json({ ok:true });
+});
+
+app.post("/api/stickers/:id/send", auth, async (req, res) => {
+  const stickerId = Number(req.params.id);
+  const receiver = Number(req.body?.receiverId);
+  if (stickerId !== REWARD_STICKER_ID || !receiver || receiver === Number(req.user.id)) return res.status(400).json({ error: "Некорректный подарок" });
+  const owned = await one("SELECT 1 FROM user_stickers WHERE user_id=$1 AND sticker_id=$2", [req.user.id, stickerId]);
+  if (!owned) return res.status(403).json({ error: "Сначала получите этот стикер" });
+  if (await isBlockedBetween(req.user.id, receiver)) return res.status(403).json({ error: "Пользователь заблокирован" });
+  const target = await one("SELECT id,username FROM users WHERE id=$1", [receiver]);
+  if (!target) return res.status(404).json({ error: "Пользователь не найден" });
+  await query("INSERT INTO user_stickers(user_id,sticker_id) VALUES($1,$2) ON CONFLICT DO NOTHING", [receiver, stickerId]);
+  await query("INSERT INTO profile_gifts(user_id,sticker_id) VALUES($1,$2) ON CONFLICT DO NOTHING", [receiver, stickerId]);
+  const inserted = await one("INSERT INTO messages(sender_id,receiver_id,text) VALUES($1,$2,$3) RETURNING id", [req.user.id, receiver, `[STICKER]${REWARD_STICKER_SRC}`]);
+  const message = await one(`SELECT m.id,m.sender_id,m.receiver_id,m.text,m.created_at,m.read_at,u.username sender_name FROM messages m JOIN users u ON u.id=m.sender_id WHERE m.id=$1`, [inserted.id]);
+  push(receiver, {type:"message",message});
+  push(req.user.id, {type:"message",message});
+  res.json(message);
+});
+
+app.get("/api/users/:id/gifts", auth, async (req, res) => {
+  const userId = Number(req.params.id);
+  const gifts = await many(`SELECT sticker_id,added_at FROM profile_gifts WHERE user_id=$1 ORDER BY added_at DESC`, [userId]);
+  res.json(gifts.map(g=>({stickerId:Number(g.sticker_id),src:`/stickers/${Number(g.sticker_id)}.webp`,addedAt:g.added_at})));
 });
 
 app.get("/api/push/public-key", auth, (req, res) => res.json({ publicKey: vapidKeys.publicKey }));
