@@ -29,6 +29,7 @@ button,input{font:inherit}.app{height:100vh;max-width:1100px;margin:auto;display
 .profile-view-actions{display:flex;gap:8px}
 .profile-view-actions button{flex:1;padding:11px;border:0;border-radius:10px;cursor:pointer;background:#18251e;color:#fff}
 .profile-view-actions .primary-profile{background:#22ff72;color:#001609;font-weight:700}
+.profile-block-state{min-height:18px;margin:8px 0 12px;color:#ffb0b0;font-size:13px}.profile-view-actions button.danger{background:#a92323;color:#fff}.profile-view-actions button.blocked{background:#25322b;color:#fff}
 
 @media(max-width:700px){.quick-actions button{font-size:11px;padding:7px 3px}.avatar-upload,.wallpaper-row{flex-wrap:wrap}}
 </style>
@@ -147,15 +148,17 @@ img,video{max-width:100%}
   <div id="profileViewName" class="profile-view-name">Профиль</div>
   <div id="profileViewUsername" class="profile-view-username"></div>
   <div id="profileViewBio" class="profile-view-bio"></div>
+  <div id="profileViewBlockState" class="profile-block-state"></div>
   <div class="profile-view-actions">
     <button id="profileViewChat" class="primary-profile" onclick="chatFromProfile()">💬 Написать</button>
+    <button id="profileViewBlock" onclick="toggleProfileBlock()">🚫 Заблокировать</button>
     <button onclick="closeProfileView()">Закрыть</button>
   </div>
 </div></div>
 
 <div id="statusModal">
   <div class="status-shell">
-    <button class="status-close" onclick="closeStatuses()">×</button>
+    <button class="status-close" onclick="closeStatuses()" aria-label="Выйти из просмотра статусов" title="Выйти">×</button>
     <button class="status-create" onclick="openStatusCreate()">＋ Мой статус</button>
     <div id="statusFeed" class="status-feed"><div class="status-empty">Загрузка статусов…</div></div>
     <div id="statusCreateModal" class="status-create-modal">
@@ -600,7 +603,7 @@ function applyChatWallpaper(){ const v=$("wallpaperUrl").value.trim() || $("wall
 function clearChatWallpaper(){ if(wallpaperKey()!=="none")localStorage.removeItem("bkt_wallpaper_"+wallpaperKey()); $("wallpaperUrl").value=""; $("wallpaperColor").value="#08100c"; applyWallpaperValue(""); }
 async function uploadAvatarFile(input){ const f=input.files?.[0]; if(!f)return; const form=new FormData(); form.append("avatar",f,f.name); try{ const r=await fetch("/api/profile/avatar",{method:"POST",headers:{Authorization:"Bearer "+token},body:form}); const d=await r.json(); if(!r.ok)throw Error(d.error||"Ошибка загрузки"); $("profileAvatar").value=d.avatar; await saveSettings(); }catch(e){ $("settingsError").style.color="#ff8d8d"; $("settingsError").textContent=e.message; } finally{input.value="";} }
 
-async function openProfileView(userId, isMe=false){
+async async function openProfileView(userId, isMe=false){
   try{
     const p = isMe ? await api("/api/profile") : await api("/api/users/"+encodeURIComponent(userId)+"/profile");
     $("profileViewName").innerHTML = verifiedName(p.username, !!p.verified);
@@ -614,9 +617,57 @@ async function openProfileView(userId, isMe=false){
       av.textContent=(p.username||"?")[0].toUpperCase();
     }
     $("profileViewChat").style.display = isMe ? "none" : "block";
+    const blockBtn=$("profileViewBlock");
+    const blockState=$("profileViewBlockState");
+    if(isMe){
+      blockBtn.style.display="none";
+      blockState.textContent="";
+    }else{
+      blockBtn.style.display="block";
+      blockBtn.disabled=false;
+      try{
+        const bs=await api("/api/users/"+encodeURIComponent(p.id)+"/block-status");
+        window.profileViewBlockStatus=bs;
+        if(bs.blocked){
+          blockBtn.textContent="🔓 Разблокировать";
+          blockBtn.className="blocked";
+          blockState.textContent="Вы заблокировали этого пользователя.";
+        }else if(bs.blockedByUser){
+          blockBtn.style.display="none";
+          blockState.textContent="Этот пользователь заблокировал вас.";
+        }else{
+          blockBtn.textContent="🚫 Заблокировать";
+          blockBtn.className="danger";
+          blockState.textContent="";
+        }
+      }catch(_){
+        blockBtn.textContent="🚫 Заблокировать";
+        blockBtn.className="danger";
+      }
+    }
     $("profileViewModal").style.display="grid";
     window.profileViewUser = isMe ? null : p;
   }catch(e){ alert(e.message || "Не удалось открыть профиль"); }
+}
+async function toggleProfileBlock(){
+  const p=window.profileViewUser;
+  if(!p)return;
+  const bs=window.profileViewBlockStatus||{};
+  const action=bs.blocked ? "разблокировать" : "заблокировать";
+  if(!confirm(`Точно ${action} @${p.username}?`))return;
+  try{
+    const method=bs.blocked ? "DELETE" : "POST";
+    await api("/api/users/"+encodeURIComponent(p.id)+"/block",{method});
+    await openProfileView(p.id,false);
+    if(selected && Number(selected.id)===Number(p.id)){
+      selected=null; activeGroup=null;
+      $("headName").textContent="Выберите чат";
+      $("headStatus").textContent="";
+      $("messages").innerHTML='<div class="empty">Пользователь заблокирован</div>';
+      $("app").classList.remove("mobile-chat");
+    }
+    loadUsers();
+  }catch(e){alert(e.message||"Не удалось изменить блокировку");}
 }
 function openMyProfile(){ openProfileView(me?.id, true); }
 function openSelectedProfile(){ if(selected) openProfileView(selected.id, false); }
@@ -881,11 +932,32 @@ async function loadStatuses(){
 async function deleteStatus(id){try{await api('/api/statuses/'+id,{method:'DELETE'});await loadStatuses();}catch(e){alert(e.message||'Не удалось удалить статус');}}
 
 (function(){
+  let touchStartY=0, touchStartX=0, wheelLock=false;
+  function statusStep(dir){
+    const f=$('statusFeed'); if(!f)return;
+    f.scrollBy({top:dir*window.innerHeight,behavior:'smooth'});
+  }
   document.addEventListener('keydown',e=>{
     const modal=$('statusModal'); if(!modal||modal.style.display!=='block')return;
-    if(e.key==='ArrowDown'||e.key==='PageDown'){e.preventDefault(); const f=$('statusFeed'); f?.scrollBy({top:window.innerHeight,behavior:'smooth'});}
-    if(e.key==='ArrowUp'||e.key==='PageUp'){e.preventDefault(); const f=$('statusFeed'); f?.scrollBy({top:-window.innerHeight,behavior:'smooth'});}
+    if(e.key==='ArrowDown'||e.key==='PageDown'){e.preventDefault(); statusStep(1);}
+    if(e.key==='ArrowUp'||e.key==='PageUp'){e.preventDefault(); statusStep(-1);}
+    if(e.key==='Escape'){e.preventDefault(); closeStatuses();}
   });
+  document.addEventListener('touchstart',e=>{
+    const modal=$('statusModal'); if(!modal||modal.style.display!=='block')return;
+    const t=e.changedTouches[0]; touchStartY=t.clientY; touchStartX=t.clientX;
+  },{passive:true});
+  document.addEventListener('touchend',e=>{
+    const modal=$('statusModal'); if(!modal||modal.style.display!=='block')return;
+    const t=e.changedTouches[0], dy=t.clientY-touchStartY, dx=t.clientX-touchStartX;
+    if(Math.abs(dy)>55 && Math.abs(dy)>Math.abs(dx)*1.15){ statusStep(dy<0?1:-1); }
+  },{passive:true});
+  document.addEventListener('wheel',e=>{
+    const modal=$('statusModal'); if(!modal||modal.style.display!=='block'||wheelLock)return;
+    if(Math.abs(e.deltaY)<12)return;
+    wheelLock=true; statusStep(e.deltaY>0?1:-1);
+    setTimeout(()=>wheelLock=false,500);
+  },{passive:true});
 })();
 
 // Сессия восстанавливается один раз после загрузки DOM.

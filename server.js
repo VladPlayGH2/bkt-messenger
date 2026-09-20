@@ -148,12 +148,22 @@ async function initDb() {
       expires_at TIMESTAMPTZ NOT NULL DEFAULT (NOW() + INTERVAL '24 hours')
     );
 
+    CREATE TABLE IF NOT EXISTS user_blocks (
+      blocker_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      blocked_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      PRIMARY KEY (blocker_id, blocked_id),
+      CHECK (blocker_id <> blocked_id)
+    );
+
     CREATE INDEX IF NOT EXISTS idx_messages_pair ON messages(sender_id, receiver_id, id);
     CREATE INDEX IF NOT EXISTS idx_messages_receiver ON messages(receiver_id, id);
     CREATE INDEX IF NOT EXISTS idx_group_messages_group ON group_messages(group_id, id);
     CREATE INDEX IF NOT EXISTS idx_group_members_user ON group_members(user_id);
     CREATE INDEX IF NOT EXISTS idx_call_sessions_callee_status ON call_sessions(callee_id, status, created_at);
     CREATE INDEX IF NOT EXISTS idx_statuses_expires ON statuses(expires_at, created_at);
+    CREATE INDEX IF NOT EXISTS idx_user_blocks_blocker ON user_blocks(blocker_id, blocked_id);
+    CREATE INDEX IF NOT EXISTS idx_user_blocks_blocked ON user_blocks(blocked_id, blocker_id);
   `);
 
   for (const protectedName of ["brozi", "vlad", "vladmobile"]) {
@@ -368,7 +378,7 @@ app.post("/api/register", async (req, res) => {
     if (!avatar) avatar = "/stickers/1.webp";
     if (!verifyProtectedCode(username, accessCode)) return res.status(403).json({ error: protectedError(username) });
     if (password.length < 6) return res.status(400).json({ error: "Пароль должен быть не короче 6 символов" });
-    if (!/^\/stickers\/(?:[1-9]|1[0-2])\.webp$/.test(avatar)) avatar = "/stickers/1.webp";
+    if (!/^\/stickers\/(?:[1-9]|1[0-9]|2[0-8])\.webp$/.test(avatar)) avatar = "/stickers/1.webp";
     const hash = await bcrypt.hash(password, 10);
     const user = await one("INSERT INTO users(username,password_hash,avatar) VALUES($1,$2,$3) RETURNING id,username,avatar", [username, hash, avatar]);
     if (["brozi", "vlad", "vladmobile"].includes(username.toLowerCase())) {
@@ -421,7 +431,7 @@ app.patch("/api/profile", auth, async (req, res) => {
   if (protectedAccount(username) && !verifyProtectedCode(username, accessCode)) return res.status(403).json({ error: protectedError(username) });
   const bio = String(req.body?.bio ?? "").trim().slice(0, 160);
   let avatar = String(req.body?.avatar ?? "").trim();
-  if (!/^\/stickers\/(?:[1-9]|1[0-2])\.webp$/.test(avatar)) avatar = "/stickers/1.webp";
+  if (!/^\/stickers\/(?:[1-9]|1[0-9]|2[0-8])\.webp$/.test(avatar)) avatar = "/stickers/1.webp";
   const exists = await one("SELECT id FROM users WHERE LOWER(username)=LOWER($1) AND id<>$2", [username, meUser.id]);
   const usernameToSave = exists ? meUser.username : username;
   const updated = await one(`UPDATE users SET username=$1,bio=$2,avatar=$3 WHERE id=$4
@@ -477,6 +487,39 @@ app.delete("/api/admin/verify/:id", auth, async (req, res) => {
   res.json({ ok: true, verified: false });
 });
 
+async function isBlockedBetween(a, b) {
+  const row = await one(`SELECT 1 FROM user_blocks
+    WHERE (blocker_id=$1 AND blocked_id=$2) OR (blocker_id=$2 AND blocked_id=$1)
+    LIMIT 1`, [Number(a), Number(b)]);
+  return !!row;
+}
+
+app.get("/api/users/:id/block-status", auth, async (req, res) => {
+  const other = Number(req.params.id);
+  if (!other || other === Number(req.user.id)) return res.status(400).json({ error: "Некорректный пользователь" });
+  const target = await one("SELECT id,username FROM users WHERE id=$1", [other]);
+  if (!target) return res.status(404).json({ error: "Пользователь не найден" });
+  const mine = !!(await one("SELECT 1 FROM user_blocks WHERE blocker_id=$1 AND blocked_id=$2", [req.user.id, other]));
+  const theirs = !!(await one("SELECT 1 FROM user_blocks WHERE blocker_id=$1 AND blocked_id=$2", [other, req.user.id]));
+  res.json({ blocked: mine, blockedByUser: theirs, anyBlocked: mine || theirs });
+});
+
+app.post("/api/users/:id/block", auth, async (req, res) => {
+  const other = Number(req.params.id);
+  if (!other || other === Number(req.user.id)) return res.status(400).json({ error: "Нельзя заблокировать себя" });
+  const target = await one("SELECT id,username FROM users WHERE id=$1", [other]);
+  if (!target) return res.status(404).json({ error: "Пользователь не найден" });
+  await query(`INSERT INTO user_blocks(blocker_id,blocked_id) VALUES($1,$2)
+    ON CONFLICT(blocker_id,blocked_id) DO NOTHING`, [req.user.id, other]);
+  res.json({ ok: true, blocked: true });
+});
+
+app.delete("/api/users/:id/block", auth, async (req, res) => {
+  const other = Number(req.params.id);
+  await query("DELETE FROM user_blocks WHERE blocker_id=$1 AND blocked_id=$2", [req.user.id, other]);
+  res.json({ ok: true, blocked: false });
+});
+
 app.get("/api/statuses", auth, async (req, res) => {
   try {
     const expired = await many("DELETE FROM statuses WHERE expires_at <= NOW() RETURNING media_url");
@@ -488,7 +531,18 @@ app.get("/api/statuses", auth, async (req, res) => {
     }
     const rows = await many(`SELECT s.id, s.user_id, u.username, u.avatar, s.text, s.media_url, s.created_at, s.expires_at
       FROM statuses s JOIN users u ON u.id=s.user_id
-      WHERE s.expires_at > NOW() ORDER BY s.created_at DESC LIMIT 100`);
+      WHERE s.expires_at > NOW()
+        AND s.user_id <> $1
+        AND NOT EXISTS (
+          SELECT 1 FROM user_blocks b
+          WHERE (b.blocker_id=$1 AND b.blocked_id=s.user_id)
+             OR (b.blocker_id=s.user_id AND b.blocked_id=$1)
+        )
+      UNION ALL
+      SELECT s.id, s.user_id, u.username, u.avatar, s.text, s.media_url, s.created_at, s.expires_at
+      FROM statuses s JOIN users u ON u.id=s.user_id
+      WHERE s.expires_at > NOW() AND s.user_id = $1
+      ORDER BY created_at DESC LIMIT 100`, [req.user.id]);
     res.json(rows);
   } catch (e) { console.error(e); res.status(500).json({ error: "Не удалось загрузить статусы" }); }
 });
@@ -530,18 +584,33 @@ app.get("/api/users", auth, async (req, res) => {
     const chats = await many(`
       SELECT u.id,u.username,EXISTS(SELECT 1 FROM verified_users v WHERE v.user_id=u.id) AS verified,MAX(m.id) AS last_message_id
       FROM users u JOIN messages m ON (m.sender_id=u.id AND m.receiver_id=$1) OR (m.receiver_id=u.id AND m.sender_id=$2)
-      WHERE u.id<>$3 GROUP BY u.id,u.username ORDER BY last_message_id DESC LIMIT 50`, [req.user.id, req.user.id, req.user.id]);
+      WHERE u.id<>$3
+        AND NOT EXISTS (
+          SELECT 1 FROM user_blocks b
+          WHERE (b.blocker_id=$3 AND b.blocked_id=u.id)
+             OR (b.blocker_id=u.id AND b.blocked_id=$3)
+        )
+      GROUP BY u.id,u.username ORDER BY last_message_id DESC LIMIT 50`, [req.user.id, req.user.id, req.user.id]);
     res.set("Cache-Control", "no-store");
     return res.json(chats.map(({ id, username, verified }) => ({ id, username, verified: !!verified })));
   }
   const users = await many(`SELECT u.id,u.username,EXISTS(SELECT 1 FROM verified_users v WHERE v.user_id=u.id) AS verified
-    FROM users u WHERE u.id<>$1 AND LOWER(u.username) LIKE LOWER($2) ORDER BY LOWER(username) LIMIT 50`, [req.user.id, `%${raw}%`]);
+    FROM users u
+    WHERE u.id<>$1
+      AND LOWER(u.username) LIKE LOWER($2)
+      AND NOT EXISTS (
+        SELECT 1 FROM user_blocks b
+        WHERE (b.blocker_id=$1 AND b.blocked_id=u.id)
+           OR (b.blocker_id=u.id AND b.blocked_id=$1)
+      )
+    ORDER BY LOWER(username) LIMIT 50`, [req.user.id, `%${raw}%`]);
   res.set("Cache-Control", "no-store");
   res.json(users.map(u => ({ ...u, verified: !!u.verified })));
 });
 
 app.get("/api/messages/:userId", auth, async (req, res) => {
   const other = Number(req.params.userId);
+  if (await isBlockedBetween(req.user.id, other)) return res.json([]);
   const rows = await many(`SELECT m.id,m.sender_id,m.receiver_id,m.text,m.created_at,u.username sender_name
     FROM messages m JOIN users u ON u.id=m.sender_id
     WHERE (m.sender_id=$1 AND m.receiver_id=$2) OR (m.sender_id=$3 AND m.receiver_id=$4)
@@ -581,6 +650,7 @@ app.post("/api/messages", auth, async (req, res) => {
     if (!receiver || !text || text.length > 4000) return res.status(400).json({ error: "Некорректное сообщение" });
     const target = await one("SELECT id,username FROM users WHERE id=$1", [receiver]);
     if (!target) return res.status(404).json({ error: "Пользователь не найден" });
+    if (await isBlockedBetween(req.user.id, receiver)) return res.status(403).json({ error: "Нельзя отправить сообщение: пользователь заблокирован" });
     const inserted = await one("INSERT INTO messages(sender_id,receiver_id,text) VALUES($1,$2,$3) RETURNING id", [req.user.id, receiver, text]);
     const message = await one(`SELECT m.id,m.sender_id,m.receiver_id,m.text,m.created_at,u.username sender_name
       FROM messages m JOIN users u ON u.id=m.sender_id WHERE m.id=$1`, [inserted.id]);
@@ -760,6 +830,10 @@ wss.on("connection", (ws, req) => {
         if (data.type === "call-signal" && data.toUserId) {
           const toUserId = Number(data.toUserId);
           const callType = data.callType || "audio";
+          if (await isBlockedBetween(user.id, toUserId)) {
+            ws.send(JSON.stringify({ type: "call-signal", signalType: "blocked", toUserId }));
+            return;
+          }
           if (data.signalType === "offer") {
             const callId = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
             await query(`INSERT INTO call_sessions(id,caller_id,callee_id,call_type,offer_json,status)
