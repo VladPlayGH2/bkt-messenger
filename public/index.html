@@ -421,7 +421,7 @@ img,video{max-width:100%}
 <input id="text" placeholder="Сообщение..." onkeydown="if(event.key==='Enter')send()">
 <button class="send" onclick="send()">➤</button>
 </div>
-<div id="communityReadonly" class="community-readonly">🔒 В этой группе могут писать только Brozi и Vlad</div>
+<div id="communityReadonly" class="community-readonly">🔒 В этой группе могут писать только Brozi и vlad</div>
 <div id="stickerPicker" class="sticker-picker" aria-label="Стикеры">
   <div class="sticker-picker-head"><b>Стикеры</b><button class="sticker-close" id="stickerClose" aria-label="Закрыть">×</button></div>
   <div class="sticker-pack-title">Капибара и Туф • Новые стикеры</div>
@@ -534,7 +534,7 @@ function formatMessageTime(value){
   return date.toLocaleTimeString("ru-RU",{hour:"2-digit",minute:"2-digit"});
 }
 function toggleProtectedCode(){const username=$("login").value.trim().replace(/^@+/,"").toLowerCase(); const protectedUser=["brozi","vlad","vladmobile"].includes(username); $("accessCode").style.display=protectedUser?"block":"none"; $("accessCode").placeholder=protectedUser?"Секретный код":"Секретный код";}
-const REGISTRATION_AVATARS = Array.from({length:28},(_,i)=>`/stickers/${i+1}.webp`);
+const REGISTRATION_AVATARS = Array.from({length:29},(_,i)=>`/stickers/${i+1}.webp`);
 let statusRows=[];
 let statusViewerIndex=0;
 let statusViewerTimer=null;
@@ -1394,7 +1394,7 @@ if (searchInput) {
 
 
 
-const STICKERS = Array.from({length:28},(_,i)=>`/stickers/${i+1}.webp`);
+const STICKERS = Array.from({length:29},(_,i)=>`/stickers/${i+1}.webp`);
 let stickerPickerReady=false;
 
 function buildStickerPicker(){
@@ -1434,7 +1434,7 @@ function toggleStickerPicker(){
 }
 function closeStickerPicker(){if($("stickerPicker"))$("stickerPicker").style.display="none";}
 async function sendSticker(src){
-  if(activeGroup && activeGroup.name === "БКТ Сообщество" && !["brozi","vlad"].includes(String(me?.username || "").toLowerCase())){alert("В этой группе могут писать только Brozi и Vlad");return;}
+  if(activeGroup && activeGroup.name === "БКТ Сообщество" && !["brozi","vlad"].includes(String(me?.username || "").toLowerCase())){alert("В этой группе могут писать только Brozi и vlad");return;}
   if(!selected && !activeGroup)return;
   closeStickerPicker();
   const text="[STICKER]"+src;
@@ -1458,7 +1458,7 @@ window.addEventListener("resize",()=>{if($("stickerPicker")?.style.display==="bl
 
 async function send(){
   const input=$("text"), text=input.value.trim();
-  if(activeGroup && activeGroup.name === "БКТ Сообщество" && !["brozi","vlad"].includes(String(me?.username || "").toLowerCase())){alert("В этой группе могут писать только Brozi и Vlad");return;}
+  if(activeGroup && activeGroup.name === "БКТ Сообщество" && !["brozi","vlad"].includes(String(me?.username || "").toLowerCase())){alert("В этой группе могут писать только Brozi и vlad");return;}
   if(!text)return;
   if(activeGroup){
     try{
