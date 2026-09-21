@@ -644,16 +644,31 @@ app.post("/api/register", async (req, res) => {
 
 app.post("/api/login", async (req, res) => {
   try {
-    const username = String(req.body.username || "").trim();
+    const identifier = String(req.body.username || req.body.login || req.body.phone || "").trim();
     const password = String(req.body.password || "");
     const accessCode = String(req.body.accessCode || "");
-    if (isBannedUsername(username)) return res.status(403).json({ error: "Этот логин запрещён" });
-    if (!verifyProtectedCode(username, accessCode)) return res.status(403).json({ error: protectedError(username) });
-    const row = await one("SELECT * FROM users WHERE LOWER(username)=LOWER($1) LIMIT 1", [username]);
-    if (!row || !(await bcrypt.compare(password, row.password_hash))) return res.status(401).json({ error: "Неверный логин или пароль" });
+    if (!identifier || !password) return res.status(400).json({ error: "Введите логин/номер телефона и пароль" });
+
+    // Вход поддерживает и @username, и номер телефона. Email здесь не используется.
+    const normalizedUsername = normalizeUsername(identifier);
+    const looksLikePhone = /^[+0-9 ()-]{10,20}$/.test(identifier) && normalizePhone(identifier).length >= 10;
+    if (!looksLikePhone && isBannedUsername(identifier)) return res.status(403).json({ error: "Этот логин запрещён" });
+    if (!verifyProtectedCode(normalizedUsername, accessCode)) return res.status(403).json({ error: protectedError(normalizedUsername) });
+
+    let row;
+    if (looksLikePhone) {
+      const phone = normalizePhone(identifier);
+      row = await one("SELECT * FROM users WHERE phone=$1 LIMIT 1", [phone]);
+    } else {
+      row = await one("SELECT * FROM users WHERE LOWER(username)=LOWER($1) LIMIT 1", [normalizedUsername]);
+    }
+    if (!row || !(await bcrypt.compare(password, row.password_hash))) return res.status(401).json({ error: "Неверный логин/номер телефона или пароль" });
     const user = { id: row.id, username: row.username };
     res.json({ token: tokenFor(user), user });
-  } catch (e) { console.error(e); res.status(500).json({ error: "Ошибка входа" }); }
+  } catch (e) {
+    console.error("Login error:", e);
+    res.status(500).json({ error: "Ошибка входа. Попробуйте ещё раз." });
+  }
 });
 
 app.get("/api/me", auth, async (req, res) => {

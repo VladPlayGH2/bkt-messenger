@@ -417,7 +417,7 @@ img,video{max-width:100%}
 <div id="auth" class="auth"><div class="card">
 <div class="brand"><div class="logo">БКТ</div><div><h1>БКТ</h1><small>Мессенджер</small></div></div>
 <h2 id="authTitle">Вход</h2><div id="err" class="error"></div>
-<input id="login" placeholder="Логин" autocomplete="username" oninput="toggleProtectedCode()"><input id="pass" type="password" placeholder="Пароль" autocomplete="current-password">
+<input id="login" placeholder="Логин или номер телефона" autocomplete="username" oninput="toggleProtectedCode()"><input id="pass" type="password" placeholder="Пароль" autocomplete="current-password">
 <input id="accessCode" type="password" autocomplete="off" placeholder="Секретный код" style="display:none">
 <div id="registerAvatarPicker" class="auth-avatar-picker">
   <div class="auth-avatar-title">Выберите аватарку из стикеров</div>
@@ -618,7 +618,7 @@ async function start(){
     me=null;
     $("app").style.display="none";
     $("auth").style.display="grid";
-    $("err").textContent="";
+    $("err").textContent=e.message||"Не удалось войти в аккаунт";
   }
 }
 
