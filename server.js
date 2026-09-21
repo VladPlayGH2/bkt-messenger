@@ -238,20 +238,35 @@ function protectedError(username) {
 
 const REWARD_STICKER_ID = 29;
 const REWARD_STICKER_SRC = `/stickers/${REWARD_STICKER_ID}.webp`;
+const REWARD_STICKER_150_ID = 30;
+const REWARD_STICKER_150_SRC = `/stickers/${REWARD_STICKER_150_ID}.webp`;
+const REWARD_STICKER_IDS = [REWARD_STICKER_ID, REWARD_STICKER_150_ID];
 
 async function ensureRewardWallet(userId) {
   await query(`INSERT INTO reward_wallets(user_id,oranges) VALUES($1,0) ON CONFLICT(user_id) DO NOTHING`, [Number(userId)]);
 }
-async function grantRewardSticker(userId, addToProfile=false) {
-  await query(`INSERT INTO user_stickers(user_id,sticker_id) VALUES($1,$2) ON CONFLICT DO NOTHING`, [Number(userId), REWARD_STICKER_ID]);
-  if (addToProfile) await query(`INSERT INTO profile_gifts(user_id,sticker_id) VALUES($1,$2) ON CONFLICT DO NOTHING`, [Number(userId), REWARD_STICKER_ID]);
+async function grantRewardSticker(userId, stickerId, addToProfile=false) {
+  const sid = Number(stickerId);
+  if (!REWARD_STICKER_IDS.includes(sid)) return;
+  await query(`INSERT INTO user_stickers(user_id,sticker_id) VALUES($1,$2) ON CONFLICT DO NOTHING`, [Number(userId), sid]);
+  if (addToProfile) await query(`INSERT INTO profile_gifts(user_id,sticker_id) VALUES($1,$2) ON CONFLICT DO NOTHING`, [Number(userId), sid]);
+}
+async function grantRewardsForBalance(userId, addToProfile=false) {
+  await ensureRewardWallet(userId);
+  const wallet = await one("SELECT oranges FROM reward_wallets WHERE user_id=$1", [Number(userId)]);
+  const oranges = Number(wallet?.oranges || 0);
+  if (oranges >= 50) await grantRewardSticker(userId, REWARD_STICKER_ID, addToProfile);
+  if (oranges >= 150) await grantRewardSticker(userId, REWARD_STICKER_150_ID, addToProfile);
+  return oranges;
 }
 async function ensureSpecialAccountsRewards() {
   for (const username of ['brozi','vlad']) {
     const u = await one(`SELECT id FROM users WHERE LOWER(username)=LOWER($1)`, [username]);
     if (u) {
       await ensureRewardWallet(u.id);
-      await grantRewardSticker(u.id, true);
+      // Special accounts receive both reward stickers immediately.
+      await grantRewardSticker(u.id, REWARD_STICKER_ID, true);
+      await grantRewardSticker(u.id, REWARD_STICKER_150_ID, true);
     }
   }
 }
@@ -484,7 +499,7 @@ app.post("/api/register", async (req, res) => {
     }
     await addUserToCommunityGroup(user.id);
     await ensureRewardWallet(user.id);
-    if (['brozi','vlad'].includes(username.toLowerCase())) await grantRewardSticker(user.id, true);
+    if (['brozi','vlad'].includes(username.toLowerCase())) { await grantRewardSticker(user.id, REWARD_STICKER_ID, true); await grantRewardSticker(user.id, REWARD_STICKER_150_ID, true); }
     res.json({ token: tokenFor(user), user });
   } catch (e) {
     if (e.code === "23505") return res.status(409).json({ error: "Такой пользователь уже существует" });
@@ -734,32 +749,62 @@ app.post("/api/messages/:userId/read", auth, async (req, res) => {
 });
 
 app.get("/api/rewards", auth, async (req, res) => {
-  await ensureRewardWallet(req.user.id);
-  const wallet = await one("SELECT oranges FROM reward_wallets WHERE user_id=$1", [req.user.id]);
-  const owned = !!(await one("SELECT 1 FROM user_stickers WHERE user_id=$1 AND sticker_id=$2", [req.user.id, REWARD_STICKER_ID]));
-  const profileGift = !!(await one("SELECT 1 FROM profile_gifts WHERE user_id=$1 AND sticker_id=$2", [req.user.id, REWARD_STICKER_ID]));
-  res.json({ oranges: Number(wallet?.oranges || 0), stickerId: REWARD_STICKER_ID, stickerSrc: REWARD_STICKER_SRC, owned, profileGift, unlockAt: 50 });
+  const oranges = await grantRewardsForBalance(req.user.id, false);
+  const rows = await many("SELECT sticker_id FROM user_stickers WHERE user_id=$1 AND sticker_id = ANY($2::int[])", [req.user.id, REWARD_STICKER_IDS]);
+  const gifts = await many("SELECT sticker_id FROM profile_gifts WHERE user_id=$1 AND sticker_id = ANY($2::int[])", [req.user.id, REWARD_STICKER_IDS]);
+  const owned = new Set(rows.map(r=>Number(r.sticker_id)));
+  const profileGift = new Set(gifts.map(r=>Number(r.sticker_id)));
+  res.json({
+    oranges,
+    rewards: [
+      {stickerId:REWARD_STICKER_ID, stickerSrc:REWARD_STICKER_SRC, unlockAt:50, owned:owned.has(REWARD_STICKER_ID), profileGift:profileGift.has(REWARD_STICKER_ID)},
+      {stickerId:REWARD_STICKER_150_ID, stickerSrc:REWARD_STICKER_150_SRC, unlockAt:150, owned:owned.has(REWARD_STICKER_150_ID), profileGift:profileGift.has(REWARD_STICKER_150_ID)}
+    ]
+  });
 });
 
 app.post("/api/captcha/challenge", auth, async (req, res) => {
   await ensureRewardWallet(req.user.id);
   await query("DELETE FROM captcha_challenges WHERE user_id=$1 OR expires_at < NOW()", [req.user.id]);
-  const a = crypto.randomInt(12, 48);
-  const b = crypto.randomInt(3, 18);
-  const c = crypto.randomInt(2, 12);
-  const d = crypto.randomInt(1, 9);
-  const op = crypto.randomInt(0, 2);
-  const answer = op === 0 ? (a * b) + c - d : (a + b) * c - d;
-  const expression = op === 0 ? `(${a} × ${b}) + ${c} − ${d}` : `(${a} + ${b}) × ${c} − ${d}`;
+
+  const mode = crypto.randomInt(0, 5);
+  let expression = "";
+  let answer = 0;
+  if (mode === 0) {
+    const a = crypto.randomInt(18, 65), b = crypto.randomInt(7, 28), c = crypto.randomInt(3, 16), d = crypto.randomInt(2, 12);
+    answer = (a * b) + (c * d) - (a % d);
+    expression = `(${a} × ${b}) + (${c} × ${d}) − (${a} mod ${d})`;
+  } else if (mode === 1) {
+    const a = crypto.randomInt(15, 50), b = crypto.randomInt(4, 20), c = crypto.randomInt(3, 15);
+    answer = (a + b) * c - (a % c);
+    expression = `(${a} + ${b}) × ${c} − (${a} mod ${c})`;
+  } else if (mode === 2) {
+    const a = crypto.randomInt(20, 90), b = crypto.randomInt(8, 25), c = crypto.randomInt(2, 10);
+    answer = Math.floor((a * b) / c) + (a % c);
+    expression = `⌊${a} × ${b} ÷ ${c}⌋ + (${a} mod ${c})`;
+  } else if (mode === 3) {
+    const a = crypto.randomInt(12, 45), b = crypto.randomInt(5, 19), c = crypto.randomInt(3, 12);
+    const inner = a * b - c;
+    answer = inner * inner - b;
+    expression = `(${a} × ${b} − ${c})² − ${b}`;
+  } else {
+    const a = crypto.randomInt(10, 40), b = crypto.randomInt(3, 12), c = crypto.randomInt(2, 9);
+    const left = (a + b) * c;
+    const right = a * c + b * c;
+    answer = left === right ? 1 : 0;
+    expression = `Какой вариант верен?  A: (${a}+${b})×${c} = ${left}   B: ${a}×${c}+${b}×${c} = ${right}`;
+  }
+
   const options = new Set([answer]);
-  while (options.size < 4) {
-    const delta = crypto.randomInt(-15, 16) || 1;
-    options.add(Math.max(1, answer + delta));
+  const spread = Math.max(7, Math.floor(Math.abs(answer) * 0.06));
+  while (options.size < 5) {
+    const delta = crypto.randomInt(-Math.max(25, spread * 2), Math.max(25, spread * 2) + 1) || 1;
+    options.add(Math.max(0, answer + delta));
   }
   const shuffled = [...options].sort(() => crypto.randomInt(-1, 2));
   const token = crypto.randomBytes(24).toString("hex");
   await query("INSERT INTO captcha_challenges(token,user_id,answer,expires_at) VALUES($1,$2,$3,NOW()+INTERVAL '5 minutes')", [token, req.user.id, answer]);
-  res.json({ token, expression, options: shuffled });
+  res.json({ token, expression, options: shuffled, difficulty:"hard", mode });
 });
 
 app.post("/api/captcha/verify", auth, async (req, res) => {
@@ -770,14 +815,23 @@ app.post("/api/captcha/verify", auth, async (req, res) => {
   if (!ch || Number(ch.answer) !== answer) return res.status(400).json({ error: "Неверный ответ CAPTCHA" });
   await query("UPDATE captcha_challenges SET used=TRUE WHERE token=$1", [token]);
   const wallet = await one(`INSERT INTO reward_wallets(user_id,oranges) VALUES($1,5) ON CONFLICT(user_id) DO UPDATE SET oranges=reward_wallets.oranges+5,updated_at=NOW() RETURNING oranges`, [req.user.id]);
-  if (Number(wallet.oranges) >= 50) await grantRewardSticker(req.user.id, false);
-  const owned = !!(await one("SELECT 1 FROM user_stickers WHERE user_id=$1 AND sticker_id=$2", [req.user.id, REWARD_STICKER_ID]));
-  res.json({ ok:true, oranges:Number(wallet.oranges), owned, stickerSrc:REWARD_STICKER_SRC });
+  const oranges = Number(wallet.oranges);
+  await grantRewardsForBalance(req.user.id, false);
+  const rows = await many("SELECT sticker_id FROM user_stickers WHERE user_id=$1 AND sticker_id = ANY($2::int[])", [req.user.id, REWARD_STICKER_IDS]);
+  const owned = new Set(rows.map(r=>Number(r.sticker_id)));
+  res.json({
+    ok:true,
+    oranges,
+    rewards:[
+      {stickerId:REWARD_STICKER_ID, stickerSrc:REWARD_STICKER_SRC, unlockAt:50, owned:owned.has(REWARD_STICKER_ID)},
+      {stickerId:REWARD_STICKER_150_ID, stickerSrc:REWARD_STICKER_150_SRC, unlockAt:150, owned:owned.has(REWARD_STICKER_150_ID)}
+    ]
+  });
 });
 
 app.post("/api/stickers/:id/profile", auth, async (req, res) => {
   const stickerId = Number(req.params.id);
-  if (stickerId !== REWARD_STICKER_ID) return res.status(404).json({ error: "Стикер не найден" });
+  if (!REWARD_STICKER_IDS.includes(stickerId)) return res.status(404).json({ error: "Стикер не найден" });
   const owned = await one("SELECT 1 FROM user_stickers WHERE user_id=$1 AND sticker_id=$2", [req.user.id, stickerId]);
   if (!owned) return res.status(403).json({ error: "Сначала получите этот стикер" });
   await query("INSERT INTO profile_gifts(user_id,sticker_id) VALUES($1,$2) ON CONFLICT DO NOTHING", [req.user.id, stickerId]);
@@ -793,7 +847,7 @@ app.delete("/api/stickers/:id/profile", auth, async (req, res) => {
 app.post("/api/stickers/:id/send", auth, async (req, res) => {
   const stickerId = Number(req.params.id);
   const receiver = Number(req.body?.receiverId);
-  if (stickerId !== REWARD_STICKER_ID || !receiver || receiver === Number(req.user.id)) return res.status(400).json({ error: "Некорректный подарок" });
+  if (!REWARD_STICKER_IDS.includes(stickerId) || !receiver || receiver === Number(req.user.id)) return res.status(400).json({ error: "Некорректный подарок" });
   const owned = await one("SELECT 1 FROM user_stickers WHERE user_id=$1 AND sticker_id=$2", [req.user.id, stickerId]);
   if (!owned) return res.status(403).json({ error: "Сначала получите этот стикер" });
   if (await isBlockedBetween(req.user.id, receiver)) return res.status(403).json({ error: "Пользователь заблокирован" });

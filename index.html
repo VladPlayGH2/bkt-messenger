@@ -38,7 +38,7 @@ button,input{font:inherit}.app{height:100vh;max-width:1100px;margin:auto;display
 .tiktok-feed-shell{position:relative;width:100vw;height:100dvh;background:#000;overflow:hidden}
 .tiktok-feed-top{position:absolute;z-index:30;top:0;left:0;right:0;height:64px;padding:10px 16px;display:flex;align-items:center;justify-content:space-between;color:#fff;background:linear-gradient(rgba(0,0,0,.62),transparent);font-size:18px;pointer-events:none}
 .tiktok-feed-top button{pointer-events:auto}
-.tiktok-status-feed{height:100%;width:100%;overflow-y:auto;scroll-snap-type:y mandatory;overscroll-behavior-y:contain;-webkit-overflow-scrolling:touch}
+.tiktok-status-feed{height:100%;width:100%;overflow-y:auto;overflow-x:hidden;scroll-snap-type:y mandatory;overscroll-behavior-y:contain;-webkit-overflow-scrolling:touch;touch-action:pan-y;scrollbar-width:none}.tiktok-status-feed::-webkit-scrollbar{display:none}
 .tiktok-status-slide{position:relative;width:100%;height:100dvh;min-height:100dvh;scroll-snap-align:start;scroll-snap-stop:always;background:#050505;overflow:hidden}
 .tiktok-status-photo{width:100%;height:100%;object-fit:cover;display:block}
 .tiktok-status-gradient{position:absolute;inset:0;background:linear-gradient(to bottom,rgba(0,0,0,.28),transparent 28%,transparent 48%,rgba(0,0,0,.82) 100%);pointer-events:none}
@@ -410,7 +410,7 @@ img,video{max-width:100%}
 </div>
 <button class="primary" onclick="authAction()" id="authBtn">Войти</button><div class="switch" onclick="toggleAuth()" id="switch">Нет аккаунта? Регистрация</div>
 </div></div><div class="app" id="app" style="display:none">
-<aside class="sidebar"><div class="quick-actions"><button id="profileBtn" onclick="openSettings()">⚙️ <span data-i18n="settings">Настройки</span></button><button class="notify-btn" id="notifyBtn" onclick="enableNotifications()">🔔 <span data-i18n="notifications">Уведомления</span></button><button onclick="createGroup()">＋ <span data-i18n="group">Группа</span></button></div><div class="top"><div class="brand"><div class="logo">БКТ</div><div><h1>БКТ</h1><small id="me" onclick="openMyProfile()" style="cursor:pointer" title="Открыть свой профиль"></small></div></div></div>
+<aside class="sidebar"><div class="quick-actions"><button id="profileBtn" onclick="openSettings()">⚙️ <span data-i18n="settings">Настройки</span></button><button class="notify-btn" id="notifyBtn" onclick="enableNotifications()">🔔 <span data-i18n="notifications">Уведомления</span></button><button onclick="createGroup()">＋ <span data-i18n="group">Группа</span></button><button onclick="openRewards()">🍊 <span>Награды</span></button></div><div class="top"><div class="brand"><div class="logo">БКТ</div><div><h1>БКТ</h1><small id="me" onclick="openMyProfile()" style="cursor:pointer" title="Открыть свой профиль"></small></div></div></div>
 <button id="statusesBtn" class="statuses-btn" onclick="openStatuses()">🟢 Статусы</button><div class="search"><input id="search" placeholder="Найти пользователя по @username" oninput="loadUsers()"></div><div id="groups"></div><div id="users" class="users"></div></aside>
 <main class="chat"><div class="chathead"><button class="back" onclick="mobileBack()" style="display:none">‹</button><div class="avatar" id="headAvatar" onclick="openSelectedProfile()" style="cursor:pointer" title="Открыть профиль"></div><div class="chat-title" onclick="openSelectedProfile()" style="cursor:pointer"><b id="headName" data-i18n="chooseChat">Выберите чат</b><span class="status" id="headStatus"></span></div><div class="call-actions"><button id="audioCallButton" title="Аудиозвонок" aria-label="Аудиозвонок">📞</button><button id="videoCallButton" title="Видеозвонок" aria-label="Видеозвонок">📹</button></div></div>
 <div id="messages" class="messages"><div class="empty">Выберите пользователя слева</div></div>
@@ -457,22 +457,33 @@ img,video{max-width:100%}
   </div>
 </div>
 
-<div id="statusViewerModal" class="modal wa-viewer-modal" style="display:none">
-  <div class="wa-viewer">
-    <div id="waViewerProgress" class="wa-viewer-progress"></div>
-    <div class="wa-viewer-top">
-      <button type="button" class="wa-icon-btn" onclick="closeStatusViewer()">‹</button>
-      <div id="waViewerAuthor" class="wa-viewer-author"></div>
-      <button type="button" class="wa-icon-btn" onclick="closeStatusViewer()">✕</button>
+<div id="statusViewerModal" class="modal wa-viewer-modal tiktok-status-modal" style="display:none">
+  <div class="tiktok-feed-shell">
+    <div class="tiktok-feed-top">
+      <button type="button" class="wa-icon-btn status-exit-btn" onclick="closeStatusViewer()">✕ Выйти</button>
+      <div style="flex:1;text-align:center;font-weight:800">Статусы</div>
+      <div style="width:88px"></div>
     </div>
-    <div id="waViewerMedia" class="wa-viewer-media"></div>
-    <div id="waViewerCaption" class="wa-viewer-caption"></div>
-    <div class="wa-viewer-bottom">
-      <button type="button" onclick="focusStatusComposer()">✚ Добавить статус</button>
-    </div>
+    <div id="tiktokStatusFeed" class="tiktok-status-feed"></div>
   </div>
 </div>
 
+<div id="rewardsModal" class="modal" style="display:none">
+  <div class="reward-panel">
+    <div class="reward-head">
+      <div><h2 style="margin:0">🍊 Награды</h2><div class="reward-sub">Пройди сложную CAPTCHA и получай по 5 🍊</div></div>
+      <button type="button" class="wa-icon-btn" onclick="closeRewards()">✕</button>
+    </div>
+    <div id="rewardBalance" class="reward-balance">🍊 0</div>
+    <button id="captchaStartButton" class="primary" type="button" onclick="startCaptcha()">🧩 Новая сложная CAPTCHA</button>
+    <div id="captchaBox" style="display:none">
+      <div id="captchaExpression" class="captcha-expression"></div>
+      <div id="captchaOptions" class="captcha-options"></div>
+      <div id="captchaHint" class="reward-sub" style="margin-top:10px">Выберите правильный ответ. Задание каждый раз разное.</div>
+    </div>
+    <div id="rewardCards" class="reward-cards"></div>
+  </div>
+</div>
 <div id="statusComposerModal" class="modal wa-composer-modal" style="display:none">
   <div class="wa-composer-sheet">
     <div class="wa-composer-head">
@@ -513,6 +524,8 @@ img,video{max-width:100%}
   <div id="profileViewName" class="profile-view-name">Профиль</div>
   <div id="profileViewUsername" class="profile-view-username"></div>
   <div id="profileViewBio" class="profile-view-bio"></div>
+  <div id="profileViewGifts" class="reward-cards" style="margin:0 0 8px"></div>
+  <div id="profileViewGiftActions" class="profile-view-actions" style="margin:0 0 12px"></div>
   <div id="profileViewBlockState" class="profile-block-state"></div>
   <div class="profile-view-actions">
     <button id="profileViewChat" class="primary-profile" onclick="chatFromProfile()">💬 Написать</button>
@@ -545,6 +558,7 @@ async function openStatuses(){
     statusViewerIndex=0;
     renderStatusViewer();
     $("statusViewerModal").style.display="grid";
+    requestAnimationFrame(()=>scrollStatusTo(0,false));
   }catch(e){alert(e.message||"Не удалось загрузить статусы");}
 }
 function closeStatuses(){
@@ -555,24 +569,48 @@ function closeStatusViewer(){
   if(statusViewerTimer){clearTimeout(statusViewerTimer);statusViewerTimer=null;}
   const modal=$("statusViewerModal"); if(modal)modal.style.display="none";
 }
+function scrollStatusTo(index,smooth=true){
+  const feed=$("tiktokStatusFeed"); if(!feed)return;
+  const slide=feed.children[index]; if(!slide)return;
+  feed.scrollTo({top:slide.offsetTop,behavior:smooth?"smooth":"auto"});
+}
 function renderStatusViewer(){
-  const st=statusRows[statusViewerIndex]; if(!st)return;
-  const media=$("waViewerMedia"), cap=$("waViewerCaption"), author=$("waViewerAuthor"), progress=$("waViewerProgress");
-  author.textContent="@"+(st.username||"Пользователь");
-  cap.textContent=st.text||"";
-  media.innerHTML=st.media_url
-    ? `<img src="${escapeHtml(st.media_url)}" alt="Статус">`
-    : `<div style="width:100%;height:100%;display:grid;place-items:center;color:#fff;font-size:72px;background:linear-gradient(135deg,#101c16,#244d36)">💬</div>`;
-  progress.innerHTML=statusRows.map((_,i)=>`<span class="${i===statusViewerIndex?"active":""}"></span>`).join("");
-  if(statusViewerTimer)clearTimeout(statusViewerTimer);
-  statusViewerTimer=setTimeout(()=>statusViewerStep(1),5000);
+  const feed=$("tiktokStatusFeed"); if(!feed)return;
+  feed.innerHTML=statusRows.map((st,i)=>{
+    const media=st.media_url
+      ? `<img class="tiktok-status-photo" src="${escapeHtml(st.media_url)}" alt="Фото статуса">`
+      : `<div class="tiktok-status-photo" style="background:linear-gradient(135deg,#101c16,#244d36);display:grid;place-items:center;font-size:72px">💬</div>`;
+    const avatar=st.avatar
+      ? `<img class="tiktok-status-avatar" src="${escapeHtml(st.avatar)}" alt="">`
+      : `<div class="tiktok-status-avatar" style="display:grid;place-items:center;font-weight:800">${escapeHtml((st.username||"?")[0].toUpperCase())}</div>`;
+    const caption=st.text ? `<div class="tiktok-status-caption">${escapeHtml(st.text)}</div>` : "";
+    const own=Number(st.user_id)===Number(me?.id);
+    const actions=own
+      ? `<button class="tiktok-status-action" title="Удалить" onclick="deleteStatus(${Number(st.id)})">🗑️</button>`
+      : "";
+    return `<section class="tiktok-status-slide" data-index="${i}">
+      ${media}
+      <div class="tiktok-status-gradient"></div>
+      <div class="tiktok-status-info">
+        <div class="tiktok-status-user">${avatar}<span>${verifiedName(st.username,false)}</span></div>
+        <div class="tiktok-status-date">${statusTime(st.created_at)}</div>
+        ${caption}
+      </div>
+      <div class="tiktok-status-actions">
+        <button class="tiktok-status-action" title="Новый статус" onclick="focusStatusComposer()">＋</button>
+        ${actions}
+      </div>
+    </section>`;
+  }).join("");
+  statusViewerIndex=0;
 }
 function statusViewerStep(dir){
-  const next=statusViewerIndex+dir;
-  if(next<0 || next>=statusRows.length){ closeStatusViewer(); return; }
-  statusViewerIndex=next; renderStatusViewer();
+  const next=Math.max(0,Math.min(statusRows.length-1,statusViewerIndex+dir));
+  if(next===statusViewerIndex && dir>0){ closeStatusViewer(); return; }
+  if(next===statusViewerIndex && dir<0){ return; }
+  statusViewerIndex=next;
+  scrollStatusTo(next,true);
 }
-
 function focusStatusComposer(){
   const m=$("statusComposerModal");
   if(!m)return;
@@ -687,6 +725,7 @@ async function deleteStatus(id){
 
 (function(){
   let sy=0,sx=0,wlock=false;
+  const feed=()=>$("tiktokStatusFeed");
   document.addEventListener("keydown",e=>{
     const m=$("statusViewerModal"); if(!m||m.style.display!=="grid")return;
     if(e.key==="ArrowUp"||e.key==="PageUp"){e.preventDefault();statusViewerStep(-1);}
@@ -695,7 +734,7 @@ async function deleteStatus(id){
   });
   document.addEventListener("touchstart",e=>{
     const m=$("statusViewerModal"); if(!m||m.style.display!=="grid")return;
-    const t=e.changedTouches[0]; sy=t.clientY;sx=t.clientX;
+    const t=e.touches[0]; if(!t)return; sx=t.clientX; sy=t.clientY;
   },{passive:true});
   document.addEventListener("touchend",e=>{
     const m=$("statusViewerModal"); if(!m||m.style.display!=="grid")return;
@@ -707,7 +746,65 @@ async function deleteStatus(id){
     if(Math.abs(e.deltaY)<12)return;
     wlock=true;statusViewerStep(e.deltaY>0?1:-1);setTimeout(()=>wlock=false,450);
   },{passive:true});
+  document.addEventListener("scroll",e=>{
+    const f=feed(); if(!f||e.target!==f)return;
+    const h=Math.max(1,f.clientHeight),i=Math.round(f.scrollTop/h);
+    if(Number.isFinite(i)&&i!==statusViewerIndex)statusViewerIndex=Math.max(0,Math.min(statusRows.length-1,i));
+  },{passive:true});
 })();
+let rewardState={oranges:0,rewards:[],captcha:null};
+async function loadRewards(){
+  try{ rewardState=await api('/api/rewards'); renderRewards(); }catch(e){ console.debug('rewards:',e.message); }
+}
+function openRewards(){
+  $('rewardsModal').style.display='grid';
+  $('captchaBox').style.display='none';
+  loadRewards();
+}
+function closeRewards(){ $('rewardsModal').style.display='none'; }
+function renderRewards(){
+  $('rewardBalance').textContent=`🍊 ${Number(rewardState.oranges||0)}`;
+  const cards=$('rewardCards'); if(!cards)return;
+  cards.innerHTML=(rewardState.rewards||[]).map(r=>{
+    const owned=!!r.owned, unlocked=Number(rewardState.oranges||0)>=Number(r.unlockAt);
+    return `<div class="reward-card ${owned?'':'locked'}">
+      <img src="${escapeHtml(r.stickerSrc)}" alt="Стикер ${r.stickerId}">
+      <b>${r.stickerId===30?'Королевская капибара':'Капибара и Туф'}</b>
+      <div class="reward-sub" style="margin:5px 0">${owned?'Получен':`Нужно ${r.unlockAt} 🍊`}</div>
+      ${owned?`<button type="button" onclick="addRewardToProfile(${r.stickerId})">🎁 Добавить в профиль</button>`:''}
+    </div>`;
+  }).join('');
+}
+async function addRewardToProfile(stickerId){
+  try{ await api('/api/stickers/'+Number(stickerId)+'/profile',{method:'POST'}); await loadRewards(); alert('Стикер добавлен в подарки профиля.'); }
+  catch(e){ alert(e.message||'Не удалось добавить подарок'); }
+}
+async function startCaptcha(){
+  try{
+    const d=await api('/api/captcha/challenge',{method:'POST'});
+    rewardState.captcha=d;
+    $('captchaBox').style.display='block';
+    $('captchaExpression').textContent=d.expression||'Решите задачу';
+    const box=$('captchaOptions');
+    box.innerHTML=(d.options||[]).map(v=>`<button class="captcha-option" type="button" onclick="verifyCaptcha(${Number(v)})">${escapeHtml(String(v))}</button>`).join('');
+    $('captchaHint').textContent='Сложность: высокая • за правильный ответ +5 🍊 • каждый раз новое задание';
+  }catch(e){alert(e.message||'Не удалось создать CAPTCHA');}
+}
+async function verifyCaptcha(answer){
+  const c=rewardState.captcha; if(!c)return;
+  try{
+    const d=await api('/api/captcha/verify',{method:'POST',body:{token:c.token,answer:Number(answer)}});
+    rewardState.oranges=Number(d.oranges||0); rewardState.rewards=d.rewards||[];
+    $('captchaBox').style.display='none';
+    renderRewards();
+    alert('Верно! +5 🍊');
+  }catch(e){
+    $('captchaHint').textContent='Неверно. Получите новую CAPTCHA и попробуйте ещё раз.';
+    $('captchaHint').style.color='#ff9a9a';
+    setTimeout(()=>startCaptcha(),450);
+  }
+}
+
 function renderRegistrationAvatarPicker(){
   const picker=$("registerAvatarPicker"), grid=$("registerAvatarGrid"), selected=$("registerAvatarSelected");
   if(!picker||!grid||!selected)return;
@@ -784,6 +881,7 @@ async function start(){
     $("me").textContent="@"+(me.username||"");
     connectSocket();
     loadUsers();
+    loadRewards();
     loadGroups();
     updateNotifyButton();
     if("Notification" in window && Notification.permission === "granted") setupPush().catch(()=>{});
@@ -1258,6 +1356,11 @@ async function openProfileView(userId, isMe=false){
     $("profileViewName").innerHTML = verifiedName(p.username, !!p.verified);
     $("profileViewUsername").textContent = "@"+p.username;
     $("profileViewBio").textContent = p.bio || "О себе пока ничего не указано.";
+    const giftsBox=$("profileViewGifts");
+    if(giftsBox){
+      const gifts=Array.isArray(p.gifts)?p.gifts:[];
+      giftsBox.innerHTML=gifts.length ? gifts.map(g=>`<div class="reward-card"><img src="${escapeHtml(g.src)}" alt="Подарок"><div class="reward-sub">🎁 Подарок</div></div>`).join('') : `<div class="reward-sub" style="grid-column:1/-1;padding:8px">Подарков пока нет</div>`;
+    }
     const av=$("profileViewAvatar");
     av.innerHTML="";
     if(p.avatar){
@@ -1266,6 +1369,12 @@ async function openProfileView(userId, isMe=false){
       av.textContent=(p.username||"?")[0].toUpperCase();
     }
     $("profileViewChat").style.display = isMe ? "none" : "block";
+    const giftActions=$("profileViewGiftActions");
+    if(giftActions){
+      const owned=!isMe ? [...(ownedRewardStickerIds||[])].filter(id=>id===29||id===30) : [];
+      giftActions.innerHTML=owned.map(id=>`<button type="button" onclick="giftRewardTo(${Number(p.id)},${id})">🎁 Подарить ${id===30?'👑':'🍊'}</button>`).join('');
+      giftActions.style.display=owned.length?'flex':'none';
+    }
     const blockBtn=$("profileViewBlock"), blockState=$("profileViewBlockState");
     if(isMe){
       blockBtn.style.display="none"; blockState.textContent="";
@@ -1287,6 +1396,10 @@ async function openProfileView(userId, isMe=false){
     $("profileViewModal").style.display="grid";
     window.profileViewUser = isMe ? null : p;
   }catch(e){ alert(e.message || "Не удалось открыть профиль"); }
+}
+async function giftRewardTo(receiverId, stickerId){
+  try{ await api('/api/stickers/'+Number(stickerId)+'/send',{method:'POST',body:{receiverId:Number(receiverId)}}); alert('Подарок отправлен.'); }
+  catch(e){ alert(e.message||'Не удалось отправить подарок'); }
 }
 async function toggleProfileBlock(){
   const p=window.profileViewUser; if(!p)return;
@@ -1396,19 +1509,30 @@ if (searchInput) {
 
 const STICKERS = Array.from({length:28},(_,i)=>`/stickers/${i+1}.webp`);
 let stickerPickerReady=false;
+let ownedRewardStickerIds=new Set();
 
+async function refreshOwnedRewardStickers(){
+  try{
+    const d=await api('/api/rewards');
+    rewardState=d||rewardState;
+    ownedRewardStickerIds=new Set((d.rewards||[]).filter(r=>r.owned).map(r=>Number(r.stickerId)));
+  }catch(_){ ownedRewardStickerIds=new Set(); }
+}
 function buildStickerPicker(){
-  if(stickerPickerReady)return;
   const grid=$("stickerGrid");
   if(!grid)return;
-  STICKERS.forEach((src,i)=>{
+  grid.innerHTML="";
+  const list=[...STICKERS];
+  if(ownedRewardStickerIds.has(29))list.push('/stickers/29.webp');
+  if(ownedRewardStickerIds.has(30))list.push('/stickers/30.webp');
+  list.forEach((src,i)=>{
     const b=document.createElement("button");
     b.type="button";
     b.className="sticker-item";
-    b.title="Туф";
-    b.setAttribute("aria-label",`Туф, стикер ${i+1}`);
+    b.title=src.endsWith('/29.webp')?'Наградной стикер 50 🍊':src.endsWith('/30.webp')?'Наградной стикер 150 🍊':'Туф';
+    b.setAttribute('aria-label',b.title);
     const img=document.createElement("img");
-    img.src=src; img.alt="Туф"; img.loading="lazy";
+    img.src=src; img.alt=b.title; img.loading="lazy";
     b.appendChild(img);
     b.onclick=()=>sendSticker(src);
     grid.appendChild(b);
@@ -1424,8 +1548,9 @@ function positionStickerPicker(){
   picker.style.left=Math.max(12,Math.min(window.innerWidth-width-12,r.right-width))+"px";
   picker.style.top=Math.max(12,r.top-Math.min(520,window.innerHeight*.65)-8)+"px";
 }
-function toggleStickerPicker(){
+async function toggleStickerPicker(){
   if(!selected && !activeGroup){alert("Сначала выберите чат");return;}
+  await refreshOwnedRewardStickers();
   buildStickerPicker();
   const p=$("stickerPicker");
   const open=p.style.display==="block";
