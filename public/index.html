@@ -583,6 +583,155 @@ function resetRegistrationFlow(){}
 function updateRegistrationUI(){
   $("authBtn").textContent=registering?"Зарегистрироваться":"Войти";
 }
+let rewardState={oranges:0,rewards:[],captcha:null};
+async function loadRewards(){
+  try{ rewardState=await api('/api/rewards'); renderRewards(); }catch(e){ console.debug('rewards:',e.message); }
+}
+function openRewards(){
+  $('rewardsModal').style.display='grid';
+  $('captchaBox').style.display='none';
+  loadRewards();
+}
+function closeRewards(){ $('rewardsModal').style.display='none'; }
+function renderRewards(){
+  $('rewardBalance').textContent=`🍊 ${Number(rewardState.oranges||0)}`;
+  const cards=$('rewardCards'); if(!cards)return;
+  cards.innerHTML=(rewardState.rewards||[]).map(r=>{
+    const owned=!!r.owned, unlocked=Number(rewardState.oranges||0)>=Number(r.unlockAt);
+    return `<div class="reward-card ${owned?'':'locked'}">
+      <img src="${escapeHtml(r.stickerSrc)}" alt="Стикер ${r.stickerId}">
+      <b>${r.stickerId===30?'Королевская капибара':'Капибара и Туф'}</b>
+      <div class="reward-sub" style="margin:5px 0">${owned?'Получен':`Нужно ${r.unlockAt} 🍊`}</div>
+      ${owned?`<button type="button" onclick="addRewardToProfile(${r.stickerId})">🎁 Добавить в профиль</button>`:''}
+    </div>`;
+  }).join('');
+}
+async function addRewardToProfile(stickerId){
+  try{ await api('/api/stickers/'+Number(stickerId)+'/profile',{method:'POST'}); await loadRewards(); alert('Стикер добавлен в подарки профиля.'); }
+  catch(e){ alert(e.message||'Не удалось добавить подарок'); }
+}
+async function startCaptcha(){
+  try{
+    const d=await api('/api/captcha/challenge',{method:'POST'});
+    rewardState.captcha=d;
+    $('captchaBox').style.display='block';
+    $('captchaExpression').textContent=d.expression||'Решите задачу';
+    const box=$('captchaOptions');
+    box.innerHTML=(d.options||[]).map(v=>`<button class="captcha-option" type="button" onclick="verifyCaptcha(${Number(v)})">${escapeHtml(String(v))}</button>`).join('');
+    $('captchaHint').textContent='Сложность: высокая • за правильный ответ +5 🍊 • каждый раз новое задание';
+  }catch(e){alert(e.message||'Не удалось создать CAPTCHA');}
+}
+async function verifyCaptcha(answer){
+  const c=rewardState.captcha; if(!c)return;
+  try{
+    const d=await api('/api/captcha/verify',{method:'POST',body:{token:c.token,answer:Number(answer)}});
+    rewardState.oranges=Number(d.oranges||0); rewardState.rewards=d.rewards||[];
+    $('captchaBox').style.display='none';
+    renderRewards();
+    alert('Верно! +5 🍊');
+  }catch(e){
+    $('captchaHint').textContent='Неверно. Получите новую CAPTCHA и попробуйте ещё раз.';
+    $('captchaHint').style.color='#ff9a9a';
+    setTimeout(()=>startCaptcha(),450);
+  }
+}
+
+function renderRegistrationAvatarPicker(){
+  const picker=$("registerAvatarPicker"), grid=$("registerAvatarGrid"), selected=$("registerAvatarSelected");
+  if(!picker||!grid||!selected)return;
+  picker.classList.toggle("show",registering);
+  grid.innerHTML="";
+  if(selectedRegistrationAvatar){
+    selected.innerHTML=`<img src="${selectedRegistrationAvatar}" alt=""><span>Выбранная аватарка</span>`;
+  }else{
+    selected.innerHTML="<span>Аватарка не выбрана</span>";
+  }
+  REGISTRATION_AVATARS.forEach((src,i)=>{
+    const b=document.createElement("button"); b.type="button"; b.className="auth-avatar-item"+(selectedRegistrationAvatar===src?" selected":"");
+    b.title=`Аватарка ${i+1}`;
+    const img=document.createElement("img"); img.src=src; img.alt=`Аватарка ${i+1}`;
+    b.appendChild(img);
+    b.onclick=()=>{selectedRegistrationAvatar=src;renderRegistrationAvatarPicker();};
+    grid.appendChild(b);
+  });
+}
+
+function resetRegistrationFlow(){
+  ["login","pass","registerEmail"].forEach(id=>{const el=$(id);if(el){el.disabled=false;el.readOnly=false;}});
+}
+function updateRegistrationUI(){
+  const wrap=$("registerEmailWrap"); if(wrap)wrap.style.display=registering?"block":"none";
+  $("authBtn").textContent=registering?"Создать аккаунт":"Войти";
+}
+function toggleAuth(){
+  registering=!registering; resetRegistrationFlow();
+  $("authTitle").textContent=registering?"Регистрация":"Вход";
+  $("switch").textContent=registering?"Уже есть аккаунт? Войти":"Нет аккаунта? Регистрация";
+  $("err").textContent=""; selectedRegistrationAvatar=""; renderRegistrationAvatarPicker(); updateRegistrationUI(); toggleProtectedCode();
+}
+
+async function api(path, options={}){
+  const saved=sessionStorage.getItem("bkt_token");
+  if(saved) token=saved;
+  const headers={...(options.headers||{})};
+  if(token) headers.Authorization="Bearer "+token;
+  if(options.body && typeof options.body!=="string"){
+    headers["Content-Type"]="application/json";
+    options={...options,body:JSON.stringify(options.body)};
+  }
+  const res=await fetch(path,{...options,headers});
+  const text=await res.text();
+  let data={};
+  try{ data=text?JSON.parse(text):{}; }catch(_){ throw new Error("Сервер вернул неверный ответ ("+res.status+")"); }
+  if(!res.ok) throw new Error(data.error||data.message||("Ошибка "+res.status));
+  return data;
+}
+
+
+async function authAction(){
+  const username=$("login").value.trim();
+  const password=$("pass").value;
+  $("err").textContent="";
+  if(!username||!password){$("err").textContent="Введите логин и пароль";return;}
+  if(!registering){
+    try{
+      const d=await api("/api/login",{method:"POST",body:{username,password,accessCode:$("accessCode").value.trim()}});
+      token=d.token; sessionStorage.setItem("bkt_token",token); await start();
+    }catch(e){$("err").textContent=e.message||"Ошибка авторизации";}
+    return;
+  }
+  if(!selectedRegistrationAvatar){ selectedRegistrationAvatar=REGISTRATION_AVATARS[0]; }
+  const email=$("registerEmail").value.trim();
+  if(!email){$("err").textContent="Введите email";return;}
+  try{
+    const d=await api("/api/register",{method:"POST",body:{username,email,password,accessCode:$("accessCode").value.trim(),avatar:selectedRegistrationAvatar}});
+    token=d.token; sessionStorage.setItem("bkt_token",token); await start();
+  }catch(e){$("err").textContent=e.message||"Ошибка регистрации";}
+}
+
+async function start(){
+  if(!token) return;
+  try{
+    me=await api("/api/me");
+    $("auth").style.display="none";
+    $("app").style.display="grid";
+    $("me").textContent="@"+(me.username||"");
+    connectSocket();
+    loadUsers();
+    loadRewards();
+    loadGroups();
+    updateNotifyButton();
+    if("Notification" in window && Notification.permission === "granted") setupPush().catch(()=>{});
+  }catch(e){
+    sessionStorage.removeItem("bkt_token");
+    token=null;
+    me=null;
+    $("app").style.display="none";
+    $("auth").style.display="grid";
+    $("err").textContent="";
+  }
+}
+
 function toggleAuth(){registering=!registering;resetRegistrationFlow();$("authTitle").textContent=registering?"Регистрация":"Вход";$("switch").textContent=registering?"Уже есть аккаунт? Войти":"Нет аккаунта? Регистрация";$("err").textContent="";selectedRegistrationAvatar="";renderRegistrationAvatarPicker();updateRegistrationUI();toggleProtectedCode();}
 async function api(path, options={}){
   const saved=sessionStorage.getItem("bkt_token"); if(saved) token=saved;
