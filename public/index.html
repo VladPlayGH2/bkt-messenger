@@ -40,7 +40,7 @@ button,input{font:inherit}.app{height:100vh;max-width:1100px;margin:auto;display
 .tiktok-feed-top button{pointer-events:auto}
 .tiktok-status-feed{height:100%;width:100%;overflow-y:auto;overflow-x:hidden;scroll-snap-type:y mandatory;overscroll-behavior-y:contain;-webkit-overflow-scrolling:touch;touch-action:pan-y;scrollbar-width:none}.tiktok-status-feed::-webkit-scrollbar{display:none}
 .tiktok-status-slide{position:relative;width:100%;height:100dvh;min-height:100dvh;scroll-snap-align:start;scroll-snap-stop:always;background:#050505;overflow:hidden}
-.tiktok-status-photo{width:100%;height:100%;object-fit:cover;display:block}
+.tiktok-status-photo{width:100%;height:100%;object-fit:contain;display:block;background:#000}
 .tiktok-status-gradient{position:absolute;inset:0;background:linear-gradient(to bottom,rgba(0,0,0,.28),transparent 28%,transparent 48%,rgba(0,0,0,.82) 100%);pointer-events:none}
 .tiktok-status-info{position:absolute;left:18px;right:68px;bottom:28px;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.75)}
 .tiktok-status-user{display:flex;align-items:center;gap:9px;margin-bottom:9px;font-weight:700}
@@ -93,6 +93,21 @@ button{min-height:44px;min-width:44px;padding:9px 12px}
 #callStatus{max-width:calc(100vw - 24px)!important;text-align:center}
 img,video{max-width:100%}
 }
+
+/* Full-screen calls + chat media */
+.call-modal-full{padding:0!important;background:#000!important;align-items:stretch!important;z-index:4000}
+.call-screen{width:100vw;height:100dvh;background:#000;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center}
+.call-remote{width:100%;height:100%;object-fit:contain;background:#000}
+.call-local{position:absolute;right:18px;top:18px;width:min(28vw,180px);height:min(38vw,240px);object-fit:contain;background:#111;border-radius:14px;border:1px solid #ffffff33;z-index:3}
+.call-top{position:absolute;top:max(12px,env(safe-area-inset-top));left:16px;right:16px;z-index:4;color:#fff;text-shadow:0 1px 4px #000}
+.call-controls{position:absolute;left:0;right:0;bottom:max(18px,env(safe-area-inset-bottom));z-index:4;display:flex;justify-content:center;gap:10px;padding:10px}
+.call-controls button{border:0;border-radius:999px;width:52px;height:52px;background:#ffffff1c;color:#fff;font-size:22px;cursor:pointer;backdrop-filter:blur(8px)}
+.call-controls button.danger{background:#d52b2b}
+.call-controls button.active{background:#16d878;color:#031108}
+.media-preview{max-width:260px;max-height:320px;border-radius:14px;display:block;background:#000}
+.chat-media{max-width:min(320px,70vw);max-height:360px;border-radius:14px;display:block;background:#000;object-fit:contain}
+.media-plus{border:0;border-radius:50%;width:45px;height:45px;background:#111716;color:#fff;cursor:pointer;font-size:22px}
+@media(max-width:700px){.call-local{width:110px;height:155px;right:12px;top:12px}.call-controls button{width:50px;height:50px}.chat-media{max-width:82vw}}
 </style>
 
 <style id="bkt-usability-css">
@@ -420,6 +435,8 @@ img,video{max-width:100%}
 <button id="voiceButton" title="Голосовое сообщение">🎙️</button>
 <button id="videoNoteButton" title="Видеосообщение">🎥</button>
 <button id="stickerButton" class="sticker-button" title="Стикеры" aria-label="Стикеры">🧸</button>
+<button id="mediaPlusButton" class="media-plus" title="Фото или видео" aria-label="Фото или видео" type="button">＋</button>
+<input id="mediaInput" type="file" accept="image/*,video/*" hidden>
 <input id="text" placeholder="Сообщение..." onkeydown="if(event.key==='Enter')send()">
 <button class="send" onclick="send()">➤</button>
 </div>
@@ -431,7 +448,20 @@ img,video{max-width:100%}
 </div>
 <div id="recording" class="modal" style="display:none"><div class="modal-card"><h3>🎙️ Запись голосового</h3><div id="recordTime">0:00</div><div class="modal-actions"><button onclick="finishRecording()">Отправить</button><button onclick="cancelRecording()">Отмена</button></div></div></div>
 <div id="videoRecording" class="modal" style="display:none"><div class="modal-card"><h3>🎥 Видеосообщение</h3><video id="videoPreview" autoplay muted playsinline></video><div id="videoTime">0:00</div><div class="modal-actions"><button onclick="finishVideoRecording()">Отправить</button><button onclick="cancelVideoRecording()">Отмена</button></div></div></div>
-<div id="callModal" class="modal" style="display:none"><div class="modal-card"><h3 id="callTitle">Звонок</h3><video id="remoteVideo" autoplay playsinline style="width:100%;max-height:320px;border-radius:14px;background:#000"></video><audio id="remoteAudio" autoplay></audio><div class="modal-actions"><button id="acceptCall" onclick="acceptIncomingCall()">Принять</button><button onclick="endCall()">Завершить</button></div></div></div></main></div>
+<div id="callModal" class="modal call-modal-full" style="display:none">
+  <div class="call-screen">
+    <video id="remoteVideo" class="call-remote" autoplay playsinline></video>
+    <video id="localCallVideo" class="call-local" autoplay muted playsinline></video>
+    <audio id="remoteAudio" autoplay></audio>
+    <div class="call-top"><b id="callTitle">Звонок</b></div>
+    <div class="call-controls">
+      <button id="acceptCall" onclick="acceptIncomingCall()">✓</button>
+      <button id="callMicButton" onclick="toggleCallMic()">🎙️</button>
+      <button id="callCameraButton" onclick="toggleCallCamera()">📹</button>
+      <button class="danger" onclick="endCall()">☎</button>
+    </div>
+  </div>
+</div></main></div>
 
 <div id="statusesModal" class="modal wa-status-modal" style="display:none">
   <div class="wa-status-panel">
@@ -1201,6 +1231,10 @@ function renderMessage(m){
     video.src=m.text.substring(12); video.style.width="180px"; video.style.height="180px";
     video.style.objectFit="cover"; video.style.borderRadius="50%"; video.style.display="block";
     d.appendChild(video);
+  } else if(m.text.startsWith("[IMAGE]")){
+    const img=document.createElement("img"); img.className="chat-media"; img.loading="lazy"; img.src=m.text.substring(7); img.alt="Фото"; d.appendChild(img);
+  } else if(m.text.startsWith("[VIDEO]")){
+    const video=document.createElement("video"); video.className="chat-media"; video.controls=true; video.playsInline=true; video.preload="metadata"; video.src=m.text.substring(7); d.appendChild(video);
   } else {
     const body=document.createElement("div");
     body.textContent=m.text;
@@ -1607,6 +1641,22 @@ document.addEventListener("click",e=>{
 });
 window.addEventListener("resize",()=>{if($("stickerPicker")?.style.display==="block")positionStickerPicker();});
 
+async function sendChatMedia(file){
+  if(!file || !selected || activeGroup) return;
+  const isImage=file.type.startsWith("image/");
+  const isVideo=file.type.startsWith("video/");
+  if(!isImage && !isVideo){alert("Можно отправлять только фото или видео");return;}
+  const max=isVideo?25*1024*1024:12*1024*1024;
+  if(file.size>max){alert(`Файл слишком большой. Максимум ${isVideo?25:12} МБ.`);return;}
+  try{
+    const fd=new FormData(); fd.append("media",file); fd.append("receiverId",String(selected.id)); fd.append("kind",isImage?"image":"video");
+    const headers={}; if(token) headers.Authorization="Bearer "+token;
+    const res=await fetch("/api/media",{method:"POST",headers,body:fd});
+    const data=await res.json(); if(!res.ok) throw new Error(data.error||"Не удалось отправить файл");
+    renderMessage(data);
+  }catch(e){alert(e.message||"Не удалось отправить файл");}
+}
+
 async function send(){
   const input=$("text"), text=input.value.trim();
   if(activeGroup && activeGroup.name === "БКТ Сообщество" && !["brozi","vlad"].includes(String(me?.username || "").toLowerCase())){alert("В этой группе могут писать только Brozi и Vlad");return;}
@@ -1630,7 +1680,7 @@ async function send(){
 }
 
 
-let peer=null, localCallStream=null, incomingCall=null, callType="audio", pendingIceCandidates=[], incomingIceCandidates=[], callPeerUserId=null, localCallId=null, callTimeout=null;
+let peer=null, localCallStream=null, incomingCall=null, callType="audio", pendingIceCandidates=[], incomingIceCandidates=[], callPeerUserId=null, localCallId=null, callTimeout=null; let callMicEnabled=true, callCameraEnabled=true;
 
 function callSocket(data){
   if(!socket || socket.readyState!==WebSocket.OPEN){
@@ -1653,8 +1703,9 @@ async function startCall(type){
     $("callTitle").textContent=type==="video"?"📹 Видеозвонок":"📞 Аудиозвонок";
     $("callModal").style.display="grid";
     $("acceptCall").style.display="none";
-    if(type==="video"){ $("remoteVideo").style.display="block"; $("remoteVideo").muted=true; $("remoteVideo").srcObject=localCallStream; }
-    else $("remoteVideo").style.display="none";
+    if(type==="video"){ $("remoteVideo").style.display="block"; $("remoteVideo").muted=true; $("localCallVideo").srcObject=localCallStream; $("localCallVideo").style.display="block"; }
+    else { $("remoteVideo").style.display="none"; $("localCallVideo").style.display="none"; }
+    callMicEnabled=true; callCameraEnabled=true; updateCallControls();
     const callId=`${Date.now()}-${Math.random().toString(36).slice(2)}`;
     localCallId=callId;
     const offer=await peer.createOffer(); await peer.setLocalDescription(offer);
@@ -1728,6 +1779,9 @@ async function acceptIncomingCall(){
     $("acceptCall").style.display="none";
     $("callTitle").textContent=callType==="video"?"📹 Видеозвонок":"📞 Аудиозвонок";
     $("remoteVideo").style.display=callType==="video"?"block":"none";
+    $("localCallVideo").srcObject=callType==="video"?localCallStream:null;
+    $("localCallVideo").style.display=callType==="video"?"block":"none";
+    callMicEnabled=true; callCameraEnabled=true; updateCallControls();
   }catch(e){
     console.error(e); endCall(false); alert("Не удалось принять звонок.");
   }
@@ -1754,6 +1808,7 @@ async function handleCallSignal(d){
     $("callTitle").textContent=`Входящий ${callType==="video"?"видеозвонок":"аудиозвонок"} от @${d.fromUsername||""}`;
     $("acceptCall").style.display="block";
     $("remoteVideo").style.display=callType==="video"?"block":"none";
+    $("localCallVideo").style.display="none";
     $("callModal").style.display="grid";
     showIncomingCallNotification(d);
   }else if(d.signalType==="ringing"){
@@ -1777,6 +1832,24 @@ async function handleCallSignal(d){
   }
 }
 
+function updateCallControls(){
+  const mic=$("callMicButton"),cam=$("callCameraButton");
+  if(mic){mic.textContent=callMicEnabled?"🎙️":"🔇";mic.classList.toggle("active",!callMicEnabled);mic.title=callMicEnabled?"Выключить микрофон":"Включить микрофон";}
+  if(cam){cam.style.display=callType==="video"?"inline-grid":"none";cam.textContent=callCameraEnabled?"📹":"🚫";cam.classList.toggle("active",!callCameraEnabled);}
+}
+function toggleCallMic(){
+  if(!localCallStream)return;
+  callMicEnabled=!callMicEnabled;
+  localCallStream.getAudioTracks().forEach(t=>t.enabled=callMicEnabled);
+  updateCallControls();
+}
+function toggleCallCamera(){
+  if(!localCallStream || callType!=="video")return;
+  callCameraEnabled=!callCameraEnabled;
+  localCallStream.getVideoTracks().forEach(t=>t.enabled=callCameraEnabled);
+  updateCallControls();
+}
+
 function endCall(notify=true){
   clearTimeout(callTimeout); callTimeout=null;
   if(notify && callPeerUserId && socket && socket.readyState===WebSocket.OPEN)
@@ -1786,12 +1859,17 @@ function endCall(notify=true){
   peer=null;localCallStream=null;incomingCall=null;pendingIceCandidates=[];incomingIceCandidates=[];callPeerUserId=null;localCallId=null;
   $("callModal").style.display="none";
   $("remoteVideo").srcObject=null;
+  $("localCallVideo").srcObject=null;
   $("remoteAudio").srcObject=null;
   $("acceptCall").style.display="block";
 }
 
 $("audioCallButton").onclick=()=>startCall("audio");
 $("videoCallButton").onclick=()=>startCall("video");
+$("mediaPlusButton").onclick=()=>{ if(!selected||activeGroup){alert("Откройте личный чат");return;} $("mediaInput").click(); };
+$("mediaInput").addEventListener("change",e=>{const f=e.target.files?.[0]; if(f)sendChatMedia(f); e.target.value="";});
+window.addEventListener("visibilitychange",()=>{ if(peer && localCallStream){ /* keep call/mic alive while app is backgrounded */ } });
+
 
 
 
