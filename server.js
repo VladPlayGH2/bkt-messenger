@@ -150,6 +150,8 @@ async function initDb() {
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
 
+    ALTER TABLE call_sessions ADD COLUMN IF NOT EXISTS answer_json TEXT;
+
     CREATE TABLE IF NOT EXISTS call_ice_candidates (
       id BIGSERIAL PRIMARY KEY,
       call_id TEXT NOT NULL REFERENCES call_sessions(id) ON DELETE CASCADE,
@@ -1283,7 +1285,7 @@ app.get("/api/calls/:id/state", auth, async (req, res) => {
   try {
     const callId = String(req.params.id || "");
     if (!callId) return res.status(400).json({error:"Некорректный звонок"});
-    const call = await one(`SELECT id,caller_id,callee_id,call_type,offer_json,status,created_at
+    const call = await one(`SELECT id,caller_id,callee_id,call_type,offer_json,answer_json,status,created_at
       FROM call_sessions WHERE id=$1 AND (caller_id=$2 OR callee_id=$2)`, [callId, Number(req.user.id)]);
     if (!call) return res.status(404).json({error:"Звонок не найден"});
     const candidates = await many(`SELECT sender_id,candidate_json FROM call_ice_candidates
@@ -1293,6 +1295,7 @@ app.get("/api/calls/:id/state", auth, async (req, res) => {
       id: call.id, callerId: Number(call.caller_id), calleeId: Number(call.callee_id),
       callType: call.call_type, status: call.status,
       offer: call.offer_json ? JSON.parse(call.offer_json) : null,
+      answer: call.answer_json ? JSON.parse(call.answer_json) : null,
       iceCandidates: candidates.map(x => JSON.parse(x.candidate_json))
     });
   } catch (e) { console.error("call state error:", e); res.status(500).json({error:"Не удалось получить состояние звонка"}); }
@@ -1347,7 +1350,7 @@ wss.on("connection", (ws, req) => {
           if (data.signalType === "ice" && data.callId && data.signal) {
             await query(`INSERT INTO call_ice_candidates(call_id,sender_id,candidate_json) VALUES($1,$2,$3)`, [data.callId, user.id, JSON.stringify(data.signal)]).catch(()=>{});
           }
-          if (data.signalType === "answer" && data.callId) await query("UPDATE call_sessions SET status='accepted' WHERE id=$1", [data.callId]);
+          if (data.signalType === "answer" && data.callId) await query("UPDATE call_sessions SET status='accepted', answer_json=$2 WHERE id=$1", [data.callId, JSON.stringify(data.signal)]);
           if (data.signalType === "hangup" && data.callId) {
             await query("UPDATE call_sessions SET status='ended' WHERE id=$1", [data.callId]);
             await query("DELETE FROM call_ice_candidates WHERE call_id=$1", [data.callId]).catch(()=>{});

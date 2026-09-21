@@ -13,7 +13,7 @@ button,input{font:inherit}.app{height:100vh;max-width:1100px;margin:auto;display
 .verified-badge{display:inline-grid;place-items:center;width:17px;height:17px;margin-left:4px;border-radius:50%;background:#2388ff;color:#fff;font-size:11px;font-weight:900;vertical-align:middle}
 .group-item{padding:12px 16px;border-radius:12px;cursor:pointer;margin:3px 10px}
 .group-item:hover{background:#142019}
-.verified-badge{display:inline-grid;place-items:center;width:17px;height:17px;margin-left:4px;border-radius:50%;background:#2388ff;color:#fff;font-size:11px;font-weight:900;vertical-align:middle}.group-item{padding:10px 18px;cursor:pointer;border-bottom:1px solid #17211c}.modal{position:fixed;inset:0;background:rgba(0,0,0,.7);display:none;place-items:center;z-index:20}.modal-card{width:min(420px,92vw);background:#0c1110;border:1px solid #24312b;border-radius:18px;padding:22px}#callModal .modal-card{width:min(330px,86vw);padding:14px;border-radius:14px}#callModal #remoteVideo{width:100%;height:190px;max-height:42vh;border-radius:10px;background:#000;object-fit:cover;transform:none!important}#callModal .modal-actions{gap:7px;margin-top:10px}#callModal .modal-actions button{padding:8px 10px;border-radius:9px;font-size:13px}#callModal .modal-actions button[onclick="endCall()"]{background:#b42323;color:#fff}.modal-card input,.modal-card textarea{width:100%;background:#111716;border:1px solid #24312b;border-radius:10px;padding:11px;color:#fff;margin:6px 0 12px}.modal-actions{display:flex;gap:8px}.modal-actions button{flex:1;padding:11px;border:0;border-radius:10px;cursor:pointer}
+.verified-badge{display:inline-grid;place-items:center;width:17px;height:17px;margin-left:4px;border-radius:50%;background:#2388ff;color:#fff;font-size:11px;font-weight:900;vertical-align:middle}.group-item{padding:10px 18px;cursor:pointer;border-bottom:1px solid #17211c}.modal{position:fixed;inset:0;background:rgba(0,0,0,.7);display:none;place-items:center;z-index:20}.modal-card{width:min(420px,92vw);background:#0c1110;border:1px solid #24312b;border-radius:18px;padding:22px}#callModal .modal-card{width:min(280px,82vw);padding:10px;border-radius:12px}#callModal #remoteVideo{width:100%;height:150px;max-height:34vh;border-radius:10px;background:#000;object-fit:cover;transform:none!important}#callModal .modal-actions{gap:7px;margin-top:10px}#callModal .modal-actions button{padding:8px 10px;border-radius:9px;font-size:13px}#callModal .modal-actions button[onclick="endCall()"]{background:#b42323;color:#fff}.modal-card input,.modal-card textarea{width:100%;background:#111716;border:1px solid #24312b;border-radius:10px;padding:11px;color:#fff;margin:6px 0 12px}.modal-actions{display:flex;gap:8px}.modal-actions button{flex:1;padding:11px;border:0;border-radius:10px;cursor:pointer}
 .chat-title{min-width:0;flex:1}.chat-title b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.call-actions{display:flex;gap:6px;margin-left:auto}.call-actions button{width:42px;height:42px;min-width:42px;border:1px solid #24312b;border-radius:12px;background:#111716;color:#fff;cursor:pointer}.call-actions button:hover{background:#17231c}.call-actions button:disabled{opacity:.45;cursor:not-allowed}
 .call-actions .active{background:#0b6630;border-color:#22ff72}
 .call-history{opacity:.8;font-style:italic}
@@ -972,23 +972,45 @@ async function loadUserAndOpen(userId){
 async function loadPendingCalls(){
   try{
     const calls=await api("/api/calls/pending");
-    if(Array.isArray(calls) && calls.length && !incomingCall){
+    if(Array.isArray(calls) && calls.length){
       const c=calls[0];
-      handleCallSignal({type:"call-signal",signalType:"offer",callId:c.id,fromUserId:c.caller_id,fromUsername:c.caller_username,signal:c.offer,callType:c.call_type,iceCandidates:c.iceCandidates||[]});
+      if(!incomingCall || String(incomingCall.callId)!==String(c.id)){
+        handleCallSignal({type:"call-signal",signalType:"offer",callId:c.id,fromUserId:c.caller_id,fromUsername:c.caller_username,signal:c.offer,callType:c.call_type,iceCandidates:c.iceCandidates||[]});
+      } else {
+        incomingCall.iceCandidates=c.iceCandidates||[];
+      }
     }
   }catch(e){}
 }
 
 let callPollTimer=null;
+let callStatePollTimer=null;
 let socketReconnectTimer=null;
 let socketReconnectDelay=1000;
 const presenceState=new Map();
 function startCallPolling(){
   clearInterval(callPollTimer);
   callPollTimer=setInterval(async()=>{
-    if(document.hidden && !incomingCall) return;
+    if(document.hidden && !incomingCall && !localCallId) return;
     await loadPendingCalls();
-  }, 3000);
+    await pollActiveCall();
+  }, 1200);
+}
+async function pollActiveCall(){
+  if(!localCallId || !peer) return;
+  try{
+    const st=await api('/api/calls/'+encodeURIComponent(localCallId)+'/state');
+    if(!st || st.status==='ended') { if(peer) endCall(false); return; }
+    if(st.answer && !peer.remoteDescription){
+      await peer.setRemoteDescription(new RTCSessionDescription(st.answer));
+      for(const c of (st.iceCandidates||[])){ try{ await peer.addIceCandidate(new RTCIceCandidate(c)); }catch(_){} }
+    }else if(st.iceCandidates?.length){
+      for(const c of st.iceCandidates){ try{ await peer.addIceCandidate(new RTCIceCandidate(c)); }catch(_){} }
+    }
+    if(incomingCall && st.offer && !peer.remoteDescription){
+      incomingCall.iceCandidates=st.iceCandidates||[];
+    }
+  }catch(_){}
 }
 
 function updatePresenceUI(userId, online){
@@ -1614,6 +1636,9 @@ async function startCall(type){
   if(!navigator.mediaDevices || !window.RTCPeerConnection) return alert("Звонки не поддерживаются этим браузером");
   if(!window.isSecureContext) return alert("Для звонков нужен HTTPS (или localhost).");
   try{
+    if(!socket || socket.readyState!==WebSocket.OPEN){
+      await new Promise((resolve,reject)=>{ const t=setTimeout(()=>reject(new Error("Сигнальный сервер недоступен")),5000); const check=()=>{ if(socket&&socket.readyState===WebSocket.OPEN){clearTimeout(t);resolve();} else setTimeout(check,100);}; check(); });
+    }
     callType=type;
     await loadRtcConfig();
     localCallStream=await navigator.mediaDevices.getUserMedia(type==="video"?{audio:true,video:true}:{audio:true});
@@ -1667,7 +1692,10 @@ function createPeer(){
     $("remoteVideo").play().catch(()=>{});
   };
   pc.onconnectionstatechange=()=>{
-    if(["failed","disconnected","closed"].includes(pc.connectionState)) endCall(false);
+    if(pc.connectionState==="failed") {
+      console.warn("WebRTC connection failed");
+    }
+    if(pc.connectionState==="closed") endCall(false);
   };
   return pc;
 }
@@ -1693,8 +1721,10 @@ async function acceptIncomingCall(){
     incomingIceCandidates=[];
     const answer=await peer.createAnswer();
     await peer.setLocalDescription(answer);
-    callSocket({type:"call-signal",toUserId:from,signalType:"answer",callId:localCallId,signal:{sdp:peer.localDescription.sdp,type:peer.localDescription.type},callType});
+    const answerSignal={sdp:peer.localDescription.sdp,type:peer.localDescription.type};
+    callSocket({type:"call-signal",toUserId:from,signalType:"answer",callId:localCallId,signal:answerSignal,callType});
     incomingCall=null;
+    pollActiveCall();
     $("acceptCall").style.display="none";
     $("callTitle").textContent=callType==="video"?"📹 Видеозвонок":"📞 Аудиозвонок";
     $("remoteVideo").style.display=callType==="video"?"block":"none";
