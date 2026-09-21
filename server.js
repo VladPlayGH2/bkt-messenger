@@ -71,7 +71,6 @@ async function many(text, params = []) {
   const result = await query(text, params);
   return result.rows;
 }
-
 async function ensureCommunityGroup() {
   // System group: every registered user is a member, but only Brozi and Vlad may post.
   let group = await one("SELECT id, name, owner_id FROM groups WHERE name=$1 ORDER BY id LIMIT 1", ["БКТ Сообщество"]);
@@ -105,6 +104,10 @@ function canPostInCommunity(username) {
   return ['brozi', 'vlad'].includes(String(username || '').trim().replace(/^@+/, '').toLowerCase());
 }
 
+function canManageAccounts(username) {
+  return ['brozi', 'vlad'].includes(normalizeUsername(username));
+}
+
 async function initDb() {
   await query(`
     CREATE TABLE IF NOT EXISTS users (
@@ -114,6 +117,11 @@ async function initDb() {
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       bio TEXT NOT NULL DEFAULT '',
       avatar TEXT NOT NULL DEFAULT ''
+    );
+
+    CREATE TABLE IF NOT EXISTS deleted_usernames (
+      username TEXT PRIMARY KEY,
+      deleted_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
 
     CREATE TABLE IF NOT EXISTS push_subscriptions (
@@ -213,7 +221,7 @@ async function initDb() {
 
     CREATE TABLE IF NOT EXISTS phone_verifications (
       token TEXT PRIMARY KEY,
-      phone TEXT NOT NULL,
+      phone TEXT NOT NULL DEFAULT '',
       username TEXT NOT NULL,
       password_hash TEXT NOT NULL,
       avatar TEXT NOT NULL DEFAULT '',
@@ -257,6 +265,9 @@ async function initDb() {
   await query("ALTER TABLE statuses ADD COLUMN IF NOT EXISTS media_url TEXT NOT NULL DEFAULT ''");
   await query("ALTER TABLE messages ADD COLUMN IF NOT EXISTS read_at TIMESTAMPTZ");
   await query("ALTER TABLE users ADD COLUMN IF NOT EXISTS phone TEXT");
+  await query("DROP INDEX IF EXISTS idx_users_email_lower");
+  await query("ALTER TABLE users DROP COLUMN IF EXISTS email");
+  await query("ALTER TABLE phone_verifications DROP COLUMN IF EXISTS email");
   await query("CREATE UNIQUE INDEX IF NOT EXISTS idx_users_phone_unique ON users(phone) WHERE phone IS NOT NULL");
   await query("CREATE INDEX IF NOT EXISTS idx_messages_unread ON messages(receiver_id, sender_id, read_at, id)");
   await cleanupInvalidUsers();
@@ -608,7 +619,27 @@ app.post("/api/register/verify", async (req, res) => {
 });
 
 app.post("/api/register", async (req, res) => {
-  return res.status(410).json({ error: "Регистрация теперь требует подтверждения номера телефона" });
+  try {
+    const username = String(req.body.username || "").trim();
+    const password = String(req.body.password || "");
+    const accessCode = String(req.body.accessCode || "");
+    let avatar = String(req.body.avatar || "/stickers/1.webp").trim();
+    const usernameError = validateUsername(username);
+    if (usernameError) return res.status(400).json({ error: usernameError });
+    if (password.length < 6) return res.status(400).json({ error: "Пароль должен быть не короче 6 символов" });
+    if (!verifyProtectedCode(username, accessCode)) return res.status(403).json({ error: protectedError(username) });
+    if (await one("SELECT 1 FROM users WHERE LOWER(username)=LOWER($1)", [username])) return res.status(409).json({ error: "Такой пользователь уже существует" });
+    if (await one("SELECT 1 FROM deleted_usernames WHERE LOWER(username)=LOWER($1)", [username])) return res.status(410).json({ error: "Этот аккаунт был удалён навсегда и логин больше недоступен" });
+    if (!/^\/stickers\/(?:[1-9]|1[0-9]|2[0-8])\.webp$/.test(avatar)) avatar = "/stickers/1.webp";
+    const passwordHash = await bcrypt.hash(password, 10);
+    const user = await one("INSERT INTO users(username,password_hash,avatar) VALUES($1,$2,$3) RETURNING id,username,avatar", [username, passwordHash, avatar]);
+    if (["brozi", "vlad", "vladmobile"].includes(username.toLowerCase())) await query("INSERT INTO verified_users(user_id, verified_by) VALUES($1, NULL) ON CONFLICT(user_id) DO NOTHING", [user.id]);
+    await addUserToCommunityGroup(user.id);
+    await ensureRewardWallet(user.id);
+    if (username.toLowerCase() === 'brozi') await query("UPDATE reward_wallets SET oranges=1000000, updated_at=NOW() WHERE user_id=$1", [user.id]);
+    if (['brozi','vlad'].includes(username.toLowerCase())) { await grantRewardSticker(user.id, REWARD_STICKER_ID, true); await grantRewardSticker(user.id, REWARD_STICKER_150_ID, true); }
+    res.json({ token: tokenFor(user), user });
+  } catch (e) { if (e.code === "23505") return res.status(409).json({ error: "Такой логин уже существует" }); console.error(e); res.status(500).json({ error: "Не удалось зарегистрировать аккаунт" }); }
 });
 
 app.post("/api/login", async (req, res) => {
@@ -690,6 +721,32 @@ app.get("/api/users/:id/profile", auth, async (req, res) => {
   if (!user) return res.status(404).json({ error: "Пользователь не найден" });
   const gifts = await many(`SELECT sticker_id,added_at FROM profile_gifts WHERE user_id=$1 ORDER BY added_at DESC`, [userId]);
   res.json({ ...user, verified: await isVerified(userId), gifts: gifts.map(g=>({stickerId:Number(g.sticker_id),src:`/stickers/${Number(g.sticker_id)}.webp`,addedAt:g.added_at})) });
+});
+
+app.delete("/api/admin/users/:id", auth, async (req, res) => {
+  try {
+    const actor = await currentUser(req);
+    if (!actor || !canManageAccounts(actor.username)) return res.status(403).json({ error: "Удалять аккаунты могут только Brozi и Vlad" });
+    const userId = Number(req.params.id);
+    if (!Number.isInteger(userId) || userId <= 0) return res.status(400).json({ error: "Некорректный ID пользователя" });
+    if (userId === Number(actor.id)) return res.status(400).json({ error: "Нельзя удалить собственный аккаунт через это действие" });
+    const target = await one("SELECT id, username FROM users WHERE id=$1", [userId]);
+    if (!target) return res.status(404).json({ error: "Пользователь не найден" });
+    if (canManageAccounts(target.username)) return res.status(403).json({ error: "Аккаунты Brozi и Vlad защищены от удаления" });
+    const deleted = await one(`
+      WITH removed AS (
+        DELETE FROM users WHERE id=$1 RETURNING username
+      )
+      INSERT INTO deleted_usernames(username)
+      SELECT username FROM removed
+      ON CONFLICT (username) DO NOTHING
+      RETURNING username`, [userId]);
+    if (!deleted) return res.status(404).json({ error: "Пользователь уже удалён" });
+    push(userId, { type: "account-deleted", permanent: true });
+    const socketsForUser = sockets.get(userId);
+    if (socketsForUser) { for (const ws of [...socketsForUser]) { try { ws.close(4001, "Account permanently deleted"); } catch (_) {} } sockets.delete(userId); }
+    res.json({ ok: true, permanentlyDeleted: true, username: deleted.username });
+  } catch (e) { console.error(e); res.status(500).json({ error: "Не удалось удалить аккаунт" }); }
 });
 
 app.post("/api/admin/verify/:id", auth, async (req, res) => {
