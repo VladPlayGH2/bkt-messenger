@@ -551,8 +551,8 @@ app.get("/api/rtc-config", auth, (req, res) => {
   const turnUrls = String(process.env.TURN_URLS || process.env.TURN_URL || "")
     .split(",").map(s => s.trim()).filter(Boolean);
   const turnSecret = String(process.env.TURN_SECRET || "");
-  if (turnUrls.length && turnSecret && turnHost) {
-    const expires = Math.floor(Date.now() / 1000) + 3600;
+  if (turnUrls.length && turnSecret) {
+    const expires = Math.floor(Date.now() / 1000) + 21600;
     const username = `${expires}:${String(req.user.id)}`;
     const credential = crypto.createHmac("sha1", turnSecret).update(username).digest("base64");
     iceServers.push({ urls: turnUrls, username, credential });
@@ -1277,6 +1277,25 @@ app.post("/api/groups/:id/messages", auth, async (req, res) => {
     if (!delivered) pushNotification(m.user_id, { type: "group-message", title: group?.name || "Новое сообщение", body: msg.text || "Новое сообщение", groupId, message: msg }).catch(() => {});
   }
   res.json(msg);
+});
+
+app.get("/api/calls/:id/state", auth, async (req, res) => {
+  try {
+    const callId = String(req.params.id || "");
+    if (!callId) return res.status(400).json({error:"Некорректный звонок"});
+    const call = await one(`SELECT id,caller_id,callee_id,call_type,offer_json,status,created_at
+      FROM call_sessions WHERE id=$1 AND (caller_id=$2 OR callee_id=$2)`, [callId, Number(req.user.id)]);
+    if (!call) return res.status(404).json({error:"Звонок не найден"});
+    const candidates = await many(`SELECT sender_id,candidate_json FROM call_ice_candidates
+      WHERE call_id=$1 AND sender_id<>$2 ORDER BY id`, [callId, Number(req.user.id)]);
+    res.set("Cache-Control", "no-store, no-cache, must-revalidate");
+    res.json({
+      id: call.id, callerId: Number(call.caller_id), calleeId: Number(call.callee_id),
+      callType: call.call_type, status: call.status,
+      offer: call.offer_json ? JSON.parse(call.offer_json) : null,
+      iceCandidates: candidates.map(x => JSON.parse(x.candidate_json))
+    });
+  } catch (e) { console.error("call state error:", e); res.status(500).json({error:"Не удалось получить состояние звонка"}); }
 });
 
 app.get("/api/calls/pending", auth, async (req, res) => {

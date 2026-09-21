@@ -1555,7 +1555,7 @@ async function send(){
 }
 
 
-let peer=null, localCallStream=null, incomingCall=null, callType="audio", pendingIceCandidates=[], incomingIceCandidates=[], callPeerUserId=null, localCallId=null, callTimeout=null; let callMicEnabled=true, callCameraEnabled=true;
+let peer=null, localCallStream=null, incomingCall=null, callType="audio", pendingIceCandidates=[], incomingIceCandidates=[], callPeerUserId=null, localCallId=null, callTimeout=null; let callMicEnabled=true, callCameraEnabled=true; let callPollActive=false, seenRemoteIce=new Set(), lastRemoteAnswer=null;
 
 function callSocket(data){
   if(!socket || socket.readyState!==WebSocket.OPEN){
@@ -1572,7 +1572,7 @@ async function startCall(type){
     callType=type;
     await loadRtcConfig();
     localCallStream=await navigator.mediaDevices.getUserMedia(type==="video"?{audio:true,video:true}:{audio:true});
-    peer=createPeer(); pendingIceCandidates=[]; incomingIceCandidates=[]; callPeerUserId=Number(selected.id);
+    peer=createPeer(); pendingIceCandidates=[]; incomingIceCandidates=[]; seenRemoteIce=new Set(); lastRemoteAnswer=null; callPeerUserId=Number(selected.id);
     clearTimeout(callTimeout); callTimeout=setTimeout(()=>{ if(peer && !["connected","completed"].includes(peer.iceConnectionState)) { endCall(true); alert("Не удалось установить соединение. Проверьте интернет или настройки TURN."); } },45000);
     localCallStream.getTracks().forEach(t=>peer.addTrack(t,localCallStream));
     $("callTitle").textContent=type==="video"?"📹 Видеозвонок":"📞 Аудиозвонок";
@@ -1583,6 +1583,7 @@ async function startCall(type){
     callMicEnabled=true; callCameraEnabled=true; updateCallControls();
     const callId=`${Date.now()}-${Math.random().toString(36).slice(2)}`;
     localCallId=callId;
+    startCallStatePolling();
     const offer=await peer.createOffer(); await peer.setLocalDescription(offer);
     callSocket({type:"call-signal",toUserId:Number(selected.id),signalType:"offer",callId,signal:{sdp:peer.localDescription.sdp,type:peer.localDescription.type},callType:type});
   }catch(e){ console.error(e); endCall(false); alert("Не удалось начать звонок. Разреши доступ к микрофону/камере."); }
@@ -1593,7 +1594,11 @@ let rtcConfig={iceServers:[
   {urls:"stun:stun1.l.google.com:19302"}
 ]};
 async function loadRtcConfig(){
-  try{ const c=await api("/api/rtc-config"); if(Array.isArray(c.iceServers)&&c.iceServers.length) rtcConfig=c; }catch(_){}
+  try{
+    const c=await api("/api/rtc-config");
+    if(Array.isArray(c.iceServers)&&c.iceServers.length) rtcConfig=c;
+    console.log("RTC ICE servers:", (rtcConfig.iceServers||[]).map(x=>x.urls));
+  }catch(e){ console.warn("RTC config unavailable, using STUN only", e); }
 }
 function createPeer(){
   const pc=new RTCPeerConnection({
@@ -1639,9 +1644,11 @@ async function acceptIncomingCall(){
     );
     await loadRtcConfig();
     peer=createPeer();
+    seenRemoteIce=new Set(); lastRemoteAnswer=null;
     callPeerUserId=Number(from);
     clearTimeout(callTimeout); callTimeout=setTimeout(()=>{ if(peer && !["connected","completed"].includes(peer.iceConnectionState)) { endCall(true); alert("Не удалось установить соединение. Проверьте интернет или настройки TURN."); } },45000);
     localCallId=incomingCall.callId||null;
+    startCallStatePolling();
     localCallStream.getTracks().forEach(t=>peer.addTrack(t,localCallStream));
     await peer.setRemoteDescription(new RTCSessionDescription(incomingCall.signal));
     for(const c of (incomingCall.iceCandidates||[])){try{await peer.addIceCandidate(new RTCIceCandidate(c))}catch(e){}}
@@ -1671,6 +1678,32 @@ function showIncomingCallNotification(d){
   }
 }
 
+async function pollCallState(){
+  if(callPollActive || !localCallId) return;
+  callPollActive=true;
+  try{
+    const state=await api("/api/calls/"+encodeURIComponent(localCallId)+"/state");
+    if(!state) return;
+    if(state.status==="ended") { endCall(false); return; }
+    if(peer && state.status==="accepted" && state.offer===null && !lastRemoteAnswer) {
+      // Answer is stored separately below by the WebSocket path; keep polling for ICE.
+    }
+    for(const c of (state.iceCandidates||[])){
+      const key=JSON.stringify(c);
+      if(seenRemoteIce.has(key)) continue;
+      seenRemoteIce.add(key);
+      if(peer && peer.remoteDescription && peer.remoteDescription.type){
+        try{ await peer.addIceCandidate(new RTCIceCandidate(c)); }catch(e){ console.warn("ICE polling add failed",e); }
+      } else incomingIceCandidates.push(c);
+    }
+  }catch(e){}
+  finally{ callPollActive=false; }
+}
+function startCallStatePolling(){
+  clearInterval(window.__bktCallStateTimer);
+  window.__bktCallStateTimer=setInterval(()=>{ if(localCallId && peer) pollCallState(); }, 1200);
+}
+
 async function handleCallSignal(d){
   if(d.signalType==="call-created"){
     localCallId=d.callId||localCallId;
@@ -1690,10 +1723,14 @@ async function handleCallSignal(d){
     localCallId=d.callId||null;
   }else if(d.signalType==="answer" && peer){
     localCallId=d.callId||localCallId;
-    await peer.setRemoteDescription(new RTCSessionDescription(d.signal));
+    lastRemoteAnswer=d.signal;
+    if(!peer.currentRemoteDescription) await peer.setRemoteDescription(new RTCSessionDescription(d.signal));
     for(const c of incomingIceCandidates){try{await peer.addIceCandidate(new RTCIceCandidate(c));}catch(e){}}
     incomingIceCandidates=[];
   }else if(d.signalType==="ice"){
+    const key=JSON.stringify(d.signal||{});
+    if(seenRemoteIce.has(key)) return;
+    seenRemoteIce.add(key);
     if(peer && peer.remoteDescription && peer.remoteDescription.type){
       try{await peer.addIceCandidate(new RTCIceCandidate(d.signal));}catch(e){console.warn("ICE add failed",e)}
     }else{
@@ -1727,6 +1764,7 @@ function toggleCallCamera(){
 
 function endCall(notify=true){
   clearTimeout(callTimeout); callTimeout=null;
+  clearInterval(window.__bktCallStateTimer); window.__bktCallStateTimer=null; callPollActive=false;
   if(notify && callPeerUserId && socket && socket.readyState===WebSocket.OPEN)
     callSocket({type:"call-signal",toUserId:Number(callPeerUserId),signalType:"hangup",callId:localCallId,signal:{}});
   try{if(peer)peer.close()}catch(e){}

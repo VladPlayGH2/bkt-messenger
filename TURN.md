@@ -37,7 +37,7 @@ sudo systemctl status coturn
 - `TURN_SECRET=<тот же секрет, что в coturn>`
 - `TURN_URLS=turn:turn.example.com:3478,turns:turn.example.com:5349` (если настроите TLS)
 
-После этого `/api/rtc-config` выдаёт каждому авторизованному пользователю credentials примерно на 1 час. Секрет TURN не попадает в браузер.
+После этого `/api/rtc-config` выдаёт каждому авторизованному пользователю credentials примерно на 6 часов. Секрет TURN не попадает в браузер.
 
 ## 3. TLS (рекомендуется)
 
