@@ -257,6 +257,7 @@ async function initDb() {
   await query("ALTER TABLE statuses ADD COLUMN IF NOT EXISTS media_url TEXT NOT NULL DEFAULT ''");
   await query("ALTER TABLE messages ADD COLUMN IF NOT EXISTS read_at TIMESTAMPTZ");
   await query("ALTER TABLE users ADD COLUMN IF NOT EXISTS phone TEXT");
+  await query("ALTER TABLE phone_verifications ADD COLUMN IF NOT EXISTS provider TEXT NOT NULL DEFAULT 'local'");
   await query("CREATE UNIQUE INDEX IF NOT EXISTS idx_users_phone_unique ON users(phone) WHERE phone IS NOT NULL");
   await query("CREATE INDEX IF NOT EXISTS idx_messages_unread ON messages(receiver_id, sender_id, read_at, id)");
   await cleanupInvalidUsers();
@@ -271,17 +272,40 @@ async function sendVerificationCode(phone, code) {
   const webhook = process.env.SMS_WEBHOOK_URL;
   if (webhook) {
     const r = await fetch(webhook, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ to: phone, code, message: `Код подтверждения БКТ: ${code}` }) });
-    if (!r.ok) throw new Error("SMS provider error");
+    if (!r.ok) {
+      const detail = await r.text().catch(() => "");
+      throw new Error(`SMS provider error: ${detail.slice(0, 240)}`);
+    }
     return;
   }
-  const sid = process.env.TWILIO_ACCOUNT_SID, token = process.env.TWILIO_AUTH_TOKEN, from = process.env.TWILIO_FROM;
+
+  const sid = process.env.TWILIO_ACCOUNT_SID, token = process.env.TWILIO_AUTH_TOKEN;
+  const verifyService = process.env.TWILIO_VERIFY_SERVICE_SID;
+  // Twilio Verify is preferred because it handles verification SMS, sender registration
+  // and country-specific routing. It does not require TWILIO_FROM.
+  if (sid && token && verifyService) {
+    const auth = Buffer.from(`${sid}:${token}`).toString("base64");
+    const body = new URLSearchParams({ To: phone, Channel: "sms" });
+    const r = await fetch(`https://verify.twilio.com/v2/Services/${encodeURIComponent(verifyService)}/Verifications`, {
+      method: "POST",
+      headers: { Authorization: `Basic ${auth}`, "content-type": "application/x-www-form-urlencoded" },
+      body
+    });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(`Twilio Verify ${data.code || r.status}: ${data.message || "не удалось отправить SMS"}`);
+    return;
+  }
+
+  const from = process.env.TWILIO_FROM;
   if (sid && token && from) {
     const body = new URLSearchParams({ To: phone, From: from, Body: `Код подтверждения БКТ: ${code}` });
     const auth = Buffer.from(`${sid}:${token}`).toString("base64");
     const r = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`, { method: "POST", headers: { Authorization: `Basic ${auth}`, "content-type": "application/x-www-form-urlencoded" }, body });
-    if (!r.ok) throw new Error("Twilio SMS error");
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(`Twilio SMS ${data.code || r.status}: ${data.message || "не удалось отправить SMS"}`);
     return;
   }
+
   if (process.env.NODE_ENV !== "production") { console.log(`[DEV OTP] ${phone}: ${code}`); return; }
   throw new Error("SMS-провайдер не настроен");
 }
@@ -576,8 +600,10 @@ app.post("/api/register/request-code", async (req, res) => {
     const passwordHash = await bcrypt.hash(password, 10);
     await query("DELETE FROM phone_verifications WHERE phone=$1 OR expires_at<NOW()", [phone]);
     await query(`INSERT INTO phone_verifications(token,phone,username,password_hash,avatar,code_hash,expires_at) VALUES($1,$2,$3,$4,$5,$6,NOW()+INTERVAL '10 minutes')`, [verificationToken, phone, username, passwordHash, avatar, codeHash]);
+    const provider = phoneExempt(phone) ? "exempt" : (process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN && process.env.TWILIO_VERIFY_SERVICE_SID ? "twilio-verify" : (process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN && process.env.TWILIO_FROM ? "twilio-message" : "local"));
+    await query("UPDATE phone_verifications SET provider=$1 WHERE token=$2", [provider, verificationToken]);
     if (!phoneExempt(phone)) await sendVerificationCode(phone, code);
-    res.json({ token: verificationToken, phone: phone.replace(/(\d{2})\d{5}(\d{2})$/, "$1*****$2"), exempt: phoneExempt(phone), devCode: process.env.NODE_ENV !== "production" && !phoneExempt(phone) ? code : undefined });
+    res.json({ token: verificationToken, phone: phone.replace(/(\d{2})\d{5}(\d{2})$/, "$1*****$2"), exempt: phoneExempt(phone), provider, devCode: process.env.NODE_ENV !== "production" && !phoneExempt(phone) && provider === "local" ? code : undefined });
   } catch (e) { console.error(e); res.status(500).json({ error: e.message === "SMS-провайдер не настроен" ? e.message : "Не удалось отправить код подтверждения" }); }
 });
 
@@ -591,8 +617,17 @@ app.post("/api/register/verify", async (req, res) => {
     if (!exempt) {
       if (!/^\d{6}$/.test(code)) return res.status(400).json({ error: "Введите 6-значный код" });
       if (pending.attempts >= 5) return res.status(429).json({ error: "Слишком много попыток. Запросите новый код" });
-      const hash = crypto.createHash("sha256").update(code).digest("hex");
-      if (hash !== pending.code_hash) { await query("UPDATE phone_verifications SET attempts=attempts+1 WHERE token=$1", [token]); return res.status(400).json({ error: "Неверный код подтверждения" }); }
+      if (pending.provider === "twilio-verify") {
+        const sid = process.env.TWILIO_ACCOUNT_SID, tokenSecret = process.env.TWILIO_AUTH_TOKEN, service = process.env.TWILIO_VERIFY_SERVICE_SID;
+        const auth = Buffer.from(`${sid}:${tokenSecret}`).toString("base64");
+        const body = new URLSearchParams({ To: pending.phone, Code: code });
+        const r = await fetch(`https://verify.twilio.com/v2/Services/${encodeURIComponent(service)}/VerificationCheck`, { method: "POST", headers: { Authorization: `Basic ${auth}`, "content-type": "application/x-www-form-urlencoded" }, body });
+        const data = await r.json().catch(() => ({}));
+        if (!r.ok || data.status !== "approved") { await query("UPDATE phone_verifications SET attempts=attempts+1 WHERE token=$1", [token]); return res.status(400).json({ error: data.message || "Неверный код подтверждения" }); }
+      } else {
+        const hash = crypto.createHash("sha256").update(code).digest("hex");
+        if (hash !== pending.code_hash) { await query("UPDATE phone_verifications SET attempts=attempts+1 WHERE token=$1", [token]); return res.status(400).json({ error: "Неверный код подтверждения" }); }
+      }
     }
     const usernameError = validateUsername(pending.username);
     if (usernameError) return res.status(400).json({ error: usernameError });
