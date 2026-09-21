@@ -723,6 +723,50 @@ app.get("/api/users/:id/profile", auth, async (req, res) => {
   res.json({ ...user, verified: await isVerified(userId), gifts: gifts.map(g=>({stickerId:Number(g.sticker_id),src:`/stickers/${Number(g.sticker_id)}.webp`,addedAt:g.added_at})) });
 });
 
+app.delete("/api/account", auth, async (req, res) => {
+  try {
+    const actor = await currentUser(req);
+    if (!actor) return res.status(404).json({ error: "Аккаунт не найден" });
+    const userId = Number(actor.id);
+    const target = await one("SELECT id, username, phone FROM users WHERE id=$1", [userId]);
+    if (!target) return res.status(404).json({ error: "Аккаунт уже удалён" });
+
+    // Remove uploaded status media belonging to this account as well as DB rows.
+    const mediaRows = await many("SELECT media_url FROM statuses WHERE user_id=$1 AND media_url LIKE '/status-media/%'", [userId]);
+    for (const row of mediaRows) {
+      const fileName = path.basename(String(row.media_url || ""));
+      if (fileName) {
+        try { await fs.promises.unlink(path.join(statusMediaDir, fileName)); } catch (_) {}
+      }
+    }
+
+    // Keep the username permanently reserved, but do NOT keep the phone number:
+    // after deletion the same phone can be used for a new registration.
+    const deleted = await one(`
+      WITH removed AS (
+        DELETE FROM users WHERE id=$1 RETURNING username
+      )
+      INSERT INTO deleted_usernames(username)
+      SELECT username FROM removed
+      ON CONFLICT (username) DO NOTHING
+      RETURNING username`, [userId]);
+    if (!deleted) return res.status(404).json({ error: "Аккаунт уже удалён" });
+
+    push(userId, { type: "account-deleted", permanent: true, self: true });
+    const socketsForUser = sockets.get(userId);
+    if (socketsForUser) {
+      for (const ws of [...socketsForUser]) {
+        try { ws.close(4001, "Account permanently deleted"); } catch (_) {}
+      }
+      sockets.delete(userId);
+    }
+    res.json({ ok: true, permanentlyDeleted: true, phoneReusable: true });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: "Не удалось удалить аккаунт" });
+  }
+});
+
 app.delete("/api/admin/users/:id", auth, async (req, res) => {
   try {
     const actor = await currentUser(req);

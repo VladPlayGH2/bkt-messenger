@@ -548,7 +548,7 @@ img,video{max-width:100%}
   <option value="zh">中文</option>
   <option value="es">Español</option>
 </select>
-<label data-i18n="chatWallpaper">Обои чата</label><div class="wallpaper-row"><input id="wallpaperColor" type="color" value="#08100c"><input id="wallpaperUrl" placeholder="Ссылка на обои" data-i18n-placeholder="wallpaperUrl"><button type="button" onclick="applyChatWallpaper()" data-i18n="apply">Применить</button><button type="button" onclick="clearChatWallpaper()" data-i18n="reset">Сбросить</button></div><div id="settingsError" class="error"></div><div class="modal-actions"><button onclick="saveSettings()" data-i18n="save">Сохранить</button><button onclick="closeSettings()" data-i18n="cancel">Отмена</button><button onclick="logout()" style="background:#a92323;color:#fff" data-i18n="logout">Выйти</button></div></div></div>
+<label data-i18n="chatWallpaper">Обои чата</label><div class="wallpaper-row"><input id="wallpaperColor" type="color" value="#08100c"><input id="wallpaperUrl" placeholder="Ссылка на обои" data-i18n-placeholder="wallpaperUrl"><button type="button" onclick="applyChatWallpaper()" data-i18n="apply">Применить</button><button type="button" onclick="clearChatWallpaper()" data-i18n="reset">Сбросить</button></div><div id="settingsError" class="error"></div><div style="margin:12px 0 0;padding-top:12px;border-top:1px solid #24312b"><button type="button" onclick="deleteOwnAccountPermanently()" class="danger" style="width:100%">🗑️ Удалить мой аккаунт навсегда</button><div class="reward-sub" style="margin-top:6px">После удаления этот аккаунт и его данные исчезнут. Номер телефона можно будет использовать для новой регистрации.</div></div><div class="modal-actions"><button onclick="saveSettings()" data-i18n="save">Сохранить</button><button onclick="closeSettings()" data-i18n="cancel">Отмена</button><button onclick="logout()" style="background:#a92323;color:#fff" data-i18n="logout">Выйти</button></div></div></div>
 <div id="profileViewModal" class="modal" style="display:none">
 <div class="profile-view-card">
   <div id="profileViewAvatar" class="profile-view-avatar">БКТ</div>
@@ -1237,6 +1237,27 @@ async function saveSettings(){
   $("settingsError").textContent=e.message||"Не удалось сохранить профиль";
  }
 }
+async function deleteOwnAccountPermanently(){
+  if(!me) return;
+  const username=String(me.username||"");
+  const first=confirm(`Удалить аккаунт @${username} НАВСЕГДА?\n\nБудут удалены профиль, сообщения, статусы, группы и другие данные аккаунта. Это действие нельзя отменить.`);
+  if(!first) return;
+  const second=confirm(`Последнее подтверждение.\n\nВы точно готовы навсегда удалить @${username}?\n\nПосле удаления этот аккаунт больше не восстановить. Ваш номер телефона снова можно будет использовать при регистрации.`);
+  if(!second) return;
+  try{
+    await api("/api/account",{method:"DELETE"});
+    try{socket?.close()}catch(_){}
+    sessionStorage.removeItem("bkt_token");
+    token=null; me=null; selected=null; activeGroup=null;
+    closeSettings();
+    if($('app')) $('app').style.display='none';
+    if($('auth')) $('auth').style.display='grid';
+    alert("Аккаунт удалён навсегда. Номер телефона снова доступен для регистрации.");
+  }catch(e){
+    alert(e.message||"Не удалось удалить аккаунт");
+  }
+}
+
 function logout(){
   try{socket?.close()}catch(_){}
   sessionStorage.removeItem("bkt_token");
