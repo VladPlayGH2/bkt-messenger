@@ -952,7 +952,7 @@ app.get("/api/messages/:userId", auth, async (req, res) => {
   const rows = await many(`SELECT m.id,m.sender_id,m.receiver_id,m.text,m.created_at,m.read_at,u.username sender_name
     FROM messages m JOIN users u ON u.id=m.sender_id
     WHERE (m.sender_id=$1 AND m.receiver_id=$2) OR (m.sender_id=$3 AND m.receiver_id=$4)
-    ORDER BY m.id ASC LIMIT 500`, [req.user.id, other, other, req.user.id]);
+    ORDER BY m.id ASC`, [req.user.id, other, other, req.user.id]);
   res.json(rows);
 });
 
@@ -1244,7 +1244,7 @@ app.get("/api/groups/:id/messages", auth, async (req, res) => {
   const groupId = Number(req.params.id);
   if (!(await isGroupMember(groupId, req.user.id))) return res.status(403).json({ error: "Нет доступа" });
   const messages = await many(`SELECT gm.id,gm.group_id,gm.sender_id,gm.text,gm.created_at,u.username sender_name
-    FROM group_messages gm JOIN users u ON u.id=gm.sender_id WHERE gm.group_id=$1 ORDER BY gm.id ASC LIMIT 500`, [groupId]);
+    FROM group_messages gm JOIN users u ON u.id=gm.sender_id WHERE gm.group_id=$1 ORDER BY gm.id ASC`, [groupId]);
   res.json(messages);
 });
 

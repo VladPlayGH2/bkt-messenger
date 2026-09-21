@@ -1077,39 +1077,25 @@ async function loadUsers(){
   const q = (input?.value || "").trim().replace(/^@+/,"");
   const box = $("users");
   if (!box) return;
-
   try {
-    const list = q
-      ? await api("/api/users/search?q="+encodeURIComponent(q))
-      : await api("/api/users");
+    const list = q ? await api("/api/users/search?q="+encodeURIComponent(q)) : await api("/api/users");
     box.innerHTML = "";
     if (!list.length) {
-      box.innerHTML = q
-        ? '<div style="padding:14px;color:#8d9893">Никого не найдено. Проверь @username.</div>'
-        : '<div style="padding:14px;color:#8d9893">Пока нет чатов.</div>';
+      box.innerHTML = q ? '<div style="padding:14px;color:#8d9893">Никого не найдено. Проверь @username.</div>' : '<div style="padding:14px;color:#8d9893">Пока нет чатов.</div>';
       return;
     }
-
     for (const u of list) {
-      const row = document.createElement("div");
-      row.className = "user";
-      row.dataset.userId = String(u.id);
-      row.onclick = () => openUser(u);
-      const initial = escapeHtml((u.username || "?")[0].toUpperCase());
-      const avatar = u.avatar
-        ? `<img src="${escapeHtml(u.avatar)}" style="width:42px;height:42px;border-radius:50%;object-fit:cover">`
-        : initial;
-      const online = presenceState.has(Number(u.id)) ? presenceState.get(Number(u.id)) : !!u.online;
-      presenceState.set(Number(u.id), online);
-      row.innerHTML =
-        `<div class="avatar">${avatar}</div>` +
-        `<div><b>${verifiedName(u.username, !!u.verified)}</b><small>@${escapeHtml(u.username)}</small><small class="presence-label" style="display:block;color:${online?'#22ff72':'#68736d'}"> <span class="presence-dot ${online?'online':'offline'}">●</span>${online?'онлайн':'не в сети'}</small></div>`;
+      const row=document.createElement("div"); row.className="user"; row.dataset.userId=String(u.id); row.onclick=()=>openUser(u);
+      const initial=escapeHtml((u.username||"?")[0].toUpperCase());
+      const avatar=u.avatar ? `<img src="${escapeHtml(u.avatar)}" style="width:42px;height:42px;border-radius:50%;object-fit:cover">` : initial;
+      const online=presenceState.has(Number(u.id)) ? presenceState.get(Number(u.id)) : !!u.online;
+      presenceState.set(Number(u.id),online);
+      row.innerHTML=`<div class="avatar">${avatar}</div><div><b>${verifiedName(u.username,!!u.verified)}</b><small>@${escapeHtml(u.username)}</small><small class="presence-label" style="display:block;color:${online?'#22ff72':'#68736d'}"> <span class="presence-dot ${online?'online':'offline'}">●</span>${online?'онлайн':'не в сети'}</small></div>`;
       box.appendChild(row);
     }
-  } catch(e) {
-    box.innerHTML = '<div style="padding:14px;color:#ff8d8d">'+escapeHtml(e.message||"Ошибка поиска")+'</div>';
-  }
+  } catch(e) { box.innerHTML='<div style="padding:14px;color:#ff8d8d">'+escapeHtml(e.message||"Ошибка загрузки пользователей")+'</div>'; }
 }
+
 function updateComposerAccess(){
   const readonly = !!(activeGroup && activeGroup.name === "БКТ Сообщество" && !["brozi","vlad"].includes(String(me?.username || "").toLowerCase()));
   const ids=["voiceButton","videoNoteButton","stickerButton","text"];
