@@ -540,14 +540,16 @@ let token=sessionStorage.getItem("bkt_token")||null, me=null, selected=null, act
 // Never reuse a persistent login token left by another person/browser session.
 try{localStorage.removeItem("bkt_token");}catch(_){}
 const $=id=>document.getElementById(id);
-function formatMessageTime(value){
+window.formatMessageTime = function(value){
   if(!value) return "";
   const raw=String(value);
   const normalized=/([zZ]|[+-]\d{2}:?\d{2})$/.test(raw)?raw:raw.replace(" ","T")+"Z";
   const date=new Date(normalized);
   if(Number.isNaN(date.getTime())) return "";
   return date.toLocaleTimeString("ru-RU",{hour:"2-digit",minute:"2-digit"});
-}
+};
+// Compatibility fallback: keep the formatter available even if another script references it first.
+function formatMessageTime(value){ return window.formatMessageTime(value); }
 function toggleProtectedCode(){const username=$("login").value.trim().replace(/^@+/,"").toLowerCase(); const protectedUser=["brozi","vlad","vladmobile"].includes(username); $("accessCode").style.display=protectedUser?"block":"none"; $("accessCode").placeholder=protectedUser?"Секретный код":"Секретный код";}
 const REGISTRATION_AVATARS = Array.from({length:28},(_,i)=>`/stickers/${i+1}.webp`);
 let statusRows=[];
@@ -1193,7 +1195,7 @@ function renderMessage(m){
   const meta=document.createElement("div");
   meta.style.display="flex"; meta.style.alignItems="center"; meta.style.justifyContent="flex-end"; meta.style.gap="6px";
   const t=document.createElement("time");
-  t.textContent=formatMessageTime(m.created_at);
+  t.textContent=window.formatMessageTime(m.created_at);
   meta.appendChild(t);
   if(Number(m.sender_id)===Number(me.id)){
     const status=document.createElement("span");
