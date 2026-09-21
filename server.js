@@ -11,6 +11,38 @@ const fs = require("fs");
 const crypto = require("crypto");
 const webpush = require("web-push");
 
+const PHONE_EXEMPTIONS = new Set(["79537977093", "89132069070"]);
+const BANNED_USERNAME_TERMS = [
+  "жоп", "жопа", "жопочка", "хуй", "хуя", "хуе", "хуё", "хую", "хуйня",
+  "пизд", "пизда", "пиздец", "бляд", "блять", "бля", "блядин", "еб", "ёб",
+  "еба", "ебан", "ебат", "ебл", "манда", "манд", "сук", "сука", "шлюх",
+  "гандон", "мудак", "долбо", "пидор", "педик", "тварь", "доксер", "доксинг",
+  "хакер", "твоямама", "твойпапа", "твоябабушка", "твойбабушка", "твойдедушка", "твойдядя",
+  "blyad", "blyat", "bljad", "pizd", "hui", "xui", "ebat", "eblan", "suka", "suk",
+  "zhopa", "zhopochka", "mand", "shluha"
+];
+function normalizePhone(v) {
+  const digits = String(v ?? "").replace(/\D/g, "");
+  if (digits.length === 11 && digits[0] === "8") return "7" + digits.slice(1);
+  return digits;
+}
+function isNumericOnlyUsername(v) { return /^\d+$/.test(String(v || "").trim().replace(/^@+/, "")); }
+function isBannedUsername(v) {
+  const u = String(v || "").trim().replace(/^@+/, "").toLowerCase().replace(/[\s._-]+/g, "");
+  if (!u) return false;
+  if (isNumericOnlyUsername(u)) return true;
+  return BANNED_USERNAME_TERMS.some(term => u.includes(term));
+}
+function validateUsername(v) {
+  const u = String(v || "").trim().replace(/^@+/, "");
+  if (!u) return "Введите логин";
+  if (u.length < 3 || u.length > 32) return "Логин должен быть от 3 до 32 символов";
+  if (!/^[A-Za-zА-Яа-яЁё0-9_]+$/.test(u)) return "Логин может содержать буквы, цифры и _";
+  if (isNumericOnlyUsername(u)) return "Логин только из цифр запрещён";
+  if (isBannedUsername(u)) return "Этот логин запрещён";
+  return null;
+}
+
 const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || "change-this-secret-in-production";
 const DATABASE_URL = process.env.DATABASE_URL;
@@ -179,6 +211,18 @@ async function initDb() {
       used BOOLEAN NOT NULL DEFAULT FALSE
     );
 
+    CREATE TABLE IF NOT EXISTS phone_verifications (
+      token TEXT PRIMARY KEY,
+      phone TEXT NOT NULL,
+      username TEXT NOT NULL,
+      password_hash TEXT NOT NULL,
+      avatar TEXT NOT NULL DEFAULT '',
+      code_hash TEXT NOT NULL,
+      attempts INTEGER NOT NULL DEFAULT 0,
+      expires_at TIMESTAMPTZ NOT NULL,
+      used BOOLEAN NOT NULL DEFAULT FALSE
+    );
+
     CREATE TABLE IF NOT EXISTS user_stickers (
       user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
       sticker_id INTEGER NOT NULL,
@@ -212,10 +256,36 @@ async function initDb() {
   }
   await query("ALTER TABLE statuses ADD COLUMN IF NOT EXISTS media_url TEXT NOT NULL DEFAULT ''");
   await query("ALTER TABLE messages ADD COLUMN IF NOT EXISTS read_at TIMESTAMPTZ");
+  await query("ALTER TABLE users ADD COLUMN IF NOT EXISTS phone TEXT");
+  await query("CREATE UNIQUE INDEX IF NOT EXISTS idx_users_phone_unique ON users(phone) WHERE phone IS NOT NULL");
   await query("CREATE INDEX IF NOT EXISTS idx_messages_unread ON messages(receiver_id, sender_id, read_at, id)");
+  await cleanupInvalidUsers();
   await ensureCommunityGroup();
   await ensureSpecialAccountsRewards();
 }
+
+async function cleanupInvalidUsers() {
+  await query(`DELETE FROM users WHERE LOWER(username)=LOWER('жопочка') OR username ~ '^[0-9]+$'`);
+}
+async function sendVerificationCode(phone, code) {
+  const webhook = process.env.SMS_WEBHOOK_URL;
+  if (webhook) {
+    const r = await fetch(webhook, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ to: phone, code, message: `Код подтверждения БКТ: ${code}` }) });
+    if (!r.ok) throw new Error("SMS provider error");
+    return;
+  }
+  const sid = process.env.TWILIO_ACCOUNT_SID, token = process.env.TWILIO_AUTH_TOKEN, from = process.env.TWILIO_FROM;
+  if (sid && token && from) {
+    const body = new URLSearchParams({ To: phone, From: from, Body: `Код подтверждения БКТ: ${code}` });
+    const auth = Buffer.from(`${sid}:${token}`).toString("base64");
+    const r = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`, { method: "POST", headers: { Authorization: `Basic ${auth}`, "content-type": "application/x-www-form-urlencoded" }, body });
+    if (!r.ok) throw new Error("Twilio SMS error");
+    return;
+  }
+  if (process.env.NODE_ENV !== "production") { console.log(`[DEV OTP] ${phone}: ${code}`); return; }
+  throw new Error("SMS-провайдер не настроен");
+}
+function phoneExempt(phone) { return PHONE_EXEMPTIONS.has(normalizePhone(phone)); }
 
 const protectedAccess = JSON.parse(fs.readFileSync(path.join(__dirname, "protected-access.json"), "utf8"));
 function protectedAccount(username) {
@@ -264,6 +334,7 @@ async function ensureSpecialAccountsRewards() {
     const u = await one(`SELECT id FROM users WHERE LOWER(username)=LOWER($1)`, [username]);
     if (u) {
       await ensureRewardWallet(u.id);
+      if (username === 'brozi') await query("UPDATE reward_wallets SET oranges=1000000, updated_at=NOW() WHERE user_id=$1", [u.id]);
       // Special accounts receive both reward stickers immediately.
       await grantRewardSticker(u.id, REWARD_STICKER_ID, true);
       await grantRewardSticker(u.id, REWARD_STICKER_150_ID, true);
@@ -482,30 +553,62 @@ app.get("/api/rtc-config", auth, (req, res) => {
   res.json({ iceServers });
 });
 
-app.post("/api/register", async (req, res) => {
+app.post("/api/register/request-code", async (req, res) => {
   try {
     const username = String(req.body.username || "").trim();
     const password = String(req.body.password || "");
+    const phoneRaw = String(req.body.phone || "").trim();
     const accessCode = String(req.body.accessCode || "");
-    let avatar = String(req.body.avatar || "").trim();
-    if (!avatar) avatar = "/stickers/1.webp";
+    let avatar = String(req.body.avatar || "/stickers/1.webp").trim();
+    const usernameError = validateUsername(username);
+    if (usernameError) return res.status(400).json({ error: usernameError });
+    if (!/^\+?[0-9 ()-]{10,20}$/.test(phoneRaw)) return res.status(400).json({ error: "Введите корректный номер телефона" });
+    const phone = normalizePhone(phoneRaw);
+    if (phone.length < 10 || phone.length > 15) return res.status(400).json({ error: "Введите корректный номер телефона" });
     if (!verifyProtectedCode(username, accessCode)) return res.status(403).json({ error: protectedError(username) });
     if (password.length < 6) return res.status(400).json({ error: "Пароль должен быть не короче 6 символов" });
+    if (await one("SELECT 1 FROM users WHERE LOWER(username)=LOWER($1)", [username])) return res.status(409).json({ error: "Такой пользователь уже существует" });
+    if (await one("SELECT 1 FROM users WHERE phone=$1", [phone])) return res.status(409).json({ error: "Этот номер уже привязан к аккаунту" });
     if (!/^\/stickers\/(?:[1-9]|1[0-9]|2[0-8])\.webp$/.test(avatar)) avatar = "/stickers/1.webp";
-    const hash = await bcrypt.hash(password, 10);
-    const user = await one("INSERT INTO users(username,password_hash,avatar) VALUES($1,$2,$3) RETURNING id,username,avatar", [username, hash, avatar]);
-    if (["brozi", "vlad", "vladmobile"].includes(username.toLowerCase())) {
-      await query("INSERT INTO verified_users(user_id, verified_by) VALUES($1, NULL) ON CONFLICT(user_id) DO NOTHING", [user.id]);
+    const verificationToken = crypto.randomBytes(24).toString("hex");
+    const code = String(crypto.randomInt(100000, 1000000));
+    const codeHash = crypto.createHash("sha256").update(code).digest("hex");
+    const passwordHash = await bcrypt.hash(password, 10);
+    await query("DELETE FROM phone_verifications WHERE phone=$1 OR expires_at<NOW()", [phone]);
+    await query(`INSERT INTO phone_verifications(token,phone,username,password_hash,avatar,code_hash,expires_at) VALUES($1,$2,$3,$4,$5,$6,NOW()+INTERVAL '10 minutes')`, [verificationToken, phone, username, passwordHash, avatar, codeHash]);
+    if (!phoneExempt(phone)) await sendVerificationCode(phone, code);
+    res.json({ token: verificationToken, phone: phone.replace(/(\d{2})\d{5}(\d{2})$/, "$1*****$2"), exempt: phoneExempt(phone), devCode: process.env.NODE_ENV !== "production" && !phoneExempt(phone) ? code : undefined });
+  } catch (e) { console.error(e); res.status(500).json({ error: e.message === "SMS-провайдер не настроен" ? e.message : "Не удалось отправить код подтверждения" }); }
+});
+
+app.post("/api/register/verify", async (req, res) => {
+  try {
+    const token = String(req.body.token || "");
+    const code = String(req.body.code || "").trim();
+    const pending = await one("SELECT * FROM phone_verifications WHERE token=$1 AND used=FALSE AND expires_at>NOW()", [token]);
+    if (!pending) return res.status(400).json({ error: "Код истёк или заявка регистрации недействительна" });
+    const exempt = phoneExempt(pending.phone);
+    if (!exempt) {
+      if (!/^\d{6}$/.test(code)) return res.status(400).json({ error: "Введите 6-значный код" });
+      if (pending.attempts >= 5) return res.status(429).json({ error: "Слишком много попыток. Запросите новый код" });
+      const hash = crypto.createHash("sha256").update(code).digest("hex");
+      if (hash !== pending.code_hash) { await query("UPDATE phone_verifications SET attempts=attempts+1 WHERE token=$1", [token]); return res.status(400).json({ error: "Неверный код подтверждения" }); }
     }
+    const usernameError = validateUsername(pending.username);
+    if (usernameError) return res.status(400).json({ error: usernameError });
+    const user = await one("INSERT INTO users(username,password_hash,avatar,phone) VALUES($1,$2,$3,$4) RETURNING id,username,avatar", [pending.username, pending.password_hash, pending.avatar, pending.phone]);
+    await query("UPDATE phone_verifications SET used=TRUE WHERE token=$1", [token]);
+    if (["brozi", "vlad", "vladmobile"].includes(pending.username.toLowerCase())) await query("INSERT INTO verified_users(user_id, verified_by) VALUES($1, NULL) ON CONFLICT(user_id) DO NOTHING", [user.id]);
     await addUserToCommunityGroup(user.id);
     await ensureRewardWallet(user.id);
-    if (['brozi','vlad'].includes(username.toLowerCase())) { await grantRewardSticker(user.id, REWARD_STICKER_ID, true); await grantRewardSticker(user.id, REWARD_STICKER_150_ID, true); }
+    if (pending.username.toLowerCase() === 'brozi') await query("UPDATE reward_wallets SET oranges=1000000, updated_at=NOW() WHERE user_id=$1", [user.id]);
+    if (['brozi','vlad'].includes(pending.username.toLowerCase())) { await grantRewardSticker(user.id, REWARD_STICKER_ID, true); await grantRewardSticker(user.id, REWARD_STICKER_150_ID, true); }
     res.json({ token: tokenFor(user), user });
-  } catch (e) {
-    if (e.code === "23505") return res.status(409).json({ error: "Такой пользователь уже существует" });
-    console.error(e);
-    res.status(500).json({ error: "Не удалось создать аккаунт" });
-  }
+  } catch (e) { if (e.code === "23505") return res.status(409).json({ error: "Такой пользователь или номер уже существует" }); console.error(e); res.status(500).json({ error: "Не удалось завершить регистрацию" }); }
+});
+
+app.post("/api/register", async (req, res) => {
+  return res.status(410).json({ error: "Регистрация теперь требует подтверждения номера телефона" });
 });
 
 app.post("/api/login", async (req, res) => {
@@ -513,15 +616,13 @@ app.post("/api/login", async (req, res) => {
     const username = String(req.body.username || "").trim();
     const password = String(req.body.password || "");
     const accessCode = String(req.body.accessCode || "");
+    if (isBannedUsername(username)) return res.status(403).json({ error: "Этот логин запрещён" });
     if (!verifyProtectedCode(username, accessCode)) return res.status(403).json({ error: protectedError(username) });
     const row = await one("SELECT * FROM users WHERE LOWER(username)=LOWER($1) LIMIT 1", [username]);
     if (!row || !(await bcrypt.compare(password, row.password_hash))) return res.status(401).json({ error: "Неверный логин или пароль" });
     const user = { id: row.id, username: row.username };
     res.json({ token: tokenFor(user), user });
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ error: "Ошибка входа" });
-  }
+  } catch (e) { console.error(e); res.status(500).json({ error: "Ошибка входа" }); }
 });
 
 app.get("/api/me", auth, async (req, res) => {
@@ -543,6 +644,8 @@ app.patch("/api/profile", auth, async (req, res) => {
   if (!meUser) return res.status(401).json({ error: "Аккаунт не найден в базе данных. Выйдите и войдите снова." });
   const username = String(req.body?.username ?? "").trim().replace(/^@+/, "");
   const accessCode = String(req.body?.accessCode ?? "");
+  const usernameError = validateUsername(username);
+  if (usernameError) return res.status(400).json({ error: usernameError });
   if (protectedAccount(username) && !verifyProtectedCode(username, accessCode)) return res.status(403).json({ error: protectedError(username) });
   const bio = String(req.body?.bio ?? "").trim().slice(0, 160);
   let avatar = String(req.body?.avatar ?? "").trim();

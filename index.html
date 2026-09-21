@@ -402,7 +402,9 @@ img,video{max-width:100%}
 <div id="auth" class="auth"><div class="card">
 <div class="brand"><div class="logo">БКТ</div><div><h1>БКТ</h1><small>Мессенджер</small></div></div>
 <h2 id="authTitle">Вход</h2><div id="err" class="error"></div>
-<input id="login" placeholder="Логин" autocomplete="username" oninput="toggleProtectedCode()"><input id="pass" type="password" placeholder="Пароль" autocomplete="current-password"><input id="accessCode" type="password" autocomplete="off" placeholder="Секретный код" style="display:none">
+<input id="login" placeholder="Логин" autocomplete="username" oninput="toggleProtectedCode()"><input id="pass" type="password" placeholder="Пароль" autocomplete="current-password">
+<div id="registerPhoneWrap" style="display:none"><input id="registerPhone" type="tel" placeholder="Номер телефона" autocomplete="tel" inputmode="tel"><input id="registerCode" type="text" placeholder="Код из SMS" inputmode="numeric" autocomplete="one-time-code" maxlength="6" style="display:none"><div id="registerCodeHint" class="reward-sub" style="display:none;margin:2px 0 6px">Введите код подтверждения из SMS.</div></div>
+<input id="accessCode" type="password" autocomplete="off" placeholder="Секретный код" style="display:none">
 <div id="registerAvatarPicker" class="auth-avatar-picker">
   <div class="auth-avatar-title">Выберите аватарку из стикеров</div>
   <div id="registerAvatarSelected" class="auth-avatar-selected"><span>Аватарка не выбрана</span></div>
@@ -534,7 +536,7 @@ img,video{max-width:100%}
   </div>
 </div></div>
 <script>
-let token=sessionStorage.getItem("bkt_token")||null, me=null, selected=null, activeGroup=null, socket=null, registering=false, selectedRegistrationAvatar="";
+let token=sessionStorage.getItem("bkt_token")||null, me=null, selected=null, activeGroup=null, socket=null, registering=false, selectedRegistrationAvatar="", registrationVerificationToken="", registrationCodeRequested=false;
 // Never reuse a persistent login token left by another person/browser session.
 try{localStorage.removeItem("bkt_token");}catch(_){}
 const $=id=>document.getElementById(id);
@@ -825,15 +827,27 @@ function renderRegistrationAvatarPicker(){
   });
 }
 
+function resetRegistrationFlow(){
+  registrationVerificationToken=""; registrationCodeRequested=false;
+  ["login","pass","registerPhone"].forEach(id=>{const el=$(id);if(el){el.disabled=false;el.readOnly=false;}});
+  const c=$("registerCode"); if(c){c.value="";c.style.display="none";}
+  const h=$("registerCodeHint"); if(h)h.style.display="none";
+}
+function updateRegistrationUI(){
+  const wrap=$("registerPhoneWrap"); if(wrap)wrap.style.display=registering?"block":"none";
+  const phone=$("registerPhone"), code=$("registerCode"), hint=$("registerCodeHint");
+  if(!registering){resetRegistrationFlow();}
+  if(registering && registrationCodeRequested){
+    if(phone)phone.disabled=true; if($("login"))$("login").disabled=true; if($("pass"))$("pass").disabled=true;
+    if(code)code.style.display="block"; if(hint)hint.style.display="block";
+  }
+  $("authBtn").textContent=registering?(registrationCodeRequested?"Подтвердить и создать":"Получить код") : "Войти";
+}
 function toggleAuth(){
-  registering=!registering;
+  registering=!registering; resetRegistrationFlow();
   $("authTitle").textContent=registering?"Регистрация":"Вход";
-  $("authBtn").textContent=registering?"Создать аккаунт":"Войти";
   $("switch").textContent=registering?"Уже есть аккаунт? Войти":"Нет аккаунта? Регистрация";
-  $("err").textContent="";
-  selectedRegistrationAvatar="";
-  renderRegistrationAvatarPicker();
-  toggleProtectedCode();
+  $("err").textContent=""; selectedRegistrationAvatar=""; renderRegistrationAvatarPicker(); updateRegistrationUI(); toggleProtectedCode();
 }
 async function api(path, options={}){
   const saved=sessionStorage.getItem("bkt_token");
@@ -858,18 +872,30 @@ async function authAction(){
   const password=$("pass").value;
   $("err").textContent="";
   if(!username||!password){$("err").textContent="Введите логин и пароль";return;}
-  if(registering && !selectedRegistrationAvatar){ selectedRegistrationAvatar=REGISTRATION_AVATARS[0]; }
-  try{
-    const d=await api("/api/"+(registering?"register":"login"),{
-      method:"POST",
-      body:{username,password,accessCode:$("accessCode").value.trim(),avatar:registering?(selectedRegistrationAvatar||REGISTRATION_AVATARS[0]):undefined}
-    });
-    token=d.token;
-    sessionStorage.setItem("bkt_token",token);
-    await start();
-  }catch(e){
-    $("err").textContent=e.message||"Ошибка авторизации";
+  if(!registering){
+    try{
+      const d=await api("/api/login",{method:"POST",body:{username,password,accessCode:$("accessCode").value.trim()}});
+      token=d.token; sessionStorage.setItem("bkt_token",token); await start();
+    }catch(e){$("err").textContent=e.message||"Ошибка авторизации";}
+    return;
   }
+  if(!selectedRegistrationAvatar){ selectedRegistrationAvatar=REGISTRATION_AVATARS[0]; }
+  try{
+    if(!registrationCodeRequested){
+      const phone=$("registerPhone").value.trim();
+      if(!phone){$("err").textContent="Введите номер телефона";return;}
+      const d=await api("/api/register/request-code",{method:"POST",body:{username,password,phone,accessCode:$("accessCode").value.trim(),avatar:selectedRegistrationAvatar}});
+      registrationVerificationToken=d.token; registrationCodeRequested=true; updateRegistrationUI();
+      if(d.exempt){$("registerCodeHint").textContent="Для этого номера код не требуется. Нажмите «Подтвердить и создать».";}
+      else if(d.devCode){$("registerCodeHint").textContent=`Код для разработки: ${d.devCode}`;}
+      else $("registerCodeHint").textContent="Код отправлен по SMS. Введите его ниже.";
+      $("registerCodeHint").style.display="block";
+      return;
+    }
+    const code=$("registerCode").value.trim();
+    const d=await api("/api/register/verify",{method:"POST",body:{token:registrationVerificationToken,code}});
+    token=d.token; sessionStorage.setItem("bkt_token",token); await start();
+  }catch(e){$("err").textContent=e.message||"Ошибка регистрации";}
 }
 
 async function start(){
