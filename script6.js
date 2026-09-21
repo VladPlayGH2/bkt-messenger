@@ -1,0 +1,1 @@
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')markSelectedChatRead();});
