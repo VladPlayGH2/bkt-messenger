@@ -537,19 +537,40 @@ function sendSignal(toUserId, payload) {
   push(Number(toUserId), { type: "call-signal", ...payload });
 }
 
-app.get("/api/rtc-config", auth, (req, res) => {
-  // STUN discovers public addresses. A self-hosted coturn TURN server is used
-  // when a direct PC↔phone WebRTC path is impossible. TURN credentials are
-  // short-lived and are generated server-side from TURN_SECRET.
+app.get("/api/rtc-config", auth, async (req, res) => {
+  // Prefer an external TURN provider when configured. Metered exposes a
+  // credential-scoped API key, so the secret is never sent to the browser.
+  try {
+    const meteredApp = String(process.env.METERED_APP_NAME || "").trim();
+    const meteredKey = String(process.env.METERED_API_KEY || "").trim();
+    const meteredRegion = String(process.env.METERED_REGION || "").trim();
+    if (meteredApp && meteredKey && typeof fetch === "function") {
+      const url = new URL(`https://${meteredApp}.metered.live/api/v1/turn/credentials`);
+      url.searchParams.set("apiKey", meteredKey);
+      if (meteredRegion) url.searchParams.set("region", meteredRegion);
+      const r = await fetch(url);
+      if (r.ok) {
+        const iceServers = await r.json();
+        if (Array.isArray(iceServers) && iceServers.length) {
+          res.set("Cache-Control", "no-store");
+          return res.json({ iceServers });
+        }
+      } else {
+        console.warn("Metered TURN request failed:", r.status);
+      }
+    }
+  } catch (e) {
+    console.warn("Metered TURN unavailable:", e?.message || e);
+  }
+
   const iceServers = [
     { urls: [
       "stun:stun.l.google.com:19302",
       "stun:stun1.l.google.com:19302",
       "stun:stun.cloudflare.com:3478"
-    ] }
+    ]}
   ];
 
-  const turnHost = String(process.env.TURN_HOST || "").trim();
   const turnUrls = String(process.env.TURN_URLS || process.env.TURN_URL || "")
     .split(",").map(s => s.trim()).filter(Boolean);
   const turnSecret = String(process.env.TURN_SECRET || "");
@@ -558,11 +579,8 @@ app.get("/api/rtc-config", auth, (req, res) => {
     const username = `${expires}:${String(req.user.id)}`;
     const credential = crypto.createHmac("sha1", turnSecret).update(username).digest("base64");
     iceServers.push({ urls: turnUrls, username, credential });
-  } else if (turnUrls.length && process.env.TURN_USERNAME && process.env.TURN_CREDENTIAL) {
-    // Backwards-compatible static credentials. Prefer TURN_SECRET for production.
-    iceServers.push({ urls: turnUrls, username: process.env.TURN_USERNAME, credential: process.env.TURN_CREDENTIAL });
   }
-  res.set("Cache-Control", "no-store, no-cache, must-revalidate");
+  res.set("Cache-Control", "no-store");
   res.json({ iceServers });
 });
 

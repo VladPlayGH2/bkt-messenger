@@ -95,19 +95,19 @@ img,video{max-width:100%}
 }
 
 /* Full-screen calls + chat media */
-.call-modal-full{padding:0!important;background:#000!important;align-items:stretch!important;z-index:4000}
-.call-screen{width:100vw;height:100dvh;background:#000;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center}
-.call-remote{width:100%;height:100%;object-fit:contain;background:#000}
-.call-local{position:absolute;right:18px;top:18px;width:min(28vw,180px);height:min(38vw,240px);object-fit:contain;background:#111;border-radius:14px;border:1px solid #ffffff33;z-index:3}
-.call-top{position:absolute;top:max(12px,env(safe-area-inset-top));left:16px;right:16px;z-index:4;color:#fff;text-shadow:0 1px 4px #000}
-.call-controls{position:absolute;left:0;right:0;bottom:max(18px,env(safe-area-inset-bottom));z-index:4;display:flex;justify-content:center;gap:10px;padding:10px}
-.call-controls button{border:0;border-radius:999px;width:52px;height:52px;background:#ffffff1c;color:#fff;font-size:22px;cursor:pointer;backdrop-filter:blur(8px)}
-.call-controls button.danger{background:#d52b2b}
+.call-modal-full{padding:16px!important;background:rgba(0,0,0,.72)!important;align-items:center!important;justify-content:center!important;z-index:4000}
+.call-screen{width:min(360px,calc(100vw - 28px));height:min(600px,calc(100dvh - 34px));background:#070a09;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;border:1px solid #26342d;border-radius:24px;box-shadow:0 18px 60px rgba(0,0,0,.55)}
+.call-remote{width:100%;height:100%;object-fit:cover;background:#000}
+.call-local{position:absolute;right:14px;top:14px;width:86px;height:122px;object-fit:cover;background:#111;border-radius:14px;border:1px solid #ffffff44;z-index:3}
+.call-top{position:absolute;top:16px;left:16px;right:16px;z-index:4;color:#fff;text-shadow:0 1px 4px #000}
+.call-controls{position:absolute;left:14px;right:14px;bottom:14px;z-index:4;display:flex;justify-content:center;gap:10px;padding:10px;border-radius:18px;background:rgba(10,14,12,.72);backdrop-filter:blur(12px)}
+.call-controls button{border:0;border-radius:12px;width:50px;height:44px;background:#ffffff18;color:#fff;font-size:21px;cursor:pointer}
+.call-controls button.danger{background:#d52b2b;min-width:82px;width:auto;padding:0 16px;font-size:14px;font-weight:700}
 .call-controls button.active{background:#16d878;color:#031108}
 .media-preview{max-width:260px;max-height:320px;border-radius:14px;display:block;background:#000}
 .chat-media{max-width:min(320px,70vw);max-height:360px;border-radius:14px;display:block;background:#000;object-fit:contain}
 .media-plus{border:0;border-radius:50%;width:45px;height:45px;background:#111716;color:#fff;cursor:pointer;font-size:22px}
-@media(max-width:700px){.call-local{width:110px;height:155px;right:12px;top:12px}.call-controls button{width:50px;height:50px}.chat-media{max-width:82vw}}
+@media(max-width:700px){.call-screen{width:min(340px,calc(100vw - 20px));height:min(560px,calc(100dvh - 24px));border-radius:22px}.call-local{width:82px;height:116px;right:12px;top:12px}.call-controls{left:10px;right:10px;bottom:10px}.call-controls button{width:48px;height:44px}.chat-media{max-width:82vw}}
 </style>
 
 <style id="bkt-usability-css">
@@ -457,7 +457,7 @@ img,video{max-width:100%}
       <button id="acceptCall" onclick="acceptIncomingCall()">✓</button>
       <button id="callMicButton" onclick="toggleCallMic()">🎙️</button>
       <button id="callCameraButton" onclick="toggleCallCamera()">📹</button>
-      <button class="danger" onclick="endCall()">☎</button>
+      <button id="callEndButton" class="danger" onclick="endCall()">Выйти</button>
     </div>
   </div>
 </div></main></div>
@@ -1573,12 +1573,12 @@ async function startCall(type){
     await loadRtcConfig();
     localCallStream=await navigator.mediaDevices.getUserMedia(type==="video"?{audio:true,video:true}:{audio:true});
     peer=createPeer(); pendingIceCandidates=[]; incomingIceCandidates=[]; seenRemoteIce=new Set(); lastRemoteAnswer=null; callPeerUserId=Number(selected.id);
-    clearTimeout(callTimeout); callTimeout=setTimeout(()=>{ if(peer && !["connected","completed"].includes(peer.iceConnectionState)) { endCall(true); alert("Не удалось установить соединение. Проверьте интернет или настройки TURN."); } },45000);
+    clearTimeout(callTimeout); callTimeout=setTimeout(()=>{ if(peer && !["connected","completed"].includes(peer.iceConnectionState)) { endCall(true); alert("Не удалось установить соединение за 60 секунд. Проверьте разрешения микрофона/камеры и TURN."); } },60000);
     localCallStream.getTracks().forEach(t=>peer.addTrack(t,localCallStream));
     $("callTitle").textContent=type==="video"?"📹 Видеозвонок":"📞 Аудиозвонок";
     $("callModal").style.display="grid";
     $("acceptCall").style.display="none";
-    if(type==="video"){ $("remoteVideo").style.display="block"; $("remoteVideo").muted=true; $("localCallVideo").srcObject=localCallStream; $("localCallVideo").style.display="block"; }
+    if(type==="video"){ $("remoteVideo").style.display="block"; $("remoteVideo").muted=false; $("localCallVideo").srcObject=localCallStream; $("localCallVideo").style.display="block"; }
     else { $("remoteVideo").style.display="none"; $("localCallVideo").style.display="none"; }
     callMicEnabled=true; callCameraEnabled=true; updateCallControls();
     const callId=`${Date.now()}-${Math.random().toString(36).slice(2)}`;
@@ -1586,7 +1586,16 @@ async function startCall(type){
     startCallStatePolling();
     const offer=await peer.createOffer(); await peer.setLocalDescription(offer);
     callSocket({type:"call-signal",toUserId:Number(selected.id),signalType:"offer",callId,signal:{sdp:peer.localDescription.sdp,type:peer.localDescription.type},callType:type});
-  }catch(e){ console.error(e); endCall(false); alert("Не удалось начать звонок. Разреши доступ к микрофону/камере."); }
+  }catch(e){
+    console.error("startCall failed", e);
+    const name=e?.name||"";
+    endCall(false);
+    if(name==="NotAllowedError" || name==="PermissionDeniedError") alert("Нет доступа к микрофону/камере. Разреши доступ для сайта bkt-messenger.onrender.com в настройках браузера и попробуй ещё раз.");
+    else if(name==="NotFoundError") alert(type==="video"?"Камера или микрофон не найдены. Проверь подключение устройства.":"Микрофон не найден.");
+    else if(name==="NotReadableError" || name==="AbortError") alert("Микрофон/камера заняты другим приложением. Закрой другое приложение, использующее их, и попробуй снова.");
+    else if(name==="SecurityError") alert("Браузер заблокировал доступ к микрофону/камере. Открой мессенджер по HTTPS и разреши доступ.");
+    else alert("Не удалось начать звонок: "+(e?.message||"проверь разрешения микрофона/камеры и интернет."));
+  }
 }
 
 let rtcConfig={iceServers:[
@@ -1628,7 +1637,7 @@ function createPeer(){
     $("remoteVideo").play().catch(()=>{});
   };
   pc.onconnectionstatechange=()=>{
-    if(["failed","disconnected","closed"].includes(pc.connectionState)) endCall(false);
+    if(["failed","closed"].includes(pc.connectionState)) endCall(false);
   };
   return pc;
 }
@@ -1646,7 +1655,7 @@ async function acceptIncomingCall(){
     peer=createPeer();
     seenRemoteIce=new Set(); lastRemoteAnswer=null;
     callPeerUserId=Number(from);
-    clearTimeout(callTimeout); callTimeout=setTimeout(()=>{ if(peer && !["connected","completed"].includes(peer.iceConnectionState)) { endCall(true); alert("Не удалось установить соединение. Проверьте интернет или настройки TURN."); } },45000);
+    clearTimeout(callTimeout); callTimeout=setTimeout(()=>{ if(peer && !["connected","completed"].includes(peer.iceConnectionState)) { endCall(true); alert("Не удалось установить соединение за 60 секунд. Проверьте разрешения микрофона/камеры и TURN."); } },60000);
     localCallId=incomingCall.callId||null;
     startCallStatePolling();
     localCallStream.getTracks().forEach(t=>peer.addTrack(t,localCallStream));
@@ -1665,7 +1674,13 @@ async function acceptIncomingCall(){
     $("localCallVideo").style.display=callType==="video"?"block":"none";
     callMicEnabled=true; callCameraEnabled=true; updateCallControls();
   }catch(e){
-    console.error(e); endCall(false); alert("Не удалось принять звонок.");
+    console.error("acceptIncomingCall failed", e);
+    const name=e?.name||"";
+    endCall(false);
+    if(name==="NotAllowedError" || name==="PermissionDeniedError") alert("Не удалось принять звонок: нет доступа к микрофону/камере. Разреши доступ для сайта в настройках браузера.");
+    else if(name==="NotFoundError") alert("Не удалось принять звонок: камера или микрофон не найдены.");
+    else if(name==="NotReadableError" || name==="AbortError") alert("Не удалось принять звонок: микрофон/камера заняты другим приложением.");
+    else alert("Не удалось принять звонок: "+(e?.message||"проверь разрешения и интернет."));
   }
 }
 
@@ -1685,8 +1700,11 @@ async function pollCallState(){
     const state=await api("/api/calls/"+encodeURIComponent(localCallId)+"/state");
     if(!state) return;
     if(state.status==="ended") { endCall(false); return; }
-    if(peer && state.status==="accepted" && state.offer===null && !lastRemoteAnswer) {
-      // Answer is stored separately below by the WebSocket path; keep polling for ICE.
+    if(peer && state.status==="accepted" && state.answer && !lastRemoteAnswer) {
+      try {
+        lastRemoteAnswer=state.answer;
+        if(!peer.currentRemoteDescription) await peer.setRemoteDescription(new RTCSessionDescription(state.answer));
+      } catch(e) { console.warn("Polling answer apply failed", e); }
     }
     for(const c of (state.iceCandidates||[])){
       const key=JSON.stringify(c);

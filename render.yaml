@@ -23,6 +23,13 @@ services:
         sync: false
       - key: TURN_SECRET
         sync: false
+      # Optional: Metered/OpenRelay TURN. Set both values in Render Dashboard.
+      - key: METERED_APP_NAME
+        sync: false
+      - key: METERED_API_KEY
+        sync: false
+      - key: METERED_REGION
+        value: europe
 
 databases:
   - name: bkt-messenger-db
