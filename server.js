@@ -1024,7 +1024,7 @@ app.post("/api/statuses", auth, async (req, res) => {
     if (text.length > 280) return res.status(400).json({ error: "Текст статуса — максимум 280 символов" });
     if (!text && !mediaUrl) return res.status(400).json({ error: "Добавьте текст или фото" });
     if (mediaUrl && !mediaUrl.startsWith("/status-media/")) return res.status(400).json({ error: "Некорректное фото" });
-    await query("DELETE FROM statuses WHERE user_id=$1 OR expires_at <= NOW()", [user.id]);
+    await query("DELETE FROM statuses WHERE expires_at <= NOW()");
     const row = await one(`INSERT INTO statuses(user_id,text,media_url,expires_at) VALUES($1,$2,$3,NOW()+INTERVAL '24 hours')
       RETURNING id,user_id,text,media_url,created_at,expires_at`, [user.id, text, mediaUrl]);
     res.json({ ...row, username: user.username });
