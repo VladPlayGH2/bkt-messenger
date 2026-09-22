@@ -397,20 +397,51 @@ img,video{max-width:100%}
 </style>
 
 
-<style id="desktop-scroll-fixes">
-/* Desktop: long rewards/profile/settings content must remain scrollable. */
-#rewardsModal,#profileViewModal,#settingsModal{align-items:flex-start!important;justify-content:center!important;padding:24px!important;overflow-y:auto!important;overscroll-behavior:contain;}
-#rewardsModal .reward-panel,#profileViewModal .profile-view-card,#settingsModal .modal-card{max-height:calc(100dvh - 48px);overflow-y:auto;overscroll-behavior:contain;}
-#rewardsModal .reward-panel{width:min(720px,94vw);background:#0c1110;border:1px solid #24312b;border-radius:18px;padding:20px;}
-#rewardsModal .reward-head{display:flex;align-items:center;justify-content:space-between;gap:12px;position:sticky;top:-20px;background:#0c1110;padding:2px 0 12px;z-index:2;}
-#rewardsModal .reward-cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;}
-#rewardsModal .reward-card{background:#111a15;border:1px solid #263a2d;border-radius:14px;padding:12px;min-width:0;}
-#rewardsModal .reward-card img{width:100%;aspect-ratio:1;object-fit:contain;border-radius:10px;background:#050807;}
-#rewardsModal .reward-card.locked{opacity:.65;}
-#rewardsModal .reward-card button{width:100%;margin-top:8px;border:0;border-radius:9px;padding:9px;background:#22ff72;color:#001609;font-weight:700;cursor:pointer;}
-#rewardsModal .reward-sub{color:#9ba8a1;font-size:12px;}
-#profileViewModal .profile-view-card{width:min(430px,92vw);}
-@media(max-width:700px){#rewardsModal,#profileViewModal,#settingsModal{padding:10px!important;}#rewardsModal .reward-panel,#profileViewModal .profile-view-card,#settingsModal .modal-card{max-height:calc(100dvh - 20px);}#rewardsModal .reward-cards{grid-template-columns:repeat(2,minmax(0,1fr));}}
+<style id="desktop-rewards-profile-scroll-fix">
+/* Robust desktop scrolling for long dialogs: the dialog itself stays fixed, the card scrolls. */
+#rewardsModal, #profileViewModal, #settingsModal {
+  align-items:flex-start !important;
+  justify-content:center !important;
+  overflow:hidden !important;
+  padding:20px !important;
+  box-sizing:border-box !important;
+  overscroll-behavior:contain;
+}
+#rewardsModal .reward-panel, #profileViewModal .profile-view-card, #settingsModal .modal-card {
+  width:min(720px,94vw) !important;
+  height:calc(100vh - 40px) !important;
+  max-height:calc(100vh - 40px) !important;
+  min-height:0 !important;
+  overflow-y:scroll !important;
+  overflow-x:hidden !important;
+  overscroll-behavior:contain;
+  -webkit-overflow-scrolling:touch;
+  scrollbar-gutter:stable both-edges;
+  scrollbar-width:auto;
+  touch-action:pan-y;
+  box-sizing:border-box !important;
+  padding-bottom:28px !important;
+}
+#rewardsModal .reward-panel::-webkit-scrollbar, #profileViewModal .profile-view-card::-webkit-scrollbar, #settingsModal .modal-card::-webkit-scrollbar { width:12px; }
+#rewardsModal .reward-panel::-webkit-scrollbar-thumb, #profileViewModal .profile-view-card::-webkit-scrollbar-thumb, #settingsModal .modal-card::-webkit-scrollbar-thumb { background:#52635a; border-radius:10px; border:3px solid #0c1110; }
+#profileViewModal .profile-view-card, #settingsModal .modal-card {
+  width:min(520px,94vw) !important;
+}
+#rewardsModal .reward-cards {
+  max-height:none !important;
+  overflow:visible !important;
+}
+/* Keep all avatar/status circles actually circular. */
+.avatar, .profile-view-avatar, .tiktok-status-avatar, .wa-status-avatar, .wa-add-badge, .dot {
+  border-radius:50% !important;
+}
+@media (max-width:700px) {
+  #rewardsModal, #profileViewModal, #settingsModal { padding:10px !important; }
+  #rewardsModal .reward-panel, #profileViewModal .profile-view-card, #settingsModal .modal-card {
+    height:calc(100dvh - 20px) !important;
+    max-height:calc(100dvh - 20px) !important;
+  }
+}
 </style>
 </head>
 <body>
@@ -787,12 +818,22 @@ function closeRewards(){ $('rewardsModal').style.display='none'; }
 function renderRewards(){
   $('rewardBalance').textContent=`🍊 ${Number(rewardState.oranges||0)}`;
   const cards=$('rewardCards'); if(!cards)return;
-  const rewardRows=[...(rewardState.rewards||[])];
+  // Награды берём только из /api/rewards. Каталог подарков НЕ добавляется сюда,
+  // поэтому один и тот же «БКТ — Капибара и Туф» (300 🍊) больше не дублируется.
+  const rewardRows=[];
+  const seenRewardKeys=new Set();
+  for(const r of (rewardState.rewards||[])){
+    const sid=Number(r.stickerId);
+    const key = `${sid}|${String(r.stickerSrc||'')}|${String(r.name||'').trim().toLowerCase()}`;
+    if(!sid || seenRewardKeys.has(key)) continue;
+    seenRewardKeys.add(key);
+    rewardRows.push(r);
+  }
   cards.innerHTML=rewardRows.map(r=>{
     const owned=!!r.owned, unlocked=Number(rewardState.oranges||0)>=Number(r.unlockAt);
     return `<div class="reward-card ${owned?'':'locked'}">
       <img src="${escapeHtml(r.stickerSrc)}" alt="Стикер ${r.stickerId}">
-      <b>${escapeHtml(r.name || (r.stickerId===29?'Капибара':r.stickerId===30?'Королевская капибара':'БКТ — Капибара и Туф'))}</b>
+      <b>${r.name || (r.stickerId===30?'Королевская капибара':'Капибара и Туф')}</b>
       <div class="reward-sub" style="margin:5px 0">${owned?'Получен':`Нужно ${r.unlockAt} 🍊`}</div>
       ${owned?`<button type="button" onclick="addRewardToProfile(${r.stickerId})">🎁 Добавить в профиль</button>`:''}
     </div>`;
@@ -1495,10 +1536,11 @@ async function renderSettingsAvatarPicker(currentAvatar){
   await loadGiftCatalog();
   grid.innerHTML="";
   const giftAvatars=giftCatalog.filter(g=>g.owned).map(g=>g.src);
+  // Include all owned orange gifts (50/150/300) as selectable avatars.
   const avatars=[...REGISTRATION_AVATARS,...giftAvatars.filter(src=>!REGISTRATION_AVATARS.includes(src))];
   avatars.forEach((src,i)=>{
     const b=document.createElement("button"); b.type="button"; b.className="auth-avatar-item settings-avatar-item"+(currentAvatar===src?" selected":"");
-    b.title=src.includes('/stickers/29.webp')?'Подарок 50 🍊':src.includes('/stickers/30.webp')?'Подарок 150 🍊':src.includes('/stickers/31.webp')?'Подарок 300 🍊':`Аватарка ${i+1}`;
+    b.title=src.includes('/stickers/29.webp')?'Подарок 50 🍊':src.includes('/stickers/30.webp')?'Подарок 150 🍊':src.includes('/stickers/31.webp')?'Подарок 100 🍊':`Аватарка ${i+1}`;
     const img=document.createElement("img"); img.src=src; img.alt=b.title;
     b.appendChild(img);
     b.onclick=()=>{
@@ -1576,11 +1618,12 @@ function buildStickerPicker(){
   const list=[...STICKERS, NEW_STICKER];
   if(ownedRewardStickerIds.has(29))list.push('/stickers/29.webp');
   if(ownedRewardStickerIds.has(30))list.push('/stickers/30.webp');
+  if(ownedRewardStickerIds.has(31))list.push('/stickers/31.webp');
   list.forEach((src,i)=>{
     const b=document.createElement("button");
     b.type="button";
     b.className="sticker-item";
-    b.title=src.endsWith('/29.webp')?'Подарок 50 🍊':src.endsWith('/30.webp')?'Подарок 150 🍊':src.endsWith('/31.webp')?'БКТ — Капибара и Туф':'Туф';
+    b.title=src.endsWith('/29.webp')?'Подарок 50 🍊':src.endsWith('/30.webp')?'Подарок 150 🍊':src.endsWith('/31.webp')?'Подарок 300 🍊':'Туф';
     b.setAttribute('aria-label',b.title);
     const img=document.createElement("img");
     img.src=src; img.alt=b.title; img.loading="lazy";
