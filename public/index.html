@@ -13,7 +13,7 @@ button,input{font:inherit}.app{height:100vh;max-width:1100px;margin:auto;display
 .verified-badge{display:inline-grid;place-items:center;width:17px;height:17px;margin-left:4px;border-radius:50%;background:#2388ff;color:#fff;font-size:11px;font-weight:900;vertical-align:middle}
 .group-item{padding:12px 16px;border-radius:12px;cursor:pointer;margin:3px 10px}
 .group-item:hover{background:#142019}
-.verified-badge{display:inline-grid;place-items:center;width:17px;height:17px;margin-left:4px;border-radius:50%;background:#2388ff;color:#fff;font-size:11px;font-weight:900;vertical-align:middle}.group-item{padding:10px 18px;cursor:pointer;border-bottom:1px solid #17211c}.modal{position:fixed;inset:0;background:rgba(0,0,0,.7);display:none;place-items:center;z-index:20}.modal-card{width:min(420px,92vw);background:#0c1110;border:1px solid #24312b;border-radius:18px;padding:22px}.modal-card input,.modal-card textarea{width:100%;background:#111716;border:1px solid #24312b;border-radius:10px;padding:11px;color:#fff;margin:6px 0 12px}.modal-actions{display:flex;gap:8px}.modal-actions button{flex:1;padding:11px;border:0;border-radius:10px;cursor:pointer}
+.verified-badge{display:inline-grid;place-items:center;width:17px;height:17px;margin-left:4px;border-radius:50%;background:#2388ff;color:#fff;font-size:11px;font-weight:900;vertical-align:middle}.group-item{padding:10px 18px;cursor:pointer;border-bottom:1px solid #17211c}.modal{position:fixed;inset:0;background:rgba(0,0,0,.7);display:none;place-items:center;z-index:20}.modal-card{width:min(420px,92vw);background:#0c1110;border:1px solid #24312b;border-radius:18px;padding:22px}#callModal .modal-card{width:min(280px,82vw);padding:10px;border-radius:12px}#callModal #remoteVideo{width:100%;height:150px;max-height:34vh;border-radius:10px;background:#000;object-fit:cover;transform:none!important}#callModal .modal-actions{gap:7px;margin-top:10px}#callModal .modal-actions button{padding:8px 10px;border-radius:9px;font-size:13px}#callModal .modal-actions button[onclick="endCall()"]{background:#b42323;color:#fff}.modal-card input,.modal-card textarea{width:100%;background:#111716;border:1px solid #24312b;border-radius:10px;padding:11px;color:#fff;margin:6px 0 12px}.modal-actions{display:flex;gap:8px}.modal-actions button{flex:1;padding:11px;border:0;border-radius:10px;cursor:pointer}
 .chat-title{min-width:0;flex:1}.chat-title b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.call-actions{display:flex;gap:6px;margin-left:auto}.call-actions button{width:42px;height:42px;min-width:42px;border:1px solid #24312b;border-radius:12px;background:#111716;color:#fff;cursor:pointer}.call-actions button:hover{background:#17231c}.call-actions button:disabled{opacity:.45;cursor:not-allowed}
 .call-actions .active{background:#0b6630;border-color:#22ff72}
 .call-history{opacity:.8;font-style:italic}
@@ -40,7 +40,7 @@ button,input{font:inherit}.app{height:100vh;max-width:1100px;margin:auto;display
 .tiktok-feed-top button{pointer-events:auto}
 .tiktok-status-feed{height:100%;width:100%;overflow-y:auto;overflow-x:hidden;scroll-snap-type:y mandatory;overscroll-behavior-y:contain;-webkit-overflow-scrolling:touch;touch-action:pan-y;scrollbar-width:none}.tiktok-status-feed::-webkit-scrollbar{display:none}
 .tiktok-status-slide{position:relative;width:100%;height:100dvh;min-height:100dvh;scroll-snap-align:start;scroll-snap-stop:always;background:#050505;overflow:hidden}
-.tiktok-status-photo{width:100%;height:100%;object-fit:contain;display:block;background:#000}
+.tiktok-status-photo{width:100%;height:100%;object-fit:cover;display:block}
 .tiktok-status-gradient{position:absolute;inset:0;background:linear-gradient(to bottom,rgba(0,0,0,.28),transparent 28%,transparent 48%,rgba(0,0,0,.82) 100%);pointer-events:none}
 .tiktok-status-info{position:absolute;left:18px;right:68px;bottom:28px;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.75)}
 .tiktok-status-user{display:flex;align-items:center;gap:9px;margin-bottom:9px;font-weight:700}
@@ -93,21 +93,6 @@ button{min-height:44px;min-width:44px;padding:9px 12px}
 #callStatus{max-width:calc(100vw - 24px)!important;text-align:center}
 img,video{max-width:100%}
 }
-
-/* Full-screen calls + chat media */
-.call-modal-full{padding:16px!important;background:rgba(0,0,0,.72)!important;align-items:center!important;justify-content:center!important;z-index:4000}
-.call-screen{width:min(360px,calc(100vw - 28px));height:min(600px,calc(100dvh - 34px));background:#070a09;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;border:1px solid #26342d;border-radius:24px;box-shadow:0 18px 60px rgba(0,0,0,.55)}
-.call-remote{width:100%;height:100%;object-fit:cover;background:#000}
-.call-local{position:absolute;right:14px;top:14px;width:86px;height:122px;object-fit:cover;background:#111;border-radius:14px;border:1px solid #ffffff44;z-index:3}
-.call-top{position:absolute;top:16px;left:16px;right:16px;z-index:4;color:#fff;text-shadow:0 1px 4px #000}
-.call-controls{position:absolute;left:14px;right:14px;bottom:14px;z-index:4;display:flex;justify-content:center;gap:10px;padding:10px;border-radius:18px;background:rgba(10,14,12,.72);backdrop-filter:blur(12px)}
-.call-controls button{border:0;border-radius:12px;width:50px;height:44px;background:#ffffff18;color:#fff;font-size:21px;cursor:pointer}
-.call-controls button.danger{background:#d52b2b;min-width:82px;width:auto;padding:0 16px;font-size:14px;font-weight:700}
-.call-controls button.active{background:#16d878;color:#031108}
-.media-preview{max-width:260px;max-height:320px;border-radius:14px;display:block;background:#000}
-.chat-media{max-width:min(320px,70vw);max-height:360px;border-radius:14px;display:block;background:#000;object-fit:contain}
-.media-plus{border:0;border-radius:50%;width:45px;height:45px;background:#111716;color:#fff;cursor:pointer;font-size:22px}
-@media(max-width:700px){.call-screen{width:min(340px,calc(100vw - 20px));height:min(560px,calc(100dvh - 24px));border-radius:22px}.call-local{width:82px;height:116px;right:12px;top:12px}.call-controls{left:10px;right:10px;bottom:10px}.call-controls button{width:48px;height:44px}.chat-media{max-width:82vw}}
 </style>
 
 <style id="bkt-usability-css">
@@ -417,7 +402,8 @@ img,video{max-width:100%}
 <div id="auth" class="auth"><div class="card">
 <div class="brand"><div class="logo">БКТ</div><div><h1>БКТ</h1><small>Мессенджер</small></div></div>
 <h2 id="authTitle">Вход</h2><div id="err" class="error"></div>
-<input id="login" placeholder="Логин или номер телефона" autocomplete="username" oninput="toggleProtectedCode()"><input id="pass" type="password" placeholder="Пароль" autocomplete="current-password">
+<input id="login" placeholder="Логин или email" autocomplete="username" oninput="toggleProtectedCode()"><input id="pass" type="password" placeholder="Пароль" autocomplete="current-password">
+<div id="registerEmailWrap" style="display:none"><input id="registerEmail" type="email" placeholder="Email" autocomplete="email" inputmode="email"></div>
 <input id="accessCode" type="password" autocomplete="off" placeholder="Секретный код" style="display:none">
 <div id="registerAvatarPicker" class="auth-avatar-picker">
   <div class="auth-avatar-title">Выберите аватарку из стикеров</div>
@@ -434,8 +420,6 @@ img,video{max-width:100%}
 <button id="voiceButton" title="Голосовое сообщение">🎙️</button>
 <button id="videoNoteButton" title="Видеосообщение">🎥</button>
 <button id="stickerButton" class="sticker-button" title="Стикеры" aria-label="Стикеры">🧸</button>
-<button id="mediaPlusButton" class="media-plus" title="Фото или видео" aria-label="Фото или видео" type="button">＋</button>
-<input id="mediaInput" type="file" accept="image/*,video/*" hidden>
 <input id="text" placeholder="Сообщение..." onkeydown="if(event.key==='Enter')send()">
 <button class="send" onclick="send()">➤</button>
 </div>
@@ -447,20 +431,7 @@ img,video{max-width:100%}
 </div>
 <div id="recording" class="modal" style="display:none"><div class="modal-card"><h3>🎙️ Запись голосового</h3><div id="recordTime">0:00</div><div class="modal-actions"><button onclick="finishRecording()">Отправить</button><button onclick="cancelRecording()">Отмена</button></div></div></div>
 <div id="videoRecording" class="modal" style="display:none"><div class="modal-card"><h3>🎥 Видеосообщение</h3><video id="videoPreview" autoplay muted playsinline></video><div id="videoTime">0:00</div><div class="modal-actions"><button onclick="finishVideoRecording()">Отправить</button><button onclick="cancelVideoRecording()">Отмена</button></div></div></div>
-<div id="callModal" class="modal call-modal-full" style="display:none">
-  <div class="call-screen">
-    <video id="remoteVideo" class="call-remote" autoplay playsinline></video>
-    <video id="localCallVideo" class="call-local" autoplay muted playsinline></video>
-    <audio id="remoteAudio" autoplay></audio>
-    <div class="call-top"><b id="callTitle">Звонок</b></div>
-    <div class="call-controls">
-      <button id="acceptCall" onclick="acceptIncomingCall()">✓</button>
-      <button id="callMicButton" onclick="toggleCallMic()">🎙️</button>
-      <button id="callCameraButton" onclick="toggleCallCamera()">📹</button>
-      <button id="callEndButton" class="danger" onclick="endCall()">Выйти</button>
-    </div>
-  </div>
-</div></main></div>
+<div id="callModal" class="modal" style="display:none"><div class="modal-card"><h3 id="callTitle">Звонок</h3><video id="remoteVideo" autoplay playsinline style="width:100%;height:190px;max-height:42vh;border-radius:10px;background:#000;object-fit:cover;transform:none"></video><audio id="remoteAudio" autoplay></audio><div class="modal-actions"><button id="acceptCall" onclick="acceptIncomingCall()">Принять</button><button onclick="endCall()">Завершить</button></div></div></div></main></div>
 
 <div id="statusesModal" class="modal wa-status-modal" style="display:none">
   <div class="wa-status-panel">
@@ -548,7 +519,7 @@ img,video{max-width:100%}
   <option value="zh">中文</option>
   <option value="es">Español</option>
 </select>
-<label data-i18n="chatWallpaper">Обои чата</label><div class="wallpaper-row"><input id="wallpaperColor" type="color" value="#08100c"><input id="wallpaperUrl" placeholder="Ссылка на обои" data-i18n-placeholder="wallpaperUrl"><button type="button" onclick="applyChatWallpaper()" data-i18n="apply">Применить</button><button type="button" onclick="clearChatWallpaper()" data-i18n="reset">Сбросить</button></div><div id="settingsError" class="error"></div><div style="margin:12px 0 0;padding-top:12px;border-top:1px solid #24312b"><button type="button" onclick="deleteOwnAccountPermanently()" class="danger" style="width:100%">🗑️ Удалить мой аккаунт навсегда</button><div class="reward-sub" style="margin-top:6px">После удаления этот аккаунт и его данные исчезнут. Номер телефона можно будет использовать для новой регистрации.</div></div><div class="modal-actions"><button onclick="saveSettings()" data-i18n="save">Сохранить</button><button onclick="closeSettings()" data-i18n="cancel">Отмена</button><button onclick="logout()" style="background:#a92323;color:#fff" data-i18n="logout">Выйти</button></div></div></div>
+<label data-i18n="chatWallpaper">Обои чата</label><div class="wallpaper-row"><input id="wallpaperColor" type="color" value="#08100c"><input id="wallpaperUrl" placeholder="Ссылка на обои" data-i18n-placeholder="wallpaperUrl"><button type="button" onclick="applyChatWallpaper()" data-i18n="apply">Применить</button><button type="button" onclick="clearChatWallpaper()" data-i18n="reset">Сбросить</button></div><div id="settingsError" class="error"></div><div class="modal-actions"><button onclick="saveSettings()" data-i18n="save">Сохранить</button><button onclick="closeSettings()" data-i18n="cancel">Отмена</button><button onclick="logout()" style="background:#a92323;color:#fff" data-i18n="logout">Выйти</button></div></div></div>
 <div id="profileViewModal" class="modal" style="display:none">
 <div class="profile-view-card">
   <div id="profileViewAvatar" class="profile-view-avatar">БКТ</div>
@@ -561,31 +532,235 @@ img,video{max-width:100%}
   <div class="profile-view-actions">
     <button id="profileViewChat" class="primary-profile" onclick="chatFromProfile()">💬 Написать</button>
     <button id="profileViewBlock" onclick="toggleProfileBlock()">🚫 Заблокировать</button>
-    <button id="profileViewDelete" class="danger" onclick="deleteAccountPermanently()" style="display:none">🗑️ Удалить аккаунт навсегда</button>
     <button onclick="closeProfileView()">Закрыть</button>
   </div>
 </div></div>
 <script>
-let token=sessionStorage.getItem("bkt_token")||null, me=null, selected=null, activeGroup=null, socket=null, registering=false, selectedRegistrationAvatar="";
+let token=sessionStorage.getItem("bkt_token")||null, me=null, selected=null, activeGroup=null, socket=null, registering=false, selectedRegistrationAvatar="", registrationVerificationToken="", registrationCodeRequested=false;
 // Never reuse a persistent login token left by another person/browser session.
-function $(id){return document.getElementById(id)}
-function toggleProtectedCode(){const username=$("login").value.trim().replace(/^@/,"").toLowerCase(); const protectedUser=["brozi","vlad","vladmobile"].includes(username); $("accessCode").style.display=protectedUser?"block":"none"; $("accessCode").placeholder=protectedUser?"Секретный код":"Секретный код";}
+try{localStorage.removeItem("bkt_token");}catch(_){}
+const $=id=>document.getElementById(id);
+window.formatMessageTime = function(value){
+  if(!value) return "";
+  const raw=String(value);
+  const normalized=/([zZ]|[+-]\d{2}:?\d{2})$/.test(raw)?raw:raw.replace(" ","T")+"Z";
+  const date=new Date(normalized);
+  if(Number.isNaN(date.getTime())) return "";
+  return date.toLocaleTimeString("ru-RU",{hour:"2-digit",minute:"2-digit"});
+};
+// Compatibility fallback: keep the formatter available even if another script references it first.
+function formatMessageTime(value){ return window.formatMessageTime(value); }
+function toggleProtectedCode(){const username=$("login").value.trim().replace(/^@+/,"").toLowerCase(); const protectedUser=["brozi","vlad","vladmobile"].includes(username); $("accessCode").style.display=protectedUser?"block":"none"; $("accessCode").placeholder=protectedUser?"Секретный код":"Секретный код";}
 const REGISTRATION_AVATARS = Array.from({length:28},(_,i)=>`/stickers/${i+1}.webp`);
-function renderRegistrationAvatarPicker(){
-  const picker=$("registerAvatarPicker"), grid=$("registerAvatarGrid"), selected=$("registerAvatarSelected");
-  picker.classList.toggle("show",registering);
-  if(selectedRegistrationAvatar) selected.innerHTML=`<img src="${selectedRegistrationAvatar}" alt=""><span>Выбранная аватарка</span>`;
-  else selected.innerHTML='<span>Аватарка не выбрана</span>';
-  grid.innerHTML="";
-  REGISTRATION_AVATARS.forEach(src=>{const b=document.createElement("button");b.type="button";b.className="auth-avatar-item"+(selectedRegistrationAvatar===src?" selected":"");b.innerHTML=`<img src="${src}" alt="">`;b.onclick=()=>{selectedRegistrationAvatar=src;renderRegistrationAvatarPicker()};grid.appendChild(b)});
+let giftCatalog=[];
+async function loadGiftCatalog(){ try{ const d=await api('/api/gifts/catalog'); giftCatalog=Array.isArray(d.gifts)?d.gifts:[]; return d; }catch(_){ giftCatalog=[]; return {oranges:0,gifts:[]}; } }
+let statusRows=[];
+let statusViewerIndex=0;
+let statusViewerTimer=null;
+async function openStatuses(){
+  try{
+    statusRows=await api("/api/statuses");
+    if(!statusRows.length){ alert("Пока нет статусов."); return; }
+    statusViewerIndex=0;
+    renderStatusViewer();
+    $("statusViewerModal").style.display="grid";
+    requestAnimationFrame(()=>scrollStatusTo(0,false));
+  }catch(e){alert(e.message||"Не удалось загрузить статусы");}
 }
-function resetRegistrationFlow(){}
-function updateRegistrationUI(){
-  $("authBtn").textContent=registering?"Зарегистрироваться":"Войти";
+function closeStatuses(){
+  const modal=$("statusesModal"); if(modal)modal.style.display="none";
+  closeStatusViewer();
 }
+function closeStatusViewer(){
+  if(statusViewerTimer){clearTimeout(statusViewerTimer);statusViewerTimer=null;}
+  const modal=$("statusViewerModal"); if(modal)modal.style.display="none";
+}
+function scrollStatusTo(index,smooth=true){
+  const feed=$("tiktokStatusFeed"); if(!feed)return;
+  const slide=feed.children[index]; if(!slide)return;
+  feed.scrollTo({top:slide.offsetTop,behavior:smooth?"smooth":"auto"});
+}
+function renderStatusViewer(){
+  const feed=$("tiktokStatusFeed"); if(!feed)return;
+  feed.innerHTML=statusRows.map((st,i)=>{
+    const media=st.media_url
+      ? `<img class="tiktok-status-photo" src="${escapeHtml(st.media_url)}" alt="Фото статуса">`
+      : `<div class="tiktok-status-photo" style="background:linear-gradient(135deg,#101c16,#244d36);display:grid;place-items:center;font-size:72px">💬</div>`;
+    const avatar=st.avatar
+      ? `<img class="tiktok-status-avatar" src="${escapeHtml(st.avatar)}" alt="">`
+      : `<div class="tiktok-status-avatar" style="display:grid;place-items:center;font-weight:800">${escapeHtml((st.username||"?")[0].toUpperCase())}</div>`;
+    const caption=st.text ? `<div class="tiktok-status-caption">${escapeHtml(st.text)}</div>` : "";
+    const own=Number(st.user_id)===Number(me?.id);
+    const actions=own
+      ? `<button class="tiktok-status-action" title="Удалить" onclick="deleteStatus(${Number(st.id)})">🗑️</button>`
+      : "";
+    return `<section class="tiktok-status-slide" data-index="${i}">
+      ${media}
+      <div class="tiktok-status-gradient"></div>
+      <div class="tiktok-status-info">
+        <div class="tiktok-status-user">${avatar}<span>${verifiedName(st.username,false)}</span></div>
+        <div class="tiktok-status-date">${statusTime(st.created_at)}</div>
+        ${caption}
+      </div>
+      <div class="tiktok-status-actions">
+        <button class="tiktok-status-action" title="Новый статус" onclick="focusStatusComposer()">＋</button>
+        ${actions}
+      </div>
+    </section>`;
+  }).join("");
+  statusViewerIndex=0;
+}
+function statusViewerStep(dir){
+  const next=Math.max(0,Math.min(statusRows.length-1,statusViewerIndex+dir));
+  if(next===statusViewerIndex && dir>0){ closeStatusViewer(); return; }
+  if(next===statusViewerIndex && dir<0){ return; }
+  statusViewerIndex=next;
+  scrollStatusTo(next,true);
+}
+function focusStatusComposer(){
+  const m=$("statusComposerModal");
+  if(!m)return;
+  m.style.display="grid";
+  $("statusText").value="";
+  $("statusImage").value="";
+  $("statusImagePreview").src="";
+  $("statusComposerPreview").style.display="none";
+  $("statusCaptionPreview").textContent="Подпись к фото…";
+  $("statusTextCounter").textContent="0/280";
+}
+function closeStatusComposer(){ const m=$("statusComposerModal"); if(m)m.style.display="none"; }
+function statusTime(v){
+  const d=new Date(v);
+  return Number.isNaN(d.getTime())?"":d.toLocaleString("ru-RU",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"});
+}
+function previewStatusImage(event){
+  const file=event.target.files?.[0], preview=$("statusImagePreview"), wrap=$("statusComposerPreview");
+  if(!file){wrap.style.display="none";preview.src="";return;}
+  if(file.size>8*1024*1024){
+    alert("Фото должно быть не больше 8 МБ");
+    event.target.value="";
+    wrap.style.display="none";
+    return;
+  }
+  preview.src=URL.createObjectURL(file);
+  wrap.style.display="block";
+  $("statusCaptionPreview").textContent=$("statusText").value.trim()||"Подпись к фото…";
+}
+document.addEventListener("input",e=>{
+  if(e.target?.id==="statusText"){
+    const text=e.target.value||"";
+    $("statusTextCounter").textContent=`${text.length}/280`;
+    const p=$("statusCaptionPreview");
+    if(p)p.textContent=text.trim()||"Подпись к фото…";
+  }
+});
+function renderStatusSlide(st){
+  const slide=document.createElement("article");
+  slide.className="tiktok-status-slide";
+  const media=st.media_url
+    ? `<img class="tiktok-status-photo" src="${escapeHtml(st.media_url)}" alt="Фото статуса">`
+    : `<div class="tiktok-status-photo" style="background:linear-gradient(135deg,#101c16,#244d36);display:grid;place-items:center;font-size:72px">💬</div>`;
+  const avatar=st.avatar
+    ? `<img class="tiktok-status-avatar" src="${escapeHtml(st.avatar)}" alt="">`
+    : `<div class="tiktok-status-avatar" style="display:grid;place-items:center;font-weight:800">${escapeHtml((st.username||"?")[0].toUpperCase())}</div>`;
+  const caption=st.text ? `<div class="tiktok-status-caption">${escapeHtml(st.text)}</div>` : "";
+  const del=Number(st.user_id)===Number(me?.id)
+    ? `<button class="tiktok-status-action" title="Удалить" onclick="deleteStatus(${Number(st.id)})">🗑️</button>` : "";
+  slide.innerHTML=`${media}
+    <div class="tiktok-status-gradient"></div>
+    <div class="tiktok-status-info">
+      <div class="tiktok-status-user">${avatar}<span>${verifiedName(st.username,false)}</span></div>
+      ${caption}
+      <div class="tiktok-status-date">${statusTime(st.created_at)}</div>
+    </div>
+    <div class="tiktok-status-actions">
+      <button class="tiktok-status-action" title="Новый статус" onclick="focusStatusComposer()">＋</button>
+      ${del}
+    </div>`;
+  return slide;
+}
+async function loadStatuses(){
+  const box=$("statusFeed"), empty=$("statusEmpty");
+  if(!box)return;
+  try{
+    const rows=await api("/api/statuses");
+    box.innerHTML="";
+    if(!rows.length){
+      if(empty)empty.style.display="flex";
+      return;
+    }
+    if(empty)empty.style.display="none";
+    rows.forEach(st=>box.appendChild(renderStatusSlide(st)));
+    box.scrollTop=0;
+  }catch(e){
+    box.innerHTML=`<div style="height:100%;display:grid;place-items:center;color:#fff;padding:20px;text-align:center">${escapeHtml(e.message||"Ошибка загрузки статусов")}</div>`;
+  }
+}
+async function publishStatus(){
+  const text=$("statusText").value.trim();
+  const file=$("statusImage").files?.[0];
+  if(!file){
+    alert("Для статуса выберите фото.");
+    return;
+  }
+  try{
+    let mediaUrl="";
+    const fd=new FormData();
+    fd.append("image",file);
+    const headers={};
+    if(token)headers.Authorization="Bearer "+token;
+    const upload=await fetch("/api/statuses/upload",{method:"POST",headers,body:fd});
+    const data=await upload.json();
+    if(!upload.ok)throw new Error(data.error||"Не удалось загрузить фото");
+    mediaUrl=data.url;
+    await api("/api/statuses",{method:"POST",body:{text,mediaUrl}});
+    closeStatusComposer();
+    const feed=$("statusFeed");
+    if(feed)feed.innerHTML="";
+    await loadStatuses();
+  }catch(e){
+    alert(e.message||"Не удалось опубликовать статус");
+  }
+}
+async function deleteStatus(id){
+  try{
+    await api("/api/statuses/"+id,{method:"DELETE"});
+    await loadStatuses();
+  }catch(e){alert(e.message||"Не удалось удалить статус");}
+}
+
+(function(){
+  let sy=0,sx=0,wlock=false;
+  const feed=()=>$("tiktokStatusFeed");
+  document.addEventListener("keydown",e=>{
+    const m=$("statusViewerModal"); if(!m||m.style.display!=="grid")return;
+    if(e.key==="ArrowUp"||e.key==="PageUp"){e.preventDefault();statusViewerStep(-1);}
+    if(e.key==="ArrowDown"||e.key==="PageDown"){e.preventDefault();statusViewerStep(1);}
+    if(e.key==="Escape"){e.preventDefault();closeStatusViewer();}
+  });
+  document.addEventListener("touchstart",e=>{
+    const m=$("statusViewerModal"); if(!m||m.style.display!=="grid")return;
+    const t=e.touches[0]; if(!t)return; sx=t.clientX; sy=t.clientY;
+  },{passive:true});
+  document.addEventListener("touchend",e=>{
+    const m=$("statusViewerModal"); if(!m||m.style.display!=="grid")return;
+    const t=e.changedTouches[0],dy=t.clientY-sy,dx=t.clientX-sx;
+    if(Math.abs(dy)>55&&Math.abs(dy)>Math.abs(dx)*1.15)statusViewerStep(dy<0?1:-1);
+  },{passive:true});
+  document.addEventListener("wheel",e=>{
+    const m=$("statusViewerModal"); if(!m||m.style.display!=="grid"||wlock)return;
+    if(Math.abs(e.deltaY)<12)return;
+    wlock=true;statusViewerStep(e.deltaY>0?1:-1);setTimeout(()=>wlock=false,450);
+  },{passive:true});
+  document.addEventListener("scroll",e=>{
+    const f=feed(); if(!f||e.target!==f)return;
+    const h=Math.max(1,f.clientHeight),i=Math.round(f.scrollTop/h);
+    if(Number.isFinite(i)&&i!==statusViewerIndex)statusViewerIndex=Math.max(0,Math.min(statusRows.length-1,i));
+  },{passive:true});
+})();
 let rewardState={oranges:0,rewards:[],captcha:null};
 async function loadRewards(){
-  try{ rewardState=await api('/api/rewards'); renderRewards(); }catch(e){ console.debug('rewards:',e.message); }
+  try{ rewardState=await api('/api/rewards'); await loadGiftCatalog(); renderRewards(); }catch(e){ console.debug('rewards:',e.message); }
 }
 function openRewards(){
   $('rewardsModal').style.display='grid';
@@ -596,11 +771,12 @@ function closeRewards(){ $('rewardsModal').style.display='none'; }
 function renderRewards(){
   $('rewardBalance').textContent=`🍊 ${Number(rewardState.oranges||0)}`;
   const cards=$('rewardCards'); if(!cards)return;
-  cards.innerHTML=(rewardState.rewards||[]).map(r=>{
+  const rewardRows=[...(rewardState.rewards||[]), ...(giftCatalog.filter(g=>g.stickerId===31).map(g=>({stickerId:g.stickerId,stickerSrc:g.src,unlockAt:g.price,owned:g.owned,price:g.price,name:g.name})) )];
+  cards.innerHTML=rewardRows.map(r=>{
     const owned=!!r.owned, unlocked=Number(rewardState.oranges||0)>=Number(r.unlockAt);
     return `<div class="reward-card ${owned?'':'locked'}">
       <img src="${escapeHtml(r.stickerSrc)}" alt="Стикер ${r.stickerId}">
-      <b>${r.stickerId===30?'Королевская капибара':'Капибара и Туф'}</b>
+      <b>${r.name || (r.stickerId===30?'Королевская капибара':'Капибара и Туф')}</b>
       <div class="reward-sub" style="margin:5px 0">${owned?'Получен':`Нужно ${r.unlockAt} 🍊`}</div>
       ${owned?`<button type="button" onclick="addRewardToProfile(${r.stickerId})">🎁 Добавить в профиль</button>`:''}
     </div>`;
@@ -617,7 +793,13 @@ async function startCaptcha(){
     $('captchaBox').style.display='block';
     $('captchaExpression').textContent=d.expression||'Решите задачу';
     const box=$('captchaOptions');
-    box.innerHTML=(d.options||[]).map(v=>`<button class="captcha-option" type="button" onclick="verifyCaptcha(${Number(v)})">${escapeHtml(String(v))}</button>`).join('');
+    box.innerHTML='';
+    (d.options||[]).forEach(v=>{
+      const btn=document.createElement('button');
+      btn.type='button'; btn.className='captcha-option'; btn.textContent=String(v);
+      btn.addEventListener('click',()=>verifyCaptcha(Number(v)),{once:true});
+      box.appendChild(btn);
+    });
     $('captchaHint').textContent='Сложность: высокая • за правильный ответ +5 🍊 • каждый раз новое задание';
   }catch(e){alert(e.message||'Не удалось создать CAPTCHA');}
 }
@@ -732,45 +914,6 @@ async function start(){
   }
 }
 
-function toggleAuth(){registering=!registering;resetRegistrationFlow();$("authTitle").textContent=registering?"Регистрация":"Вход";$("switch").textContent=registering?"Уже есть аккаунт? Войти":"Нет аккаунта? Регистрация";$("err").textContent="";selectedRegistrationAvatar="";renderRegistrationAvatarPicker();updateRegistrationUI();toggleProtectedCode();}
-async function api(path, options={}){
-  const saved=sessionStorage.getItem("bkt_token"); if(saved) token=saved;
-  const headers={...(options.headers||{})}; if(token) headers.Authorization="Bearer "+token;
-  if(options.body && typeof options.body!=="string"){headers["Content-Type"]="application/json";options={...options,body:JSON.stringify(options.body)}}
-  const res=await fetch(path,{...options,headers}); const text=await res.text(); let data={}; try{data=text?JSON.parse(text):{}}catch(_){throw new Error("Сервер вернул неверный ответ ("+res.status+")")}
-  if(!res.ok)throw new Error(data.error||data.message||("Ошибка "+res.status)); return data;
-}
-async function authAction(){
-  const username=$("login").value.trim(), password=$("pass").value; $("err").textContent="";
-  if(!username||!password){$("err").textContent="Введите логин и пароль";return;}
-  if(!registering){try{const d=await api("/api/login",{method:"POST",body:{username,password,accessCode:$("accessCode").value.trim()}});token=d.token;sessionStorage.setItem("bkt_token",token);await start()}catch(e){$("err").textContent=e.message||"Ошибка авторизации"}return}
-  if(!selectedRegistrationAvatar)selectedRegistrationAvatar=REGISTRATION_AVATARS[0];
-  try{const d=await api("/api/register",{method:"POST",body:{username,password,accessCode:$("accessCode").value.trim(),avatar:selectedRegistrationAvatar}});token=d.token;sessionStorage.setItem("bkt_token",token);await start()}catch(e){$("err").textContent=e.message||"Ошибка регистрации"}
-}
-
-async function start(){
-  if(!token) return;
-  try{
-    me=await api("/api/me");
-    $("auth").style.display="none";
-    $("app").style.display="grid";
-    $("me").textContent="@"+(me.username||"");
-    connectSocket();
-    loadUsers();
-    loadRewards();
-    loadGroups();
-    updateNotifyButton();
-    if("Notification" in window && Notification.permission === "granted") setupPush().catch(()=>{});
-  }catch(e){
-    sessionStorage.removeItem("bkt_token");
-    token=null;
-    me=null;
-    $("app").style.display="none";
-    $("auth").style.display="grid";
-    $("err").textContent=e.message||"Не удалось войти в аккаунт";
-  }
-}
-
 let toastTimer=null;
 let toastUserId=null;
 
@@ -836,25 +979,49 @@ async function loadUserAndOpen(userId){
 }
 
 async function loadPendingCalls(){
+  if(incomingCallAccepting) return;
   try{
     const calls=await api("/api/calls/pending");
-    if(Array.isArray(calls) && calls.length && !incomingCall){
+    if(Array.isArray(calls) && calls.length){
       const c=calls[0];
-      handleCallSignal({type:"call-signal",signalType:"offer",callId:c.id,fromUserId:c.caller_id,fromUsername:c.caller_username,signal:c.offer,callType:c.call_type,iceCandidates:c.iceCandidates||[]});
+      if(!incomingCall || String(incomingCall.callId)!==String(c.id)){
+        handleCallSignal({type:"call-signal",signalType:"offer",callId:c.id,fromUserId:c.caller_id,fromUsername:c.caller_username,signal:c.offer,callType:c.call_type,iceCandidates:c.iceCandidates||[]});
+      } else {
+        incomingCall.iceCandidates=c.iceCandidates||[];
+      }
     }
   }catch(e){}
 }
 
 let callPollTimer=null;
+let incomingCallAccepting=false;
+let callStatePollTimer=null;
 let socketReconnectTimer=null;
 let socketReconnectDelay=1000;
 const presenceState=new Map();
 function startCallPolling(){
   clearInterval(callPollTimer);
   callPollTimer=setInterval(async()=>{
-    if(document.hidden && !incomingCall) return;
+    if(document.hidden && !incomingCall && !localCallId) return;
     await loadPendingCalls();
-  }, 3000);
+    await pollActiveCall();
+  }, 1200);
+}
+async function pollActiveCall(){
+  if(!localCallId || !peer) return;
+  try{
+    const st=await api('/api/calls/'+encodeURIComponent(localCallId)+'/state');
+    if(!st || st.status==='ended') { if(peer) endCall(false); return; }
+    if(st.answer && !peer.remoteDescription){
+      await peer.setRemoteDescription(new RTCSessionDescription(st.answer));
+      for(const c of (st.iceCandidates||[])){ try{ await peer.addIceCandidate(new RTCIceCandidate(c)); }catch(_){} }
+    }else if(st.iceCandidates?.length){
+      for(const c of st.iceCandidates){ try{ await peer.addIceCandidate(new RTCIceCandidate(c)); }catch(_){} }
+    }
+    if(incomingCall && st.offer && !peer.remoteDescription){
+      incomingCall.iceCandidates=st.iceCandidates||[];
+    }
+  }catch(_){}
 }
 
 function updatePresenceUI(userId, online){
@@ -925,7 +1092,6 @@ function connectSocket(){
         return;
       }
       if(d.type==='message-deleted'){const el=document.getElementById('m'+d.messageId);if(el)el.remove();return;}
-      if(d.type==='account-deleted'){ sessionStorage.removeItem("bkt_token"); token=null; me=null; alert("Ваш аккаунт был удалён навсегда."); location.reload(); return; }
       if(d.type==='group-message'&&d.message&&activeGroup&&Number(d.message.group_id)===Number(activeGroup.id)){renderGroupMessage(d.message);if(Number(d.message.sender_id)!==Number(me?.id))maybeOpenBktGame(d.message.text,true);return;}
       if(d.type==='group-message-deleted'){const el=document.getElementById('gm'+d.messageId);if(el)el.remove();return;}
     }catch(err){console.error('WebSocket message error:',err);}
@@ -933,16 +1099,6 @@ function connectSocket(){
   socket.onclose=()=>{if(token)scheduleSocketReconnect();};
   socket.onerror=()=>{};
 }
-
-function formatMessageTime(value){
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return "";
-  const now = new Date();
-  const sameDay = d.getFullYear()===now.getFullYear() && d.getMonth()===now.getMonth() && d.getDate()===now.getDate();
-  if (sameDay) return d.toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"});
-  return d.toLocaleDateString([], {day:"2-digit", month:"2-digit"}) + " " + d.toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"});
-}
-window.formatMessageTime = formatMessageTime;
 
 function verifiedName(name, verified){
   const safe=escapeHtml(String(name||""));
@@ -954,39 +1110,25 @@ async function loadUsers(){
   const q = (input?.value || "").trim().replace(/^@+/,"");
   const box = $("users");
   if (!box) return;
-
   try {
-    const list = q
-      ? await api("/api/users/search?q="+encodeURIComponent(q))
-      : await api("/api/users");
+    const list = q ? await api("/api/users/search?q="+encodeURIComponent(q)) : await api("/api/users");
     box.innerHTML = "";
     if (!list.length) {
-      box.innerHTML = q
-        ? '<div style="padding:14px;color:#8d9893">Никого не найдено. Проверь @username.</div>'
-        : '<div style="padding:14px;color:#8d9893">Пока нет чатов.</div>';
+      box.innerHTML = q ? '<div style="padding:14px;color:#8d9893">Никого не найдено. Проверь @username.</div>' : '<div style="padding:14px;color:#8d9893">Пока нет чатов.</div>';
       return;
     }
-
     for (const u of list) {
-      const row = document.createElement("div");
-      row.className = "user";
-      row.dataset.userId = String(u.id);
-      row.onclick = () => openUser(u);
-      const initial = escapeHtml((u.username || "?")[0].toUpperCase());
-      const avatar = u.avatar
-        ? `<img src="${escapeHtml(u.avatar)}" style="width:42px;height:42px;border-radius:50%;object-fit:cover">`
-        : initial;
-      const online = presenceState.has(Number(u.id)) ? presenceState.get(Number(u.id)) : !!u.online;
-      presenceState.set(Number(u.id), online);
-      row.innerHTML =
-        `<div class="avatar">${avatar}</div>` +
-        `<div><b>${verifiedName(u.username, !!u.verified)}</b><small>@${escapeHtml(u.username)}</small><small class="presence-label" style="display:block;color:${online?'#22ff72':'#68736d'}"> <span class="presence-dot ${online?'online':'offline'}">●</span>${online?'онлайн':'не в сети'}</small></div>`;
+      const row=document.createElement("div"); row.className="user"; row.dataset.userId=String(u.id); row.onclick=()=>openUser(u);
+      const initial=escapeHtml((u.username||"?")[0].toUpperCase());
+      const avatar=u.avatar ? `<img src="${escapeHtml(u.avatar)}" style="width:42px;height:42px;border-radius:50%;object-fit:cover">` : initial;
+      const online=presenceState.has(Number(u.id)) ? presenceState.get(Number(u.id)) : !!u.online;
+      presenceState.set(Number(u.id),online);
+      row.innerHTML=`<div class="avatar">${avatar}</div><div><b>${verifiedName(u.username,!!u.verified)}</b><small>@${escapeHtml(u.username)}</small><small class="presence-label" style="display:block;color:${online?'#22ff72':'#68736d'}"> <span class="presence-dot ${online?'online':'offline'}">●</span>${online?'онлайн':'не в сети'}</small></div>`;
       box.appendChild(row);
     }
-  } catch(e) {
-    box.innerHTML = '<div style="padding:14px;color:#ff8d8d">'+escapeHtml(e.message||"Ошибка поиска")+'</div>';
-  }
+  } catch(e) { box.innerHTML='<div style="padding:14px;color:#ff8d8d">'+escapeHtml(e.message||"Ошибка загрузки пользователей")+'</div>'; }
 }
+
 function updateComposerAccess(){
   const readonly = !!(activeGroup && activeGroup.name === "БКТ Сообщество" && !["brozi","vlad"].includes(String(me?.username || "").toLowerCase()));
   const ids=["voiceButton","videoNoteButton","stickerButton","text"];
@@ -1062,10 +1204,6 @@ function renderMessage(m){
     video.src=m.text.substring(12); video.style.width="180px"; video.style.height="180px";
     video.style.objectFit="cover"; video.style.borderRadius="50%"; video.style.display="block";
     d.appendChild(video);
-  } else if(m.text.startsWith("[IMAGE]")){
-    const img=document.createElement("img"); img.className="chat-media"; img.loading="lazy"; img.src=m.text.substring(7); img.alt="Фото"; d.appendChild(img);
-  } else if(m.text.startsWith("[VIDEO]")){
-    const video=document.createElement("video"); video.className="chat-media"; video.controls=true; video.playsInline=true; video.preload="metadata"; video.src=m.text.substring(7); d.appendChild(video);
   } else {
     const body=document.createElement("div");
     body.textContent=m.text;
@@ -1076,7 +1214,7 @@ function renderMessage(m){
   const meta=document.createElement("div");
   meta.style.display="flex"; meta.style.alignItems="center"; meta.style.justifyContent="flex-end"; meta.style.gap="6px";
   const t=document.createElement("time");
-  t.textContent=formatMessageTime(m.created_at);
+  t.textContent=window.formatMessageTime(m.created_at);
   meta.appendChild(t);
   if(Number(m.sender_id)===Number(me.id)){
     const status=document.createElement("span");
@@ -1262,15 +1400,13 @@ async function openProfileView(userId, isMe=false){
     $("profileViewChat").style.display = isMe ? "none" : "block";
     const giftActions=$("profileViewGiftActions");
     if(giftActions){
-      const owned=!isMe ? [...(ownedRewardStickerIds||[])].filter(id=>id===29||id===30) : [];
-      giftActions.innerHTML=owned.map(id=>`<button type="button" onclick="giftRewardTo(${Number(p.id)},${id})">🎁 Подарить ${id===30?'👑':'🍊'}</button>`).join('');
-      giftActions.style.display=owned.length?'flex':'none';
+      if(!isMe){
+        const catalog=await loadGiftCatalog();
+        giftActions.innerHTML=(catalog.gifts||[]).map(g=>`<button type="button" onclick="giftRewardTo(${Number(p.id)},${Number(g.stickerId)})">🎁 ${escapeHtml(g.name)} • ${Number(g.price)} 🍊</button>`).join('');
+        giftActions.style.display=(catalog.gifts||[]).length?'flex':'none';
+      }else{ giftActions.innerHTML=''; giftActions.style.display='none'; }
     }
-    const blockBtn=$("profileViewBlock"), blockState=$("profileViewBlockState"), deleteBtn=$("profileViewDelete");
-    if(deleteBtn){
-      const canDelete = !isMe && ["brozi","vlad"].includes(String(me?.username||"").toLowerCase()) && !["brozi","vlad"].includes(String(p.username||"").toLowerCase());
-      deleteBtn.style.display = canDelete ? "block" : "none";
-    }
+    const blockBtn=$("profileViewBlock"), blockState=$("profileViewBlockState");
     if(isMe){
       blockBtn.style.display="none"; blockState.textContent="";
     }else{
@@ -1293,28 +1429,9 @@ async function openProfileView(userId, isMe=false){
   }catch(e){ alert(e.message || "Не удалось открыть профиль"); }
 }
 async function giftRewardTo(receiverId, stickerId){
-  try{ await api('/api/stickers/'+Number(stickerId)+'/send',{method:'POST',body:{receiverId:Number(receiverId)}}); alert('Подарок отправлен.'); }
+  try{ const d=await api('/api/stickers/'+Number(stickerId)+'/send',{method:'POST',body:{receiverId:Number(receiverId)}}); rewardState.oranges=Number(d.oranges||0); await loadGiftCatalog(); renderRewards(); alert(`Подарок отправлен. Списано ${Number(d.gift?.price||0)} 🍊.`); }
   catch(e){ alert(e.message||'Не удалось отправить подарок'); }
 }
-async function deleteAccountPermanently(){
-  const p=window.profileViewUser;
-  if(!p || !["brozi","vlad"].includes(String(me?.username||"").toLowerCase())) return;
-  if(["brozi","vlad"].includes(String(p.username||"").toLowerCase())) return;
-  if(!confirm(`Удалить @${p.username} навсегда?\n\nАккаунт, сообщения, статусы и данные будут удалены, а логин больше нельзя будет зарегистрировать.`)) return;
-  try{
-    await api("/api/admin/users/"+encodeURIComponent(p.id),{method:"DELETE"});
-    if(selected && Number(selected.id)===Number(p.id)){
-      selected=null; activeGroup=null;
-      $("headName").textContent="Выберите чат"; $("headStatus").textContent="";
-      $("messages").innerHTML='<div class="empty">Аккаунт удалён</div>';
-      $("app").classList.remove("mobile-chat");
-    }
-    closeProfileView();
-    loadUsers();
-    alert("Аккаунт удалён навсегда.");
-  }catch(e){alert(e.message||"Не удалось удалить аккаунт");}
-}
-
 async function toggleProfileBlock(){
   const p=window.profileViewUser; if(!p)return;
   const bs=window.profileViewBlockStatus||{};
@@ -1356,14 +1473,17 @@ async function openSettings(){
     $("settingsModal").style.display = "grid";
   }
 }
-function renderSettingsAvatarPicker(currentAvatar){
+async function renderSettingsAvatarPicker(currentAvatar){
   const grid=$("settingsAvatarGrid");
   if(!grid)return;
+  await loadGiftCatalog();
   grid.innerHTML="";
-  REGISTRATION_AVATARS.forEach((src,i)=>{
+  const giftAvatars=giftCatalog.filter(g=>g.owned).map(g=>g.src);
+  const avatars=[...REGISTRATION_AVATARS,...giftAvatars.filter(src=>!REGISTRATION_AVATARS.includes(src))];
+  avatars.forEach((src,i)=>{
     const b=document.createElement("button"); b.type="button"; b.className="auth-avatar-item settings-avatar-item"+(currentAvatar===src?" selected":"");
-    b.title=`Аватарка ${i+1}`;
-    const img=document.createElement("img"); img.src=src; img.alt=`Аватарка ${i+1}`;
+    b.title=src.includes('/stickers/29.webp')?'Подарок 50 🍊':src.includes('/stickers/30.webp')?'Подарок 150 🍊':src.includes('/stickers/31.webp')?'Подарок 100 🍊':`Аватарка ${i+1}`;
+    const img=document.createElement("img"); img.src=src; img.alt=b.title;
     b.appendChild(img);
     b.onclick=()=>{
       grid.querySelectorAll(".auth-avatar-item").forEach(x=>x.classList.remove("selected"));
@@ -1396,27 +1516,6 @@ async function saveSettings(){
   $("settingsError").textContent=e.message||"Не удалось сохранить профиль";
  }
 }
-async function deleteOwnAccountPermanently(){
-  if(!me) return;
-  const username=String(me.username||"");
-  const first=confirm(`Удалить аккаунт @${username} НАВСЕГДА?\n\nБудут удалены профиль, сообщения, статусы, группы и другие данные аккаунта. Это действие нельзя отменить.`);
-  if(!first) return;
-  const second=confirm(`Последнее подтверждение.\n\nВы точно готовы навсегда удалить @${username}?\n\nПосле удаления этот аккаунт больше не восстановить. Ваш номер телефона снова можно будет использовать при регистрации.`);
-  if(!second) return;
-  try{
-    await api("/api/account",{method:"DELETE"});
-    try{socket?.close()}catch(_){}
-    sessionStorage.removeItem("bkt_token");
-    token=null; me=null; selected=null; activeGroup=null;
-    closeSettings();
-    if($('app')) $('app').style.display='none';
-    if($('auth')) $('auth').style.display='grid';
-    alert("Аккаунт удалён навсегда. Номер телефона снова доступен для регистрации.");
-  }catch(e){
-    alert(e.message||"Не удалось удалить аккаунт");
-  }
-}
-
 function logout(){
   try{socket?.close()}catch(_){}
   sessionStorage.removeItem("bkt_token");
@@ -1443,6 +1542,7 @@ if (searchInput) {
 
 
 const STICKERS = Array.from({length:28},(_,i)=>`/stickers/${i+1}.webp`);
+const NEW_STICKER = '/stickers/31.webp';
 let stickerPickerReady=false;
 let ownedRewardStickerIds=new Set();
 
@@ -1457,14 +1557,14 @@ function buildStickerPicker(){
   const grid=$("stickerGrid");
   if(!grid)return;
   grid.innerHTML="";
-  const list=[...STICKERS];
+  const list=[...STICKERS, NEW_STICKER];
   if(ownedRewardStickerIds.has(29))list.push('/stickers/29.webp');
   if(ownedRewardStickerIds.has(30))list.push('/stickers/30.webp');
   list.forEach((src,i)=>{
     const b=document.createElement("button");
     b.type="button";
     b.className="sticker-item";
-    b.title=src.endsWith('/29.webp')?'Наградной стикер 50 🍊':src.endsWith('/30.webp')?'Наградной стикер 150 🍊':'Туф';
+    b.title=src.endsWith('/29.webp')?'Подарок 50 🍊':src.endsWith('/30.webp')?'Подарок 150 🍊':src.endsWith('/31.webp')?'БКТ — Капибара и Туф':'Туф';
     b.setAttribute('aria-label',b.title);
     const img=document.createElement("img");
     img.src=src; img.alt=b.title; img.loading="lazy";
@@ -1516,22 +1616,6 @@ document.addEventListener("click",e=>{
 });
 window.addEventListener("resize",()=>{if($("stickerPicker")?.style.display==="block")positionStickerPicker();});
 
-async function sendChatMedia(file){
-  if(!file || !selected || activeGroup) return;
-  const isImage=file.type.startsWith("image/");
-  const isVideo=file.type.startsWith("video/");
-  if(!isImage && !isVideo){alert("Можно отправлять только фото или видео");return;}
-  const max=isVideo?25*1024*1024:12*1024*1024;
-  if(file.size>max){alert(`Файл слишком большой. Максимум ${isVideo?25:12} МБ.`);return;}
-  try{
-    const fd=new FormData(); fd.append("media",file); fd.append("receiverId",String(selected.id)); fd.append("kind",isImage?"image":"video");
-    const headers={}; if(token) headers.Authorization="Bearer "+token;
-    const res=await fetch("/api/media",{method:"POST",headers,body:fd});
-    const data=await res.json(); if(!res.ok) throw new Error(data.error||"Не удалось отправить файл");
-    renderMessage(data);
-  }catch(e){alert(e.message||"Не удалось отправить файл");}
-}
-
 async function send(){
   const input=$("text"), text=input.value.trim();
   if(activeGroup && activeGroup.name === "БКТ Сообщество" && !["brozi","vlad"].includes(String(me?.username || "").toLowerCase())){alert("В этой группе могут писать только Brozi и Vlad");return;}
@@ -1555,7 +1639,7 @@ async function send(){
 }
 
 
-let peer=null, localCallStream=null, incomingCall=null, callType="audio", pendingIceCandidates=[], incomingIceCandidates=[], callPeerUserId=null, localCallId=null, callTimeout=null; let callMicEnabled=true, callCameraEnabled=true; let callPollActive=false, seenRemoteIce=new Set(), lastRemoteAnswer=null;
+let peer=null, localCallStream=null, incomingCall=null, callType="audio", pendingIceCandidates=[], incomingIceCandidates=[], callPeerUserId=null, localCallId=null, callTimeout=null;
 
 function callSocket(data){
   if(!socket || socket.readyState!==WebSocket.OPEN){
@@ -1569,33 +1653,25 @@ async function startCall(type){
   if(!navigator.mediaDevices || !window.RTCPeerConnection) return alert("Звонки не поддерживаются этим браузером");
   if(!window.isSecureContext) return alert("Для звонков нужен HTTPS (или localhost).");
   try{
+    if(!socket || socket.readyState!==WebSocket.OPEN){
+      await new Promise((resolve,reject)=>{ const t=setTimeout(()=>reject(new Error("Сигнальный сервер недоступен")),5000); const check=()=>{ if(socket&&socket.readyState===WebSocket.OPEN){clearTimeout(t);resolve();} else setTimeout(check,100);}; check(); });
+    }
     callType=type;
     await loadRtcConfig();
     localCallStream=await navigator.mediaDevices.getUserMedia(type==="video"?{audio:true,video:true}:{audio:true});
-    peer=createPeer(); pendingIceCandidates=[]; incomingIceCandidates=[]; seenRemoteIce=new Set(); lastRemoteAnswer=null; callPeerUserId=Number(selected.id);
-    clearTimeout(callTimeout); callTimeout=setTimeout(()=>{ if(peer && !["connected","completed"].includes(peer.iceConnectionState)) { endCall(true); alert("Не удалось установить соединение за 60 секунд. Проверьте разрешения микрофона/камеры и TURN."); } },60000);
+    peer=createPeer(); pendingIceCandidates=[]; incomingIceCandidates=[]; callPeerUserId=Number(selected.id);
+    clearTimeout(callTimeout); callTimeout=setTimeout(()=>{ if(peer && !["connected","completed"].includes(peer.iceConnectionState)) { endCall(true); alert("Не удалось установить соединение. Проверьте интернет или настройки TURN."); } },45000);
     localCallStream.getTracks().forEach(t=>peer.addTrack(t,localCallStream));
     $("callTitle").textContent=type==="video"?"📹 Видеозвонок":"📞 Аудиозвонок";
     $("callModal").style.display="grid";
     $("acceptCall").style.display="none";
-    if(type==="video"){ $("remoteVideo").style.display="block"; $("remoteVideo").muted=false; $("localCallVideo").srcObject=localCallStream; $("localCallVideo").style.display="block"; }
-    else { $("remoteVideo").style.display="none"; $("localCallVideo").style.display="none"; }
-    callMicEnabled=true; callCameraEnabled=true; updateCallControls();
+    if(type==="video"){ $("remoteVideo").style.display="block"; $("remoteVideo").muted=false; $("remoteVideo").srcObject=null; }
+    else $("remoteVideo").style.display="none";
     const callId=`${Date.now()}-${Math.random().toString(36).slice(2)}`;
     localCallId=callId;
-    startCallStatePolling();
     const offer=await peer.createOffer(); await peer.setLocalDescription(offer);
     callSocket({type:"call-signal",toUserId:Number(selected.id),signalType:"offer",callId,signal:{sdp:peer.localDescription.sdp,type:peer.localDescription.type},callType:type});
-  }catch(e){
-    console.error("startCall failed", e);
-    const name=e?.name||"";
-    endCall(false);
-    if(name==="NotAllowedError" || name==="PermissionDeniedError") alert("Нет доступа к микрофону/камере. Разреши доступ для сайта bkt-messenger.onrender.com в настройках браузера и попробуй ещё раз.");
-    else if(name==="NotFoundError") alert(type==="video"?"Камера или микрофон не найдены. Проверь подключение устройства.":"Микрофон не найден.");
-    else if(name==="NotReadableError" || name==="AbortError") alert("Микрофон/камера заняты другим приложением. Закрой другое приложение, использующее их, и попробуй снова.");
-    else if(name==="SecurityError") alert("Браузер заблокировал доступ к микрофону/камере. Открой мессенджер по HTTPS и разреши доступ.");
-    else alert("Не удалось начать звонок: "+(e?.message||"проверь разрешения микрофона/камеры и интернет."));
-  }
+  }catch(e){ console.error(e); endCall(false); alert("Не удалось начать звонок. Разреши доступ к микрофону/камере."); }
 }
 
 let rtcConfig={iceServers:[
@@ -1603,11 +1679,7 @@ let rtcConfig={iceServers:[
   {urls:"stun:stun1.l.google.com:19302"}
 ]};
 async function loadRtcConfig(){
-  try{
-    const c=await api("/api/rtc-config");
-    if(Array.isArray(c.iceServers)&&c.iceServers.length) rtcConfig=c;
-    console.log("RTC ICE servers:", (rtcConfig.iceServers||[]).map(x=>x.urls));
-  }catch(e){ console.warn("RTC config unavailable, using STUN only", e); }
+  try{ const c=await api("/api/rtc-config"); if(Array.isArray(c.iceServers)&&c.iceServers.length) rtcConfig=c; }catch(_){}
 }
 function createPeer(){
   const pc=new RTCPeerConnection({
@@ -1632,55 +1704,81 @@ function createPeer(){
   pc.ontrack=e=>{
     const stream=e.streams[0];
     $("remoteAudio").srcObject=stream;
-    if(callType==="video"){$("remoteVideo").srcObject=stream;$("remoteVideo").muted=false;}
+    if(callType==="video"){$("remoteVideo").srcObject=stream;$("remoteVideo").muted=false;$("remoteVideo").style.transform="none";}
     $("remoteAudio").play().catch(()=>{});
     $("remoteVideo").play().catch(()=>{});
   };
   pc.onconnectionstatechange=()=>{
-    if(["failed","closed"].includes(pc.connectionState)) endCall(false);
+    if(pc.connectionState==="failed") {
+      console.warn("WebRTC connection failed");
+    }
+    if(pc.connectionState==="closed") endCall(false);
   };
   return pc;
 }
 
 async function acceptIncomingCall(){
-  if(!incomingCall)return;
+  // Take an immutable snapshot before any await. The global incomingCall can be
+  // cleared by polling/WebSocket while getUserMedia or ICE setup is pending.
+  const call = incomingCall;
+  if(!call || !call.callId || !call.fromUserId || !call.signal){
+    console.warn("acceptIncomingCall: incoming call is missing or already handled", call);
+    incomingCall=null;
+    incomingCallAccepting=false;
+    if($('acceptCall')) $('acceptCall').style.display='none';
+    if($('callModal')) $('callModal').style.display='none';
+    alert("Входящий звонок уже завершён или больше недоступен. Позвоните ещё раз.");
+    return;
+  }
+  incomingCallAccepting=true;
   try{
-    const from=incomingCall.fromUserId;
-    callType=incomingCall.callType||"audio";
-    selected={id:from,username:incomingCall.fromUsername};
+    const from=Number(call.fromUserId);
+    callType=call.callType||"audio";
+    selected={id:from,username:call.fromUsername};
+    localCallId=String(call.callId);
+    callPeerUserId=from;
     localCallStream=await navigator.mediaDevices.getUserMedia(
-      callType==="video"?{audio:true,video:true}:{audio:true}
+      callType==="video"?{audio:true,video:{facingMode:"user"}}:{audio:true}
     );
     await loadRtcConfig();
     peer=createPeer();
-    seenRemoteIce=new Set(); lastRemoteAnswer=null;
-    callPeerUserId=Number(from);
-    clearTimeout(callTimeout); callTimeout=setTimeout(()=>{ if(peer && !["connected","completed"].includes(peer.iceConnectionState)) { endCall(true); alert("Не удалось установить соединение за 60 секунд. Проверьте разрешения микрофона/камеры и TURN."); } },60000);
-    localCallId=incomingCall.callId||null;
-    startCallStatePolling();
+    callTimeout=setTimeout(()=>{
+      if(peer && !["connected","completed"].includes(peer.connectionState)) {
+        endCall(true);
+        alert("Не удалось установить соединение. Проверьте интернет или настройки TURN.");
+      }
+    },60000);
     localCallStream.getTracks().forEach(t=>peer.addTrack(t,localCallStream));
-    await peer.setRemoteDescription(new RTCSessionDescription(incomingCall.signal));
-    for(const c of (incomingCall.iceCandidates||[])){try{await peer.addIceCandidate(new RTCIceCandidate(c))}catch(e){}}
-    for(const c of incomingIceCandidates){try{await peer.addIceCandidate(new RTCIceCandidate(c))}catch(e){}}
+    await peer.setRemoteDescription(new RTCSessionDescription(call.signal));
+    for(const c of (call.iceCandidates||[])){
+      try{await peer.addIceCandidate(new RTCIceCandidate(c));}catch(e){console.warn("initial ICE add failed",e)}
+    }
+    for(const c of incomingIceCandidates){
+      try{await peer.addIceCandidate(new RTCIceCandidate(c));}catch(e){console.warn("queued ICE add failed",e)}
+    }
     incomingIceCandidates=[];
     const answer=await peer.createAnswer();
     await peer.setLocalDescription(answer);
-    callSocket({type:"call-signal",toUserId:from,signalType:"answer",callId:localCallId,signal:{sdp:peer.localDescription.sdp,type:peer.localDescription.type},callType});
-    incomingCall=null;
-    $("acceptCall").style.display="none";
-    $("callTitle").textContent=callType==="video"?"📹 Видеозвонок":"📞 Аудиозвонок";
-    $("remoteVideo").style.display=callType==="video"?"block":"none";
-    $("localCallVideo").srcObject=callType==="video"?localCallStream:null;
-    $("localCallVideo").style.display=callType==="video"?"block":"none";
-    callMicEnabled=true; callCameraEnabled=true; updateCallControls();
+    const answerSignal={sdp:peer.localDescription.sdp,type:peer.localDescription.type};
+    callSocket({type:"call-signal",toUserId:from,signalType:"answer",callId:localCallId,signal:answerSignal,callType});
+    // Only clear the global after the answer has been created and sent.
+    if(incomingCall && String(incomingCall.callId)===String(call.callId)) incomingCall=null;
+    incomingCallAccepting=false;
+    if($('acceptCall')) $('acceptCall').style.display="none";
+    if($('callTitle')) $('callTitle').textContent=callType==="video"?"📹 Видеозвонок":"📞 Аудиозвонок";
+    if($('remoteVideo')){
+      $('remoteVideo').style.display=callType==="video"?"block":"none";
+      $('remoteVideo').style.transform="none";
+    }
+    pollActiveCall();
   }catch(e){
-    console.error("acceptIncomingCall failed", e);
-    const name=e?.name||"";
+    console.error("acceptIncomingCall failed",e);
+    incomingCallAccepting=false;
+    if(incomingCall && String(incomingCall.callId)===String(call.callId)) incomingCall=null;
     endCall(false);
-    if(name==="NotAllowedError" || name==="PermissionDeniedError") alert("Не удалось принять звонок: нет доступа к микрофону/камере. Разреши доступ для сайта в настройках браузера.");
-    else if(name==="NotFoundError") alert("Не удалось принять звонок: камера или микрофон не найдены.");
-    else if(name==="NotReadableError" || name==="AbortError") alert("Не удалось принять звонок: микрофон/камера заняты другим приложением.");
-    else alert("Не удалось принять звонок: "+(e?.message||"проверь разрешения и интернет."));
+    const msg=e?.name==="NotAllowedError"?"Нет доступа к микрофону/камере. Разрешите доступ в настройках браузера." :
+      e?.name==="NotFoundError"?"Микрофон или камера не найдены." : "Не удалось принять звонок: "+(e?.message||"неизвестная ошибка");
+    alert(msg);
   }
 }
 
@@ -1691,35 +1789,6 @@ function showIncomingCallNotification(d){
   if("Notification" in window && Notification.permission==="granted") {
     try { const n=new Notification(title,{body,tag:"bkt-call-"+d.fromUserId,requireInteraction:true,icon:"/icon.svg",data:{call:true}}); n.onclick=()=>{window.focus(); n.close();}; } catch(e){}
   }
-}
-
-async function pollCallState(){
-  if(callPollActive || !localCallId) return;
-  callPollActive=true;
-  try{
-    const state=await api("/api/calls/"+encodeURIComponent(localCallId)+"/state");
-    if(!state) return;
-    if(state.status==="ended") { endCall(false); return; }
-    if(peer && state.status==="accepted" && state.answer && !lastRemoteAnswer) {
-      try {
-        lastRemoteAnswer=state.answer;
-        if(!peer.currentRemoteDescription) await peer.setRemoteDescription(new RTCSessionDescription(state.answer));
-      } catch(e) { console.warn("Polling answer apply failed", e); }
-    }
-    for(const c of (state.iceCandidates||[])){
-      const key=JSON.stringify(c);
-      if(seenRemoteIce.has(key)) continue;
-      seenRemoteIce.add(key);
-      if(peer && peer.remoteDescription && peer.remoteDescription.type){
-        try{ await peer.addIceCandidate(new RTCIceCandidate(c)); }catch(e){ console.warn("ICE polling add failed",e); }
-      } else incomingIceCandidates.push(c);
-    }
-  }catch(e){}
-  finally{ callPollActive=false; }
-}
-function startCallStatePolling(){
-  clearInterval(window.__bktCallStateTimer);
-  window.__bktCallStateTimer=setInterval(()=>{ if(localCallId && peer) pollCallState(); }, 1200);
 }
 
 async function handleCallSignal(d){
@@ -1734,21 +1803,17 @@ async function handleCallSignal(d){
     $("callTitle").textContent=`Входящий ${callType==="video"?"видеозвонок":"аудиозвонок"} от @${d.fromUsername||""}`;
     $("acceptCall").style.display="block";
     $("remoteVideo").style.display=callType==="video"?"block":"none";
-    $("localCallVideo").style.display="none";
+    $("remoteVideo").style.transform="none";
     $("callModal").style.display="grid";
     showIncomingCallNotification(d);
   }else if(d.signalType==="ringing"){
     localCallId=d.callId||null;
   }else if(d.signalType==="answer" && peer){
     localCallId=d.callId||localCallId;
-    lastRemoteAnswer=d.signal;
-    if(!peer.currentRemoteDescription) await peer.setRemoteDescription(new RTCSessionDescription(d.signal));
+    await peer.setRemoteDescription(new RTCSessionDescription(d.signal));
     for(const c of incomingIceCandidates){try{await peer.addIceCandidate(new RTCIceCandidate(c));}catch(e){}}
     incomingIceCandidates=[];
   }else if(d.signalType==="ice"){
-    const key=JSON.stringify(d.signal||{});
-    if(seenRemoteIce.has(key)) return;
-    seenRemoteIce.add(key);
     if(peer && peer.remoteDescription && peer.remoteDescription.type){
       try{await peer.addIceCandidate(new RTCIceCandidate(d.signal));}catch(e){console.warn("ICE add failed",e)}
     }else{
@@ -1762,27 +1827,8 @@ async function handleCallSignal(d){
   }
 }
 
-function updateCallControls(){
-  const mic=$("callMicButton"),cam=$("callCameraButton");
-  if(mic){mic.textContent=callMicEnabled?"🎙️":"🔇";mic.classList.toggle("active",!callMicEnabled);mic.title=callMicEnabled?"Выключить микрофон":"Включить микрофон";}
-  if(cam){cam.style.display=callType==="video"?"inline-grid":"none";cam.textContent=callCameraEnabled?"📹":"🚫";cam.classList.toggle("active",!callCameraEnabled);}
-}
-function toggleCallMic(){
-  if(!localCallStream)return;
-  callMicEnabled=!callMicEnabled;
-  localCallStream.getAudioTracks().forEach(t=>t.enabled=callMicEnabled);
-  updateCallControls();
-}
-function toggleCallCamera(){
-  if(!localCallStream || callType!=="video")return;
-  callCameraEnabled=!callCameraEnabled;
-  localCallStream.getVideoTracks().forEach(t=>t.enabled=callCameraEnabled);
-  updateCallControls();
-}
-
 function endCall(notify=true){
   clearTimeout(callTimeout); callTimeout=null;
-  clearInterval(window.__bktCallStateTimer); window.__bktCallStateTimer=null; callPollActive=false;
   if(notify && callPeerUserId && socket && socket.readyState===WebSocket.OPEN)
     callSocket({type:"call-signal",toUserId:Number(callPeerUserId),signalType:"hangup",callId:localCallId,signal:{}});
   try{if(peer)peer.close()}catch(e){}
@@ -1790,17 +1836,12 @@ function endCall(notify=true){
   peer=null;localCallStream=null;incomingCall=null;pendingIceCandidates=[];incomingIceCandidates=[];callPeerUserId=null;localCallId=null;
   $("callModal").style.display="none";
   $("remoteVideo").srcObject=null;
-  $("localCallVideo").srcObject=null;
   $("remoteAudio").srcObject=null;
   $("acceptCall").style.display="block";
 }
 
 $("audioCallButton").onclick=()=>startCall("audio");
 $("videoCallButton").onclick=()=>startCall("video");
-$("mediaPlusButton").onclick=()=>{ if(!selected||activeGroup){alert("Откройте личный чат");return;} $("mediaInput").click(); };
-$("mediaInput").addEventListener("change",e=>{const f=e.target.files?.[0]; if(f)sendChatMedia(f); e.target.value="";});
-window.addEventListener("visibilitychange",()=>{ if(peer && localCallStream){ /* keep call/mic alive while app is backgrounded */ } });
-
 
 
 
