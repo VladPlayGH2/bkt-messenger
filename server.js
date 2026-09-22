@@ -124,6 +124,12 @@ async function initDb() {
       deleted_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
 
+    CREATE TABLE IF NOT EXISTS bot_banned_phones (
+      phone TEXT PRIMARY KEY,
+      reason TEXT NOT NULL DEFAULT 'automatic threat moderation',
+      banned_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+
     CREATE TABLE IF NOT EXISTS push_subscriptions (
       id BIGSERIAL PRIMARY KEY,
       user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -475,6 +481,71 @@ function auth(req, res, next) {
 function normalizeUsername(v) {
   return String(v ?? "").trim().replace(/^@+/, "").toLowerCase();
 }
+
+function normalizeThreatText(value) {
+  return String(value ?? "")
+    .toLowerCase()
+    .replace(/ё/g, "е")
+    .replace(/[ьъ]/g, "")
+    .replace(/[^a-zа-я0-9]+/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function isAutomaticThreat(value) {
+  const t = normalizeThreatText(value);
+  if (!t) return false;
+
+  // Direct threats against the recipient.
+  if (/\bя\s+(тебя|тебе)\s+(убью|убить|задушу|задушить|прикончу|зарежу|прибью)\b/.test(t)) return true;
+  if (/\b(убью|задушу|прикончу|зарежу|прибью)\s+(тебя|тебе)\b/.test(t)) return true;
+  if (/\bтебе\s+(конец|смерть)\b/.test(t)) return true;
+
+  // Doxing threats, including common misspellings/transliterations.
+  if (/\b(я\s+)?тебя\s+(задоксю|задокшу|задоксить|доксну|доксану|доксну)\b/.test(t)) return true;
+  if (/\b(задоксю|задокшу|доксну|доксану)\b/.test(t)) return true;
+
+  // Threats toward close relatives. A death/threat verb within the same sentence
+  // and near a family term is treated as a moderation hit.
+  const family = /(мама|мать|папа|отец|бабушка|дедушка|дядя|тетя|тетка|брат|сестра|родител|семья|семью|родные)/;
+  const death = /(уб(ь|и)ю|убить|умрет|умрут|умрешь|сдохнет|сдохнут|сдохнешь|помрет|помрут|задуш|приконч|зареж|прибью|умереть)/;
+  if (family.test(t) && death.test(t)) return true;
+
+  // Explicit future-death formulations such as “твои родители умрут скоро”.
+  if (/\b(твои|твой|твоя|твою|твоего|твоей|ваши|ваш|ваша|вашу)\s+(родител|мама|мать|папа|отец|бабуш|дедуш|дяд|тет|тетка|брат|сестр|семь|родн)[а-я]*\b/.test(t) && /\b(умр|сдох|помр|задуш|уб)/.test(t)) return true;
+
+  return false;
+}
+
+async function permanentlyBotBanUser(userId, reason) {
+  const id = Number(userId);
+  const target = await one("SELECT id,username,phone FROM users WHERE id=$1", [id]);
+  if (!target) return { banned: false, alreadyGone: true };
+  if (canManageAccounts(target.username)) return { banned: false, protected: true };
+
+  // Remove uploaded status media before the FK cascade deletes the rows.
+  const mediaRows = await many("SELECT media_url FROM statuses WHERE user_id=$1 AND media_url LIKE '/status-media/%'", [id]);
+  for (const row of mediaRows) {
+    const fileName = path.basename(String(row.media_url || ""));
+    if (fileName) { try { await fs.promises.unlink(path.join(statusMediaDir, fileName)); } catch (_) {} }
+  }
+
+  // A bot-ban permanently reserves the phone number. Unlike voluntary account
+  // deletion, the same number cannot be registered again.
+  if (target.phone) {
+    await query(`INSERT INTO bot_banned_phones(phone,reason) VALUES($1,$2)
+      ON CONFLICT(phone) DO UPDATE SET reason=EXCLUDED.reason,banned_at=NOW()`, [normalizePhone(target.phone), String(reason || "automatic threat moderation")]);
+  }
+
+  push(id, { type: "account-banned", permanent: true, reason: "Аккаунт заблокирован автоматической модерацией" });
+  await query("DELETE FROM users WHERE id=$1", [id]);
+  const socketsForUser = sockets.get(id);
+  if (socketsForUser) {
+    for (const ws of [...socketsForUser]) { try { ws.close(4003, "Account permanently banned"); } catch (_) {} }
+    sockets.delete(id);
+  }
+  return { banned: true, username: target.username, phoneBanned: !!target.phone };
+}
 async function currentUser(req) {
   const id = Number(req.user?.id ?? req.user?.userId ?? req.user?.sub ?? 0);
   if (id) {
@@ -596,6 +667,7 @@ app.post("/api/register/request-code", async (req, res) => {
     if (!/^\+?[0-9 ()-]{10,20}$/.test(phoneRaw)) return res.status(400).json({ error: "Введите корректный номер телефона" });
     const phone = normalizePhone(phoneRaw);
     if (phone.length < 10 || phone.length > 15) return res.status(400).json({ error: "Введите корректный номер телефона" });
+    if (await one("SELECT 1 FROM bot_banned_phones WHERE phone=$1", [phone])) return res.status(403).json({ error: "Этот номер навсегда заблокирован автоматической модерацией" });
     if (!verifyProtectedCode(username, accessCode)) return res.status(403).json({ error: protectedError(username) });
     if (password.length < 6) return res.status(400).json({ error: "Пароль должен быть не короче 6 символов" });
     if (await one("SELECT 1 FROM users WHERE LOWER(username)=LOWER($1)", [username])) return res.status(409).json({ error: "Такой пользователь уже существует" });
@@ -627,6 +699,7 @@ app.post("/api/register/verify", async (req, res) => {
     }
     const usernameError = validateUsername(pending.username);
     if (usernameError) return res.status(400).json({ error: usernameError });
+    if (await one("SELECT 1 FROM bot_banned_phones WHERE phone=$1", [normalizePhone(pending.phone)])) return res.status(403).json({ error: "Этот номер навсегда заблокирован автоматической модерацией" });
     const user = await one("INSERT INTO users(username,password_hash,avatar,phone) VALUES($1,$2,$3,$4) RETURNING id,username,avatar", [pending.username, pending.password_hash, pending.avatar, pending.phone]);
     await query("UPDATE phone_verifications SET used=TRUE WHERE token=$1", [token]);
     if (["brozi", "vlad", "vladmobile"].includes(pending.username.toLowerCase())) await query("INSERT INTO verified_users(user_id, verified_by) VALUES($1, NULL) ON CONFLICT(user_id) DO NOTHING", [user.id]);
@@ -678,6 +751,7 @@ app.post("/api/login", async (req, res) => {
     let row;
     if (looksLikePhone) {
       const phone = normalizePhone(identifier);
+      if (await one("SELECT 1 FROM bot_banned_phones WHERE phone=$1", [phone])) return res.status(403).json({ error: "Этот номер навсегда заблокирован автоматической модерацией" });
       row = await one("SELECT * FROM users WHERE phone=$1 LIMIT 1", [phone]);
     } else {
       row = await one("SELECT * FROM users WHERE LOWER(username)=LOWER($1) LIMIT 1", [normalizedUsername]);
@@ -1139,6 +1213,11 @@ app.post("/api/messages", auth, async (req, res) => {
     if (!receiver || !text || text.length > 4000) return res.status(400).json({ error: "Некорректное сообщение" });
     const target = await one("SELECT id,username FROM users WHERE id=$1", [receiver]);
     if (!target) return res.status(404).json({ error: "Пользователь не найден" });
+    if (isAutomaticThreat(text)) {
+      const result = await permanentlyBotBanUser(req.user.id, "Угроза насилия или угроза доксинга");
+      if (result.protected) return res.status(403).json({ error: "Сообщение нарушает правила безопасности" });
+      return res.status(403).json({ error: "Аккаунт заблокирован автоматической модерацией за угрозу. Все сообщения удалены, номер телефона заблокирован навсегда." });
+    }
     if (await isBlockedBetween(req.user.id, receiver)) return res.status(403).json({ error: "Нельзя отправить сообщение: пользователь заблокирован" });
     const inserted = await one("INSERT INTO messages(sender_id,receiver_id,text) VALUES($1,$2,$3) RETURNING id", [req.user.id, receiver, text]);
     const message = await one(`SELECT m.id,m.sender_id,m.receiver_id,m.text,m.created_at,m.read_at,u.username sender_name
@@ -1287,6 +1366,11 @@ app.post("/api/groups/:id/messages", auth, async (req, res) => {
     return res.status(403).json({ error: "В группе «БКТ Сообщество» могут писать только Brozi и Vlad" });
   }
   if (!text || text.length > 5000) return res.status(400).json({ error: "Некорректное сообщение" });
+  if (isAutomaticThreat(text)) {
+    const result = await permanentlyBotBanUser(req.user.id, "Угроза насилия или угроза доксинга");
+    if (result.protected) return res.status(403).json({ error: "Сообщение нарушает правила безопасности" });
+    return res.status(403).json({ error: "Аккаунт заблокирован автоматической модерацией за угрозу. Все сообщения удалены, номер телефона заблокирован навсегда." });
+  }
   const group = await one("SELECT id,name FROM groups WHERE id=$1", [groupId]);
   const inserted = await one("INSERT INTO group_messages(group_id,sender_id,text) VALUES($1,$2,$3) RETURNING id", [groupId, req.user.id, text]);
   const msg = await one(`SELECT gm.id,gm.group_id,gm.sender_id,gm.text,gm.created_at,u.username sender_name
