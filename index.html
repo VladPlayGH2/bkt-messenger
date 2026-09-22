@@ -970,6 +970,7 @@ async function loadUserAndOpen(userId){
 }
 
 async function loadPendingCalls(){
+  if(incomingCallAccepting) return;
   try{
     const calls=await api("/api/calls/pending");
     if(Array.isArray(calls) && calls.length){
@@ -984,6 +985,7 @@ async function loadPendingCalls(){
 }
 
 let callPollTimer=null;
+let incomingCallAccepting=false;
 let callStatePollTimer=null;
 let socketReconnectTimer=null;
 let socketReconnectDelay=1000;
@@ -1701,35 +1703,67 @@ function createPeer(){
 }
 
 async function acceptIncomingCall(){
-  if(!incomingCall)return;
+  // Take an immutable snapshot before any await. The global incomingCall can be
+  // cleared by polling/WebSocket while getUserMedia or ICE setup is pending.
+  const call = incomingCall;
+  if(!call || !call.callId || !call.fromUserId || !call.signal){
+    console.warn("acceptIncomingCall: incoming call is missing or already handled", call);
+    incomingCall=null;
+    incomingCallAccepting=false;
+    if($('acceptCall')) $('acceptCall').style.display='none';
+    if($('callModal')) $('callModal').style.display='none';
+    alert("Входящий звонок уже завершён или больше недоступен. Позвоните ещё раз.");
+    return;
+  }
+  incomingCallAccepting=true;
   try{
-    const from=incomingCall.fromUserId;
-    callType=incomingCall.callType||"audio";
-    selected={id:from,username:incomingCall.fromUsername};
+    const from=Number(call.fromUserId);
+    callType=call.callType||"audio";
+    selected={id:from,username:call.fromUsername};
+    localCallId=String(call.callId);
+    callPeerUserId=from;
     localCallStream=await navigator.mediaDevices.getUserMedia(
-      callType==="video"?{audio:true,video:true}:{audio:true}
+      callType==="video"?{audio:true,video:{facingMode:"user"}}:{audio:true}
     );
     await loadRtcConfig();
     peer=createPeer();
-    callPeerUserId=Number(from);
-    clearTimeout(callTimeout); callTimeout=setTimeout(()=>{ if(peer && !["connected","completed"].includes(peer.iceConnectionState)) { endCall(true); alert("Не удалось установить соединение. Проверьте интернет или настройки TURN."); } },45000);
-    localCallId=incomingCall.callId||null;
+    callTimeout=setTimeout(()=>{
+      if(peer && !["connected","completed"].includes(peer.connectionState)) {
+        endCall(true);
+        alert("Не удалось установить соединение. Проверьте интернет или настройки TURN.");
+      }
+    },60000);
     localCallStream.getTracks().forEach(t=>peer.addTrack(t,localCallStream));
-    await peer.setRemoteDescription(new RTCSessionDescription(incomingCall.signal));
-    for(const c of (incomingCall.iceCandidates||[])){try{await peer.addIceCandidate(new RTCIceCandidate(c))}catch(e){}}
-    for(const c of incomingIceCandidates){try{await peer.addIceCandidate(new RTCIceCandidate(c))}catch(e){}}
+    await peer.setRemoteDescription(new RTCSessionDescription(call.signal));
+    for(const c of (call.iceCandidates||[])){
+      try{await peer.addIceCandidate(new RTCIceCandidate(c));}catch(e){console.warn("initial ICE add failed",e)}
+    }
+    for(const c of incomingIceCandidates){
+      try{await peer.addIceCandidate(new RTCIceCandidate(c));}catch(e){console.warn("queued ICE add failed",e)}
+    }
     incomingIceCandidates=[];
     const answer=await peer.createAnswer();
     await peer.setLocalDescription(answer);
     const answerSignal={sdp:peer.localDescription.sdp,type:peer.localDescription.type};
     callSocket({type:"call-signal",toUserId:from,signalType:"answer",callId:localCallId,signal:answerSignal,callType});
-    incomingCall=null;
+    // Only clear the global after the answer has been created and sent.
+    if(incomingCall && String(incomingCall.callId)===String(call.callId)) incomingCall=null;
+    incomingCallAccepting=false;
+    if($('acceptCall')) $('acceptCall').style.display="none";
+    if($('callTitle')) $('callTitle').textContent=callType==="video"?"📹 Видеозвонок":"📞 Аудиозвонок";
+    if($('remoteVideo')){
+      $('remoteVideo').style.display=callType==="video"?"block":"none";
+      $('remoteVideo').style.transform="none";
+    }
     pollActiveCall();
-    $("acceptCall").style.display="none";
-    $("callTitle").textContent=callType==="video"?"📹 Видеозвонок":"📞 Аудиозвонок";
-    $("remoteVideo").style.display=callType==="video"?"block":"none";
   }catch(e){
-    console.error(e); endCall(false); alert("Не удалось принять звонок.");
+    console.error("acceptIncomingCall failed",e);
+    incomingCallAccepting=false;
+    if(incomingCall && String(incomingCall.callId)===String(call.callId)) incomingCall=null;
+    endCall(false);
+    const msg=e?.name==="NotAllowedError"?"Нет доступа к микрофону/камере. Разрешите доступ в настройках браузера." :
+      e?.name==="NotFoundError"?"Микрофон или камера не найдены." : "Не удалось принять звонок: "+(e?.message||"неизвестная ошибка");
+    alert(msg);
   }
 }
 
