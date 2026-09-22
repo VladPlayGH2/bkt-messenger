@@ -124,6 +124,12 @@ async function initDb() {
       deleted_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
 
+    CREATE TABLE IF NOT EXISTS bot_banned_phones (
+      phone TEXT PRIMARY KEY,
+      reason TEXT NOT NULL DEFAULT 'automatic threat moderation',
+      banned_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+
     CREATE TABLE IF NOT EXISTS push_subscriptions (
       id BIGSERIAL PRIMARY KEY,
       user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -323,7 +329,15 @@ const REWARD_STICKER_ID = 29;
 const REWARD_STICKER_SRC = `/stickers/${REWARD_STICKER_ID}.webp`;
 const REWARD_STICKER_150_ID = 30;
 const REWARD_STICKER_150_SRC = `/stickers/${REWARD_STICKER_150_ID}.webp`;
-const REWARD_STICKER_IDS = [REWARD_STICKER_ID, REWARD_STICKER_150_ID];
+const REWARD_STICKER_300_ID = 31;
+const REWARD_STICKER_300_SRC = `/stickers/${REWARD_STICKER_300_ID}.webp`;
+const REWARD_STICKER_IDS = [REWARD_STICKER_ID, REWARD_STICKER_150_ID, REWARD_STICKER_300_ID];
+const GIFT_CATALOG = [
+  { stickerId: 29, price: 50, name: 'Капибара', src: '/stickers/29.webp' },
+  { stickerId: 30, price: 150, name: 'Королевская капибара', src: '/stickers/30.webp' },
+  { stickerId: 31, price: 300, name: 'БКТ — Капибара и Туф', src: '/stickers/31.webp' }
+];
+const GIFT_PRICES = Object.fromEntries(GIFT_CATALOG.map(g => [g.stickerId, g.price]));
 
 async function ensureRewardWallet(userId) {
   await query(`INSERT INTO reward_wallets(user_id,oranges) VALUES($1,0) ON CONFLICT(user_id) DO NOTHING`, [Number(userId)]);
@@ -340,6 +354,7 @@ async function grantRewardsForBalance(userId, addToProfile=false) {
   const oranges = Number(wallet?.oranges || 0);
   if (oranges >= 50) await grantRewardSticker(userId, REWARD_STICKER_ID, addToProfile);
   if (oranges >= 150) await grantRewardSticker(userId, REWARD_STICKER_150_ID, addToProfile);
+  if (oranges >= 300) await grantRewardSticker(userId, REWARD_STICKER_300_ID, addToProfile);
   return oranges;
 }
 async function ensureSpecialAccountsRewards() {
@@ -351,6 +366,7 @@ async function ensureSpecialAccountsRewards() {
       // Special accounts receive both reward stickers immediately.
       await grantRewardSticker(u.id, REWARD_STICKER_ID, true);
       await grantRewardSticker(u.id, REWARD_STICKER_150_ID, true);
+      await grantRewardSticker(u.id, REWARD_STICKER_300_ID, true);
     }
   }
 }
@@ -475,6 +491,79 @@ function auth(req, res, next) {
 function normalizeUsername(v) {
   return String(v ?? "").trim().replace(/^@+/, "").toLowerCase();
 }
+
+function normalizeThreatText(value) {
+  return String(value ?? "")
+    .toLowerCase()
+    .replace(/ё/g, "е")
+    .replace(/[ьъ]/g, "")
+    .replace(/[0о]/g, 'o').replace(/[1]/g, 'и')
+    .replace(/[^a-zа-я0-9]+/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function isAutomaticThreat(value) {
+  const t = normalizeThreatText(value);
+  if (!t) return false;
+
+  // Direct threats against the recipient.
+  if (/\bя\s+(тебя|тебе)\s+(убью|убить|задушу|задушить|прикончу|зарежу|прибью)\b/.test(t)) return true;
+  if (/\b(убью|задушу|прикончу|зарежу|прибью)\s+(тебя|тебе)\b/.test(t)) return true;
+  if (/\bтебе\s+(конец|смерть)\b/.test(t)) return true;
+
+  // Doxing threats, including common misspellings/transliterations.
+  if (/\b(я\s+)?тебя\s+(задоксю|задокшу|задоксить|доксну|доксану|доксну)\b/.test(t)) return true;
+  if (/\b(задоксю|задокшу|доксну|доксану)\b/.test(t)) return true;
+
+  // Threats toward close relatives. A death/threat verb within the same sentence
+  // and near a family term is treated as a moderation hit.
+  const family = /(мама|мать|папа|отец|бабушка|дедушка|дядя|тетя|тетка|брат|сестра|родител|семья|семью|родные)/;
+  const death = /(уб(ь|и)ю|убить|умрет|умрут|умрешь|сдохнет|сдохнут|сдохнешь|помрет|помрут|задуш|приконч|зареж|прибью|умереть)/;
+  if (family.test(t) && death.test(t)) return true;
+
+  // Explicit future-death formulations such as “твои родители умрут скоро”.
+  if (/\b(твои|твой|твоя|твою|твоего|твоей|ваши|ваш|ваша|вашу)\s+(родител|мама|мать|папа|отец|бабуш|дедуш|дяд|тет|тетка|брат|сестр|семь|родн)[а-я]*\b/.test(t) && /\b(умр|сдох|помр|задуш|уб)/.test(t)) return true;
+
+  // Broader direct-threat forms and common spacing/word-order variations.
+  const directThreat = /\b(убью|убить|убей|задушу|задушить|прикончу|зарежу|прибью|сдохнешь|умрешь|умри|помрешь)\b/;
+  const target = /\b(тебя|тебе|твой|твоя|твою|твоего|твоей|твои|ваш|ваша|вашу|ваши)\b/;
+  if (directThreat.test(t) && target.test(t)) return true;
+  if (/\b(тебя|тебе)\b.*\b(задокс|докс|задокш)|\b(задокс|докс|задокш).*\b(тебя|тебе)\b/.test(t)) return true;
+  if (/\b(родител|мама|мать|папа|отец|бабуш|дедуш|дяд|тет|тетка|брат|сестр|семь|родн)[а-я]*\b.*\b(скоро|завтра|сегодня)?\s*(умр|сдох|помр|уб)/.test(t)) return true;
+
+  return false;
+}
+
+async function permanentlyBotBanUser(userId, reason) {
+  const id = Number(userId);
+  const target = await one("SELECT id,username,phone FROM users WHERE id=$1", [id]);
+  if (!target) return { banned: false, alreadyGone: true };
+  if (canManageAccounts(target.username)) return { banned: false, protected: true };
+
+  // Remove uploaded status media before the FK cascade deletes the rows.
+  const mediaRows = await many("SELECT media_url FROM statuses WHERE user_id=$1 AND media_url LIKE '/status-media/%'", [id]);
+  for (const row of mediaRows) {
+    const fileName = path.basename(String(row.media_url || ""));
+    if (fileName) { try { await fs.promises.unlink(path.join(statusMediaDir, fileName)); } catch (_) {} }
+  }
+
+  // A bot-ban permanently reserves the phone number. Unlike voluntary account
+  // deletion, the same number cannot be registered again.
+  if (target.phone) {
+    await query(`INSERT INTO bot_banned_phones(phone,reason) VALUES($1,$2)
+      ON CONFLICT(phone) DO UPDATE SET reason=EXCLUDED.reason,banned_at=NOW()`, [normalizePhone(target.phone), String(reason || "automatic threat moderation")]);
+  }
+
+  push(id, { type: "account-banned", permanent: true, reason: "Аккаунт заблокирован автоматической модерацией" });
+  await query("DELETE FROM users WHERE id=$1", [id]);
+  const socketsForUser = sockets.get(id);
+  if (socketsForUser) {
+    for (const ws of [...socketsForUser]) { try { ws.close(4003, "Account permanently banned"); } catch (_) {} }
+    sockets.delete(id);
+  }
+  return { banned: true, username: target.username, phoneBanned: !!target.phone };
+}
 async function currentUser(req) {
   const id = Number(req.user?.id ?? req.user?.userId ?? req.user?.sub ?? 0);
   if (id) {
@@ -596,11 +685,17 @@ app.post("/api/register/request-code", async (req, res) => {
     if (!/^\+?[0-9 ()-]{10,20}$/.test(phoneRaw)) return res.status(400).json({ error: "Введите корректный номер телефона" });
     const phone = normalizePhone(phoneRaw);
     if (phone.length < 10 || phone.length > 15) return res.status(400).json({ error: "Введите корректный номер телефона" });
+    if (await one("SELECT 1 FROM bot_banned_phones WHERE phone=$1", [phone])) return res.status(403).json({ error: "Этот номер навсегда заблокирован автоматической модерацией" });
     if (!verifyProtectedCode(username, accessCode)) return res.status(403).json({ error: protectedError(username) });
     if (password.length < 6) return res.status(400).json({ error: "Пароль должен быть не короче 6 символов" });
     if (await one("SELECT 1 FROM users WHERE LOWER(username)=LOWER($1)", [username])) return res.status(409).json({ error: "Такой пользователь уже существует" });
     if (await one("SELECT 1 FROM users WHERE phone=$1", [phone])) return res.status(409).json({ error: "Этот номер уже привязан к аккаунту" });
-    if (!/^\/stickers\/(?:[1-9]|1[0-9]|2[0-8])\.webp$/.test(avatar)) avatar = "/stickers/1.webp";
+    if (!/^\/stickers\/(?:[1-9]|1[0-9]|2[0-8]|29|30|31)\.webp$/.test(avatar)) avatar = "/stickers/1.webp";
+  if (/^\/stickers\/(?:29|30|31)\.webp$/.test(avatar)) {
+    const sid = Number(avatar.match(/\d+/)[0]);
+    const ownedGift = await one("SELECT 1 FROM user_stickers WHERE user_id=$1 AND sticker_id=$2", [meUser.id, sid]);
+    if (!ownedGift) avatar = "/stickers/1.webp";
+  }
     const verificationToken = crypto.randomBytes(24).toString("hex");
     const code = String(crypto.randomInt(100000, 1000000));
     const codeHash = crypto.createHash("sha256").update(code).digest("hex");
@@ -627,6 +722,7 @@ app.post("/api/register/verify", async (req, res) => {
     }
     const usernameError = validateUsername(pending.username);
     if (usernameError) return res.status(400).json({ error: usernameError });
+    if (await one("SELECT 1 FROM bot_banned_phones WHERE phone=$1", [normalizePhone(pending.phone)])) return res.status(403).json({ error: "Этот номер навсегда заблокирован автоматической модерацией" });
     const user = await one("INSERT INTO users(username,password_hash,avatar,phone) VALUES($1,$2,$3,$4) RETURNING id,username,avatar", [pending.username, pending.password_hash, pending.avatar, pending.phone]);
     await query("UPDATE phone_verifications SET used=TRUE WHERE token=$1", [token]);
     if (["brozi", "vlad", "vladmobile"].includes(pending.username.toLowerCase())) await query("INSERT INTO verified_users(user_id, verified_by) VALUES($1, NULL) ON CONFLICT(user_id) DO NOTHING", [user.id]);
@@ -650,7 +746,12 @@ app.post("/api/register", async (req, res) => {
     if (!verifyProtectedCode(username, accessCode)) return res.status(403).json({ error: protectedError(username) });
     if (await one("SELECT 1 FROM users WHERE LOWER(username)=LOWER($1)", [username])) return res.status(409).json({ error: "Такой пользователь уже существует" });
     if (await one("SELECT 1 FROM deleted_usernames WHERE LOWER(username)=LOWER($1)", [username])) return res.status(410).json({ error: "Этот аккаунт был удалён навсегда и логин больше недоступен" });
-    if (!/^\/stickers\/(?:[1-9]|1[0-9]|2[0-8])\.webp$/.test(avatar)) avatar = "/stickers/1.webp";
+    if (!/^\/stickers\/(?:[1-9]|1[0-9]|2[0-8]|29|30|31)\.webp$/.test(avatar)) avatar = "/stickers/1.webp";
+  if (/^\/stickers\/(?:29|30|31)\.webp$/.test(avatar)) {
+    const sid = Number(avatar.match(/\d+/)[0]);
+    const ownedGift = await one("SELECT 1 FROM user_stickers WHERE user_id=$1 AND sticker_id=$2", [meUser.id, sid]);
+    if (!ownedGift) avatar = "/stickers/1.webp";
+  }
     const passwordHash = await bcrypt.hash(password, 10);
     const user = await one("INSERT INTO users(username,password_hash,avatar) VALUES($1,$2,$3) RETURNING id,username,avatar", [username, passwordHash, avatar]);
     if (["brozi", "vlad", "vladmobile"].includes(username.toLowerCase())) await query("INSERT INTO verified_users(user_id, verified_by) VALUES($1, NULL) ON CONFLICT(user_id) DO NOTHING", [user.id]);
@@ -678,6 +779,7 @@ app.post("/api/login", async (req, res) => {
     let row;
     if (looksLikePhone) {
       const phone = normalizePhone(identifier);
+      if (await one("SELECT 1 FROM bot_banned_phones WHERE phone=$1", [phone])) return res.status(403).json({ error: "Этот номер навсегда заблокирован автоматической модерацией" });
       row = await one("SELECT * FROM users WHERE phone=$1 LIMIT 1", [phone]);
     } else {
       row = await one("SELECT * FROM users WHERE LOWER(username)=LOWER($1) LIMIT 1", [normalizedUsername]);
@@ -715,7 +817,12 @@ app.patch("/api/profile", auth, async (req, res) => {
   if (protectedAccount(username) && !verifyProtectedCode(username, accessCode)) return res.status(403).json({ error: protectedError(username) });
   const bio = String(req.body?.bio ?? "").trim().slice(0, 160);
   let avatar = String(req.body?.avatar ?? "").trim();
-  if (!/^\/stickers\/(?:[1-9]|1[0-9]|2[0-8])\.webp$/.test(avatar)) avatar = "/stickers/1.webp";
+  if (!/^\/stickers\/(?:[1-9]|1[0-9]|2[0-8]|29|30|31)\.webp$/.test(avatar)) avatar = "/stickers/1.webp";
+  if (/^\/stickers\/(?:29|30|31)\.webp$/.test(avatar)) {
+    const sid = Number(avatar.match(/\d+/)[0]);
+    const ownedGift = await one("SELECT 1 FROM user_stickers WHERE user_id=$1 AND sticker_id=$2", [meUser.id, sid]);
+    if (!ownedGift) avatar = "/stickers/1.webp";
+  }
   const exists = await one("SELECT id FROM users WHERE LOWER(username)=LOWER($1) AND id<>$2", [username, meUser.id]);
   const usernameToSave = exists ? meUser.username : username;
   const updated = await one(`UPDATE users SET username=$1,bio=$2,avatar=$3 WHERE id=$4
@@ -996,8 +1103,9 @@ app.get("/api/rewards", auth, async (req, res) => {
   res.json({
     oranges,
     rewards: [
-      {stickerId:REWARD_STICKER_ID, stickerSrc:REWARD_STICKER_SRC, unlockAt:50, owned:owned.has(REWARD_STICKER_ID), profileGift:profileGift.has(REWARD_STICKER_ID)},
-      {stickerId:REWARD_STICKER_150_ID, stickerSrc:REWARD_STICKER_150_SRC, unlockAt:150, owned:owned.has(REWARD_STICKER_150_ID), profileGift:profileGift.has(REWARD_STICKER_150_ID)}
+      {stickerId:REWARD_STICKER_ID, stickerSrc:REWARD_STICKER_SRC, unlockAt:50, owned:owned.has(REWARD_STICKER_ID), profileGift:profileGift.has(REWARD_STICKER_ID), name:'Капибара'},
+      {stickerId:REWARD_STICKER_150_ID, stickerSrc:REWARD_STICKER_150_SRC, unlockAt:150, owned:owned.has(REWARD_STICKER_150_ID), profileGift:profileGift.has(REWARD_STICKER_150_ID), name:'Королевская капибара'},
+      {stickerId:REWARD_STICKER_300_ID, stickerSrc:REWARD_STICKER_300_SRC, unlockAt:300, owned:owned.has(REWARD_STICKER_300_ID), profileGift:profileGift.has(REWARD_STICKER_300_ID), name:'БКТ — Капибара и Туф'}
     ]
   });
 });
@@ -1062,8 +1170,9 @@ app.post("/api/captcha/verify", auth, async (req, res) => {
     ok:true,
     oranges,
     rewards:[
-      {stickerId:REWARD_STICKER_ID, stickerSrc:REWARD_STICKER_SRC, unlockAt:50, owned:owned.has(REWARD_STICKER_ID)},
-      {stickerId:REWARD_STICKER_150_ID, stickerSrc:REWARD_STICKER_150_SRC, unlockAt:150, owned:owned.has(REWARD_STICKER_150_ID)}
+      {stickerId:REWARD_STICKER_ID, stickerSrc:REWARD_STICKER_SRC, unlockAt:50, owned:owned.has(REWARD_STICKER_ID), name:'Капибара'},
+      {stickerId:REWARD_STICKER_150_ID, stickerSrc:REWARD_STICKER_150_SRC, unlockAt:150, owned:owned.has(REWARD_STICKER_150_ID), name:'Королевская капибара'},
+      {stickerId:REWARD_STICKER_300_ID, stickerSrc:REWARD_STICKER_300_SRC, unlockAt:300, owned:owned.has(REWARD_STICKER_300_ID), name:'БКТ — Капибара и Туф'}
     ]
   });
 });
@@ -1083,22 +1192,31 @@ app.delete("/api/stickers/:id/profile", auth, async (req, res) => {
   res.json({ ok:true });
 });
 
+app.get("/api/gifts/catalog", auth, async (req, res) => {
+  await ensureRewardWallet(req.user.id);
+  const walletRow = await one("SELECT oranges FROM reward_wallets WHERE user_id=$1", [req.user.id]);
+  const owned = await many("SELECT sticker_id FROM user_stickers WHERE user_id=$1 AND sticker_id = ANY($2::int[])", [req.user.id, GIFT_CATALOG.map(g=>g.stickerId)]);
+  const ownedSet = new Set(owned.map(r=>Number(r.sticker_id)));
+  res.json({ oranges: Number(walletRow?.oranges || 0), gifts: GIFT_CATALOG.map(g=>({...g, owned: ownedSet.has(g.stickerId)})) });
+});
+
 app.post("/api/stickers/:id/send", auth, async (req, res) => {
   const stickerId = Number(req.params.id);
   const receiver = Number(req.body?.receiverId);
-  if (!REWARD_STICKER_IDS.includes(stickerId) || !receiver || receiver === Number(req.user.id)) return res.status(400).json({ error: "Некорректный подарок" });
-  const owned = await one("SELECT 1 FROM user_stickers WHERE user_id=$1 AND sticker_id=$2", [req.user.id, stickerId]);
-  if (!owned) return res.status(403).json({ error: "Сначала получите этот стикер" });
+  const gift = GIFT_CATALOG.find(g => g.stickerId === stickerId);
+  if (!gift || !receiver || receiver === Number(req.user.id)) return res.status(400).json({ error: "Некорректный подарок" });
   if (await isBlockedBetween(req.user.id, receiver)) return res.status(403).json({ error: "Пользователь заблокирован" });
   const target = await one("SELECT id,username FROM users WHERE id=$1", [receiver]);
   if (!target) return res.status(404).json({ error: "Пользователь не найден" });
+  const charged = await one(`UPDATE reward_wallets SET oranges=oranges-$2,updated_at=NOW() WHERE user_id=$1 AND oranges >= $2 RETURNING oranges`, [req.user.id, gift.price]);
+  if (!charged) return res.status(400).json({ error: `Недостаточно 🍊. Нужно ${gift.price} 🍊.` });
   await query("INSERT INTO user_stickers(user_id,sticker_id) VALUES($1,$2) ON CONFLICT DO NOTHING", [receiver, stickerId]);
   await query("INSERT INTO profile_gifts(user_id,sticker_id) VALUES($1,$2) ON CONFLICT DO NOTHING", [receiver, stickerId]);
-  const inserted = await one("INSERT INTO messages(sender_id,receiver_id,text) VALUES($1,$2,$3) RETURNING id", [req.user.id, receiver, `[STICKER]${REWARD_STICKER_SRC}`]);
+  const inserted = await one("INSERT INTO messages(sender_id,receiver_id,text) VALUES($1,$2,$3) RETURNING id", [req.user.id, receiver, `[STICKER]${gift.src}`]);
   const message = await one(`SELECT m.id,m.sender_id,m.receiver_id,m.text,m.created_at,m.read_at,u.username sender_name FROM messages m JOIN users u ON u.id=m.sender_id WHERE m.id=$1`, [inserted.id]);
   push(receiver, {type:"message",message});
   push(req.user.id, {type:"message",message});
-  res.json(message);
+  res.json({ ...message, oranges: Number(charged.oranges), gift });
 });
 
 app.get("/api/users/:id/gifts", auth, async (req, res) => {
@@ -1139,6 +1257,11 @@ app.post("/api/messages", auth, async (req, res) => {
     if (!receiver || !text || text.length > 4000) return res.status(400).json({ error: "Некорректное сообщение" });
     const target = await one("SELECT id,username FROM users WHERE id=$1", [receiver]);
     if (!target) return res.status(404).json({ error: "Пользователь не найден" });
+    if (isAutomaticThreat(text)) {
+      const result = await permanentlyBotBanUser(req.user.id, "Угроза насилия или угроза доксинга");
+      if (result.protected) return res.status(403).json({ error: "Сообщение нарушает правила безопасности" });
+      return res.status(403).json({ error: "Аккаунт заблокирован автоматической модерацией за угрозу. Все сообщения удалены, номер телефона заблокирован навсегда." });
+    }
     if (await isBlockedBetween(req.user.id, receiver)) return res.status(403).json({ error: "Нельзя отправить сообщение: пользователь заблокирован" });
     const inserted = await one("INSERT INTO messages(sender_id,receiver_id,text) VALUES($1,$2,$3) RETURNING id", [req.user.id, receiver, text]);
     const message = await one(`SELECT m.id,m.sender_id,m.receiver_id,m.text,m.created_at,m.read_at,u.username sender_name
@@ -1287,6 +1410,11 @@ app.post("/api/groups/:id/messages", auth, async (req, res) => {
     return res.status(403).json({ error: "В группе «БКТ Сообщество» могут писать только Brozi и Vlad" });
   }
   if (!text || text.length > 5000) return res.status(400).json({ error: "Некорректное сообщение" });
+  if (isAutomaticThreat(text)) {
+    const result = await permanentlyBotBanUser(req.user.id, "Угроза насилия или угроза доксинга");
+    if (result.protected) return res.status(403).json({ error: "Сообщение нарушает правила безопасности" });
+    return res.status(403).json({ error: "Аккаунт заблокирован автоматической модерацией за угрозу. Все сообщения удалены, номер телефона заблокирован навсегда." });
+  }
   const group = await one("SELECT id,name FROM groups WHERE id=$1", [groupId]);
   const inserted = await one("INSERT INTO group_messages(group_id,sender_id,text) VALUES($1,$2,$3) RETURNING id", [groupId, req.user.id, text]);
   const msg = await one(`SELECT gm.id,gm.group_id,gm.sender_id,gm.text,gm.created_at,u.username sender_name

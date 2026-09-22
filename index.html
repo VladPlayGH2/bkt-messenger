@@ -396,6 +396,22 @@ img,video{max-width:100%}
 .wa-camera-actions .secondary{background:#10251a;color:#bfffd7;border:1px solid #195136}
 </style>
 
+
+<style id="desktop-scroll-fixes">
+/* Desktop: long rewards/profile/settings content must remain scrollable. */
+#rewardsModal,#profileViewModal,#settingsModal{align-items:flex-start!important;justify-content:center!important;padding:24px!important;overflow-y:auto!important;overscroll-behavior:contain;}
+#rewardsModal .reward-panel,#profileViewModal .profile-view-card,#settingsModal .modal-card{max-height:calc(100dvh - 48px);overflow-y:auto;overscroll-behavior:contain;}
+#rewardsModal .reward-panel{width:min(720px,94vw);background:#0c1110;border:1px solid #24312b;border-radius:18px;padding:20px;}
+#rewardsModal .reward-head{display:flex;align-items:center;justify-content:space-between;gap:12px;position:sticky;top:-20px;background:#0c1110;padding:2px 0 12px;z-index:2;}
+#rewardsModal .reward-cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;}
+#rewardsModal .reward-card{background:#111a15;border:1px solid #263a2d;border-radius:14px;padding:12px;min-width:0;}
+#rewardsModal .reward-card img{width:100%;aspect-ratio:1;object-fit:contain;border-radius:10px;background:#050807;}
+#rewardsModal .reward-card.locked{opacity:.65;}
+#rewardsModal .reward-card button{width:100%;margin-top:8px;border:0;border-radius:9px;padding:9px;background:#22ff72;color:#001609;font-weight:700;cursor:pointer;}
+#rewardsModal .reward-sub{color:#9ba8a1;font-size:12px;}
+#profileViewModal .profile-view-card{width:min(430px,92vw);}
+@media(max-width:700px){#rewardsModal,#profileViewModal,#settingsModal{padding:10px!important;}#rewardsModal .reward-panel,#profileViewModal .profile-view-card,#settingsModal .modal-card{max-height:calc(100dvh - 20px);}#rewardsModal .reward-cards{grid-template-columns:repeat(2,minmax(0,1fr));}}
+</style>
 </head>
 <body>
 <div id="bktToast" onclick="openToastChat()"></div>
@@ -552,6 +568,8 @@ window.formatMessageTime = function(value){
 function formatMessageTime(value){ return window.formatMessageTime(value); }
 function toggleProtectedCode(){const username=$("login").value.trim().replace(/^@+/,"").toLowerCase(); const protectedUser=["brozi","vlad","vladmobile"].includes(username); $("accessCode").style.display=protectedUser?"block":"none"; $("accessCode").placeholder=protectedUser?"Секретный код":"Секретный код";}
 const REGISTRATION_AVATARS = Array.from({length:28},(_,i)=>`/stickers/${i+1}.webp`);
+let giftCatalog=[];
+async function loadGiftCatalog(){ try{ const d=await api('/api/gifts/catalog'); giftCatalog=Array.isArray(d.gifts)?d.gifts:[]; return d; }catch(_){ giftCatalog=[]; return {oranges:0,gifts:[]}; } }
 let statusRows=[];
 let statusViewerIndex=0;
 let statusViewerTimer=null;
@@ -758,7 +776,7 @@ async function deleteStatus(id){
 })();
 let rewardState={oranges:0,rewards:[],captcha:null};
 async function loadRewards(){
-  try{ rewardState=await api('/api/rewards'); renderRewards(); }catch(e){ console.debug('rewards:',e.message); }
+  try{ rewardState=await api('/api/rewards'); await loadGiftCatalog(); renderRewards(); }catch(e){ console.debug('rewards:',e.message); }
 }
 function openRewards(){
   $('rewardsModal').style.display='grid';
@@ -769,11 +787,12 @@ function closeRewards(){ $('rewardsModal').style.display='none'; }
 function renderRewards(){
   $('rewardBalance').textContent=`🍊 ${Number(rewardState.oranges||0)}`;
   const cards=$('rewardCards'); if(!cards)return;
-  cards.innerHTML=(rewardState.rewards||[]).map(r=>{
+  const rewardRows=[...(rewardState.rewards||[])];
+  cards.innerHTML=rewardRows.map(r=>{
     const owned=!!r.owned, unlocked=Number(rewardState.oranges||0)>=Number(r.unlockAt);
     return `<div class="reward-card ${owned?'':'locked'}">
       <img src="${escapeHtml(r.stickerSrc)}" alt="Стикер ${r.stickerId}">
-      <b>${r.stickerId===30?'Королевская капибара':'Капибара и Туф'}</b>
+      <b>${escapeHtml(r.name || (r.stickerId===29?'Капибара':r.stickerId===30?'Королевская капибара':'БКТ — Капибара и Туф'))}</b>
       <div class="reward-sub" style="margin:5px 0">${owned?'Получен':`Нужно ${r.unlockAt} 🍊`}</div>
       ${owned?`<button type="button" onclick="addRewardToProfile(${r.stickerId})">🎁 Добавить в профиль</button>`:''}
     </div>`;
@@ -790,7 +809,13 @@ async function startCaptcha(){
     $('captchaBox').style.display='block';
     $('captchaExpression').textContent=d.expression||'Решите задачу';
     const box=$('captchaOptions');
-    box.innerHTML=(d.options||[]).map(v=>`<button class="captcha-option" type="button" onclick="verifyCaptcha(${Number(v)})">${escapeHtml(String(v))}</button>`).join('');
+    box.innerHTML='';
+    (d.options||[]).forEach(v=>{
+      const btn=document.createElement('button');
+      btn.type='button'; btn.className='captcha-option'; btn.textContent=String(v);
+      btn.addEventListener('click',()=>verifyCaptcha(Number(v)),{once:true});
+      box.appendChild(btn);
+    });
     $('captchaHint').textContent='Сложность: высокая • за правильный ответ +5 🍊 • каждый раз новое задание';
   }catch(e){alert(e.message||'Не удалось создать CAPTCHA');}
 }
@@ -1391,9 +1416,11 @@ async function openProfileView(userId, isMe=false){
     $("profileViewChat").style.display = isMe ? "none" : "block";
     const giftActions=$("profileViewGiftActions");
     if(giftActions){
-      const owned=!isMe ? [...(ownedRewardStickerIds||[])].filter(id=>id===29||id===30) : [];
-      giftActions.innerHTML=owned.map(id=>`<button type="button" onclick="giftRewardTo(${Number(p.id)},${id})">🎁 Подарить ${id===30?'👑':'🍊'}</button>`).join('');
-      giftActions.style.display=owned.length?'flex':'none';
+      if(!isMe){
+        const catalog=await loadGiftCatalog();
+        giftActions.innerHTML=(catalog.gifts||[]).map(g=>`<button type="button" onclick="giftRewardTo(${Number(p.id)},${Number(g.stickerId)})">🎁 ${escapeHtml(g.name)} • ${Number(g.price)} 🍊</button>`).join('');
+        giftActions.style.display=(catalog.gifts||[]).length?'flex':'none';
+      }else{ giftActions.innerHTML=''; giftActions.style.display='none'; }
     }
     const blockBtn=$("profileViewBlock"), blockState=$("profileViewBlockState");
     if(isMe){
@@ -1418,7 +1445,7 @@ async function openProfileView(userId, isMe=false){
   }catch(e){ alert(e.message || "Не удалось открыть профиль"); }
 }
 async function giftRewardTo(receiverId, stickerId){
-  try{ await api('/api/stickers/'+Number(stickerId)+'/send',{method:'POST',body:{receiverId:Number(receiverId)}}); alert('Подарок отправлен.'); }
+  try{ const d=await api('/api/stickers/'+Number(stickerId)+'/send',{method:'POST',body:{receiverId:Number(receiverId)}}); rewardState.oranges=Number(d.oranges||0); await loadGiftCatalog(); renderRewards(); alert(`Подарок отправлен. Списано ${Number(d.gift?.price||0)} 🍊.`); }
   catch(e){ alert(e.message||'Не удалось отправить подарок'); }
 }
 async function toggleProfileBlock(){
@@ -1462,14 +1489,17 @@ async function openSettings(){
     $("settingsModal").style.display = "grid";
   }
 }
-function renderSettingsAvatarPicker(currentAvatar){
+async function renderSettingsAvatarPicker(currentAvatar){
   const grid=$("settingsAvatarGrid");
   if(!grid)return;
+  await loadGiftCatalog();
   grid.innerHTML="";
-  REGISTRATION_AVATARS.forEach((src,i)=>{
+  const giftAvatars=giftCatalog.filter(g=>g.owned).map(g=>g.src);
+  const avatars=[...REGISTRATION_AVATARS,...giftAvatars.filter(src=>!REGISTRATION_AVATARS.includes(src))];
+  avatars.forEach((src,i)=>{
     const b=document.createElement("button"); b.type="button"; b.className="auth-avatar-item settings-avatar-item"+(currentAvatar===src?" selected":"");
-    b.title=`Аватарка ${i+1}`;
-    const img=document.createElement("img"); img.src=src; img.alt=`Аватарка ${i+1}`;
+    b.title=src.includes('/stickers/29.webp')?'Подарок 50 🍊':src.includes('/stickers/30.webp')?'Подарок 150 🍊':src.includes('/stickers/31.webp')?'Подарок 300 🍊':`Аватарка ${i+1}`;
+    const img=document.createElement("img"); img.src=src; img.alt=b.title;
     b.appendChild(img);
     b.onclick=()=>{
       grid.querySelectorAll(".auth-avatar-item").forEach(x=>x.classList.remove("selected"));
@@ -1528,6 +1558,7 @@ if (searchInput) {
 
 
 const STICKERS = Array.from({length:28},(_,i)=>`/stickers/${i+1}.webp`);
+const NEW_STICKER = '/stickers/31.webp';
 let stickerPickerReady=false;
 let ownedRewardStickerIds=new Set();
 
@@ -1542,14 +1573,14 @@ function buildStickerPicker(){
   const grid=$("stickerGrid");
   if(!grid)return;
   grid.innerHTML="";
-  const list=[...STICKERS];
+  const list=[...STICKERS, NEW_STICKER];
   if(ownedRewardStickerIds.has(29))list.push('/stickers/29.webp');
   if(ownedRewardStickerIds.has(30))list.push('/stickers/30.webp');
   list.forEach((src,i)=>{
     const b=document.createElement("button");
     b.type="button";
     b.className="sticker-item";
-    b.title=src.endsWith('/29.webp')?'Наградной стикер 50 🍊':src.endsWith('/30.webp')?'Наградной стикер 150 🍊':'Туф';
+    b.title=src.endsWith('/29.webp')?'Подарок 50 🍊':src.endsWith('/30.webp')?'Подарок 150 🍊':src.endsWith('/31.webp')?'БКТ — Капибара и Туф':'Туф';
     b.setAttribute('aria-label',b.title);
     const img=document.createElement("img");
     img.src=src; img.alt=b.title; img.loading="lazy";
