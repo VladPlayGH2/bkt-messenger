@@ -68,6 +68,8 @@ button,input{font:inherit}.app{height:100vh;max-width:1100px;margin:auto;display
 .status-feed-title{padding:8px 18px 0;font-weight:700}.status-list{display:flex;flex-direction:column;gap:10px;margin:10px 18px 18px;max-height:42vh;overflow:auto}
 .status-card{display:flex;gap:10px;align-items:flex-start;padding:12px;border:1px solid #24312b;border-radius:14px;background:#0d1411}.status-card img{width:42px;height:42px;border-radius:50%;object-fit:cover}.status-card-media{width:100%;max-height:300px;object-fit:cover;border-radius:12px;margin-top:8px}.status-card-body{min-width:0;flex:1}.status-card-body b{display:block}.status-card-body small{display:block;color:#8d9893;margin-top:4px;white-space:pre-wrap;word-break:break-word}.status-delete{border:0;background:transparent;color:#ff8d8d;cursor:pointer;font-size:18px}
 @media(max-width:700px){.status-composer-preview{max-height:58vh}.status-modal-card{width:calc(100vw - 12px);max-height:94dvh!important}.tiktok-status-create{padding:12px}.status-list{margin-left:12px;margin-right:12px}}
+
+.call-window-head{display:flex;align-items:center;gap:8px}.call-window-head h3{margin:0;flex:1}.call-minimize-btn{width:32px;height:30px;border:0;border-radius:8px;background:#18251e;color:#fff;cursor:pointer}.call-video-wrap{position:relative;width:100%}#callModal #remoteVideo{width:100%;height:190px;max-height:42vh;border-radius:10px;background:#000;object-fit:cover;transform:none!important}#callModal #localCallVideo{position:absolute;right:8px;top:8px;width:88px;height:64px;border-radius:8px;background:#000;object-fit:cover;display:none;border:1px solid rgba(255,255,255,.25)}.call-mini-bar{position:fixed;right:14px;bottom:14px;z-index:1000;display:none;align-items:center;gap:12px;border:1px solid #2a3a31;background:#0c1110;color:#fff;border-radius:12px;padding:10px 13px;box-shadow:0 8px 30px rgba(0,0,0,.45);cursor:pointer}.call-mini-bar span:last-child{background:#18251e;padding:5px 8px;border-radius:7px;font-size:12px}
 </style>
 <style>
 .community-readonly{display:none;padding:11px 14px;border-top:1px solid #1b2822;color:#8d9893;text-align:center;background:#0a100d;font-size:13px}
@@ -478,7 +480,7 @@ img,video{max-width:100%}
 </div>
 <div id="recording" class="modal" style="display:none"><div class="modal-card"><h3>🎙️ Запись голосового</h3><div id="recordTime">0:00</div><div class="modal-actions"><button onclick="finishRecording()">Отправить</button><button onclick="cancelRecording()">Отмена</button></div></div></div>
 <div id="videoRecording" class="modal" style="display:none"><div class="modal-card"><h3>🎥 Видеосообщение</h3><video id="videoPreview" autoplay muted playsinline></video><div id="videoTime">0:00</div><div class="modal-actions"><button onclick="finishVideoRecording()">Отправить</button><button onclick="cancelVideoRecording()">Отмена</button></div></div></div>
-<div id="callModal" class="modal" style="display:none"><div class="modal-card"><h3 id="callTitle">Звонок</h3><video id="remoteVideo" autoplay playsinline style="width:100%;height:190px;max-height:42vh;border-radius:10px;background:#000;object-fit:cover;transform:none"></video><audio id="remoteAudio" autoplay></audio><div class="modal-actions"><button id="acceptCall" onclick="acceptIncomingCall()">Принять</button><button onclick="endCall()">Завершить</button></div></div></div></main></div>
+<div id="callModal" class="modal" style="display:none"><div class="modal-card"><div class="call-window-head"><h3 id="callTitle">Звонок</h3><button type="button" class="call-minimize-btn" onclick="minimizeCall()" title="Свернуть">—</button></div><div class="call-video-wrap"><video id="remoteVideo" autoplay playsinline></video><video id="localCallVideo" autoplay muted playsinline></video></div><audio id="remoteAudio" autoplay></audio><div class="modal-actions"><button id="acceptCall" onclick="acceptIncomingCall()">Принять</button><button id="callMinimizeAction" type="button" onclick="minimizeCall()" style="display:none">Свернуть</button><button onclick="endCall()">Завершить</button></div></div></div><button id="callMiniBar" class="call-mini-bar" type="button" onclick="restoreCall()" style="display:none"><span id="callMiniTitle">📞 Активный звонок</span><span>Открыть</span></button></main></div>
 
 <div id="statusesModal" class="modal wa-status-modal" style="display:none">
   <div class="wa-status-panel">
@@ -1724,8 +1726,9 @@ async function startCall(type){
     $("callTitle").textContent=type==="video"?"📹 Видеозвонок":"📞 Аудиозвонок";
     $("callModal").style.display="grid";
     $("acceptCall").style.display="none";
-    if(type==="video"){ $("remoteVideo").style.display="block"; $("remoteVideo").muted=false; $("remoteVideo").srcObject=null; }
-    else $("remoteVideo").style.display="none";
+    $("callMinimizeAction").style.display="block";
+    if(type==="video"){ $("remoteVideo").style.display="block"; $("remoteVideo").muted=false; $("remoteVideo").srcObject=null; $("localCallVideo").srcObject=localCallStream; $("localCallVideo").style.display="block"; }
+    else { $("remoteVideo").style.display="none"; $("localCallVideo").srcObject=null; $("localCallVideo").style.display="none"; }
     const callId=`${Date.now()}-${Math.random().toString(36).slice(2)}`;
     localCallId=callId;
     const offer=await peer.createOffer(); await peer.setLocalDescription(offer);
@@ -1808,6 +1811,9 @@ async function acceptIncomingCall(){
       }
     },60000);
     localCallStream.getTracks().forEach(t=>peer.addTrack(t,localCallStream));
+    if(callType==="video"){ $("remoteVideo").style.display="block"; $("localCallVideo").srcObject=localCallStream; $("localCallVideo").style.display="block"; }
+    else { $("remoteVideo").style.display="none"; $("localCallVideo").style.display="none"; }
+    $("callMinimizeAction").style.display="block";
     await peer.setRemoteDescription(new RTCSessionDescription(call.signal));
     for(const c of (call.iceCandidates||[])){
       try{await peer.addIceCandidate(new RTCIceCandidate(c));}catch(e){console.warn("initial ICE add failed",e)}
@@ -1864,6 +1870,8 @@ async function handleCallSignal(d){
     $("remoteVideo").style.display=callType==="video"?"block":"none";
     $("remoteVideo").style.transform="none";
     $("callModal").style.display="grid";
+    $("callMinimizeAction").style.display="none";
+    updateCallMiniBar();
     showIncomingCallNotification(d);
   }else if(d.signalType==="ringing"){
     localCallId=d.callId||null;
@@ -1886,6 +1894,27 @@ async function handleCallSignal(d){
   }
 }
 
+function updateCallMiniBar(){
+  const bar=$("callMiniBar");
+  const title=$("callMiniTitle");
+  if(!bar)return;
+  const active=!!(peer&&localCallStream&&localCallId);
+  bar.style.display=active&&$("callModal")?.style.display!=="grid"?"flex":"none";
+  if(title) title.textContent=(callType==="video"?"📹":"📞")+" "+(selected?.username?"@"+selected.username:"Активный звонок");
+}
+window.minimizeCall=function(){
+  if(!peer||!localCallStream)return;
+  $("callModal").style.display="none";
+  updateCallMiniBar();
+};
+window.restoreCall=function(){
+  if(!peer||!localCallStream)return;
+  $("callModal").style.display="grid";
+  $("callMinimizeAction").style.display="block";
+  updateCallMiniBar();
+  $("remoteAudio").play().catch(()=>{});
+  $("remoteVideo").play().catch(()=>{});
+};
 function endCall(notify=true){
   clearTimeout(callTimeout); callTimeout=null;
   if(notify && callPeerUserId && socket && socket.readyState===WebSocket.OPEN)
@@ -1894,10 +1923,14 @@ function endCall(notify=true){
   if(localCallStream)localCallStream.getTracks().forEach(t=>t.stop());
   peer=null;localCallStream=null;incomingCall=null;pendingIceCandidates=[];incomingIceCandidates=[];callPeerUserId=null;localCallId=null;
   $("callModal").style.display="none";
+  $("callMiniBar").style.display="none";
   $("remoteVideo").srcObject=null;
+  $("localCallVideo").srcObject=null;
   $("remoteAudio").srcObject=null;
   $("acceptCall").style.display="block";
+  $("callMinimizeAction").style.display="none";
 }
+
 
 $("audioCallButton").onclick=()=>startCall("audio");
 $("videoCallButton").onclick=()=>startCall("video");
