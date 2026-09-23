@@ -271,6 +271,8 @@ async function initDb() {
     }
   }
   await query("ALTER TABLE statuses ADD COLUMN IF NOT EXISTS media_url TEXT NOT NULL DEFAULT ''");
+  await query("ALTER TABLE statuses ADD COLUMN IF NOT EXISTS media_data BYTEA");
+  await query("ALTER TABLE statuses ADD COLUMN IF NOT EXISTS media_mime TEXT NOT NULL DEFAULT ''");
   await query("ALTER TABLE messages ADD COLUMN IF NOT EXISTS read_at TIMESTAMPTZ");
   await query("ALTER TABLE users ADD COLUMN IF NOT EXISTS phone TEXT");
   await query("DROP INDEX IF EXISTS idx_users_email_lower");
@@ -470,7 +472,7 @@ const statusStorage = multer.diskStorage({
   }
 });
 const uploadStatusImage = multer({
-  storage: statusStorage,
+  storage: multer.memoryStorage(),
   limits: { fileSize: 8 * 1024 * 1024 },
   fileFilter: (req, file, cb) => cb(null, /^image\/(jpeg|png|webp|gif)$/i.test(file.mimetype))
 });
@@ -985,34 +987,30 @@ app.delete("/api/users/:id/block", auth, async (req, res) => {
 
 app.get("/api/statuses", auth, async (req, res) => {
   try {
-    const expired = await many("DELETE FROM statuses WHERE expires_at <= NOW() RETURNING media_url");
-    for (const row of expired) {
-      if (row.media_url && row.media_url.startsWith("/status-media/")) {
-        const file = path.join(statusMediaDir, path.basename(row.media_url));
-        fs.unlink(file, () => {});
-      }
-    }
-    const rows = await many(`SELECT s.id, s.user_id, u.username, u.avatar, s.text, s.media_url, s.created_at, s.expires_at
+    await query("DELETE FROM statuses WHERE expires_at <= NOW()");
+    const rows = await many(`
+      SELECT s.id, s.user_id, u.username, u.avatar, s.text,
+        CASE WHEN s.media_data IS NOT NULL THEN concat('data:', NULLIF(s.media_mime,''), ';base64,', encode(s.media_data,'base64')) ELSE s.media_url END AS media_url,
+        s.created_at, s.expires_at
       FROM statuses s JOIN users u ON u.id=s.user_id
       WHERE s.expires_at > NOW()
-        AND s.user_id <> $1
-        AND NOT EXISTS (
+        AND (s.user_id = $1 OR NOT EXISTS (
           SELECT 1 FROM user_blocks b
           WHERE (b.blocker_id=$1 AND b.blocked_id=s.user_id)
              OR (b.blocker_id=s.user_id AND b.blocked_id=$1)
-        )
-      UNION ALL
-      SELECT s.id, s.user_id, u.username, u.avatar, s.text, s.media_url, s.created_at, s.expires_at
-      FROM statuses s JOIN users u ON u.id=s.user_id
-      WHERE s.expires_at > NOW() AND s.user_id = $1
+        ))
       ORDER BY created_at DESC LIMIT 100`, [req.user.id]);
+    res.set("Cache-Control", "no-store");
     res.json(rows);
   } catch (e) { console.error(e); res.status(500).json({ error: "Не удалось загрузить статусы" }); }
 });
 
 app.post("/api/statuses/upload", auth, uploadStatusImage.single("image"), async (req, res) => {
-  if (!req.file) return res.status(400).json({ error: "Не удалось получить фото. Разрешены JPG, PNG, WebP или GIF до 8 МБ." });
-  res.json({ url: `/status-media/${req.file.filename}` });
+  if (!req.file || !req.file.buffer?.length) return res.status(400).json({ error: "Не удалось получить фото. Разрешены JPG, PNG, WebP или GIF до 8 МБ." });
+  const mime = String(req.file.mimetype || "");
+  if (!/^image\/(jpeg|png|webp|gif)$/i.test(mime)) return res.status(400).json({ error: "Разрешены JPG, PNG, WebP или GIF." });
+  // The image is kept in memory only; the final status stores it in PostgreSQL.
+  res.json({ url: `data:${mime};base64,${req.file.buffer.toString("base64")}` });
 });
 
 app.post("/api/statuses", auth, async (req, res) => {
@@ -1022,21 +1020,33 @@ app.post("/api/statuses", auth, async (req, res) => {
     const text = String(req.body.text || "").trim();
     const mediaUrl = String(req.body.mediaUrl || "").trim();
     if (text.length > 280) return res.status(400).json({ error: "Текст статуса — максимум 280 символов" });
-    if (!text && !mediaUrl) return res.status(400).json({ error: "Добавьте текст или фото" });
-    if (mediaUrl && !mediaUrl.startsWith("/status-media/")) return res.status(400).json({ error: "Некорректное фото" });
+    let mediaData = null, mediaMime = "", legacyUrl = "";
+    if (mediaUrl.startsWith("data:image/")) {
+      const m = mediaUrl.match(/^data:(image\/(?:jpeg|png|webp|gif));base64,([A-Za-z0-9+/=]+)$/i);
+      if (!m) return res.status(400).json({ error: "Некорректное фото" });
+      mediaMime = m[1].toLowerCase();
+      mediaData = Buffer.from(m[2], "base64");
+      if (!mediaData.length || mediaData.length > 8 * 1024 * 1024) return res.status(400).json({ error: "Фото должно быть не больше 8 МБ" });
+    } else if (mediaUrl) {
+      // Backward compatibility for an old status URL; new uploads never use this path.
+      if (!mediaUrl.startsWith("/status-media/")) return res.status(400).json({ error: "Некорректное фото" });
+      legacyUrl = mediaUrl;
+    }
+    if (!text && !mediaData && !legacyUrl) return res.status(400).json({ error: "Добавьте текст или фото" });
     await query("DELETE FROM statuses WHERE expires_at <= NOW()");
-    const row = await one(`INSERT INTO statuses(user_id,text,media_url,expires_at) VALUES($1,$2,$3,NOW()+INTERVAL '24 hours')
-      RETURNING id,user_id,text,media_url,created_at,expires_at`, [user.id, text, mediaUrl]);
-    res.json({ ...row, username: user.username });
+    const row = await one(`INSERT INTO statuses(user_id,text,media_url,media_data,media_mime,expires_at) VALUES($1,$2,$3,$4,$5,NOW()+INTERVAL '24 hours')
+      RETURNING id,user_id,text,media_url,created_at,expires_at`, [user.id, text, legacyUrl, mediaData, mediaMime]);
+    row.media_url = mediaData ? `data:${mediaMime};base64,${mediaData.toString("base64")}` : legacyUrl;
+    row.username = user.username;
+    res.json(row);
   } catch (e) { console.error(e); res.status(500).json({ error: "Не удалось сохранить статус" }); }
 });
 
 app.delete("/api/statuses/:id", auth, async (req, res) => {
   try {
     const uid = await currentUserId(req);
-    const row = await one("DELETE FROM statuses WHERE id=$1 AND user_id=$2 RETURNING id,media_url", [Number(req.params.id), uid]);
+    const row = await one("DELETE FROM statuses WHERE id=$1 AND user_id=$2 RETURNING id", [Number(req.params.id), uid]);
     if (!row) return res.status(404).json({ error: "Статус не найден" });
-    if (row.media_url && row.media_url.startsWith("/status-media/")) fs.unlink(path.join(statusMediaDir, path.basename(row.media_url)), () => {});
     res.json({ ok: true });
   } catch (e) { console.error(e); res.status(500).json({ error: "Не удалось удалить статус" }); }
 });

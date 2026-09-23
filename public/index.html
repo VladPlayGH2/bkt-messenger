@@ -2563,11 +2563,11 @@ window.addEventListener('beforeunload',(e)=>{
   background:linear-gradient(to bottom,rgba(0,0,0,.68),rgba(0,0,0,0))!important;
   color:#fff!important;pointer-events:none!important;
 }
-.tiktok-status-top-user{display:flex;align-items:center;gap:9px;min-width:0;text-shadow:0 1px 3px rgba(0,0,0,.8)}
+.tiktok-status-top-user{display:flex!important;visibility:visible!important;opacity:1!important;align-items:center;gap:9px;min-width:0;text-shadow:0 1px 3px rgba(0,0,0,.8)}
 .tiktok-status-top-user .tiktok-status-avatar{width:38px!important;height:38px!important;flex:none!important}
 .tiktok-status-top-user b{display:block;font-size:15px;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:58vw}
 .tiktok-status-top-user small{display:block;font-size:11px;opacity:.78;margin-top:3px}
-.tiktok-status-top-plus{pointer-events:auto!important;width:44px!important;height:44px!important;border:0!important;border-radius:50%!important;background:rgba(0,0,0,.5)!important;color:#fff!important;font-size:30px!important;line-height:1!important;display:grid!important;place-items:center!important;cursor:pointer!important;backdrop-filter:blur(6px)!important;touch-action:manipulation!important}
+.tiktok-status-top-plus{pointer-events:auto!important;position:relative!important;z-index:51!important;visibility:visible!important;opacity:1!important;width:44px!important;height:44px!important;border:0!important;border-radius:50%!important;background:rgba(0,0,0,.5)!important;color:#fff!important;font-size:30px!important;line-height:1!important;display:grid!important;place-items:center!important;cursor:pointer!important;backdrop-filter:blur(6px)!important;touch-action:manipulation!important}
 .tiktok-status-info{bottom:24px!important}
 .tiktok-status-photo{max-width:min(88vw,520px)!important;max-height:calc(100dvh - 190px)!important}
 @media(max-width:700px){
@@ -2576,6 +2576,10 @@ window.addEventListener('beforeunload',(e)=>{
  .tiktok-status-topbar{padding-left:12px!important;padding-right:12px!important}
  .tiktok-status-top-plus{width:46px!important;height:46px!important;font-size:31px!important}
  .tiktok-status-info{left:12px!important;right:62px!important;bottom:16px!important}
+ .tiktok-status-topbar{z-index:50!important;visibility:visible!important;opacity:1!important;pointer-events:none!important}
+ .tiktok-status-top-user{visibility:visible!important;opacity:1!important}
+ .tiktok-status-top-user b{color:#fff!important}
+ .tiktok-status-top-plus{position:relative!important;z-index:51!important;visibility:visible!important;opacity:1!important}
 }
 </style>
 </body></html>
