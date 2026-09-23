@@ -69,7 +69,7 @@ button,input{font:inherit}.app{height:100vh;max-width:1100px;margin:auto;display
 .status-card{display:flex;gap:10px;align-items:flex-start;padding:12px;border:1px solid #24312b;border-radius:14px;background:#0d1411}.status-card img{width:42px;height:42px;border-radius:50%;object-fit:cover}.status-card-media{width:100%;max-height:300px;object-fit:cover;border-radius:12px;margin-top:8px}.status-card-body{min-width:0;flex:1}.status-card-body b{display:block}.status-card-body small{display:block;color:#8d9893;margin-top:4px;white-space:pre-wrap;word-break:break-word}.status-delete{border:0;background:transparent;color:#ff8d8d;cursor:pointer;font-size:18px}
 @media(max-width:700px){.status-composer-preview{max-height:58vh}.status-modal-card{width:calc(100vw - 12px);max-height:94dvh!important}.tiktok-status-create{padding:12px}.status-list{margin-left:12px;margin-right:12px}}
 
-.call-window-head{display:flex;align-items:center;gap:8px}.call-window-head h3{margin:0;flex:1}.call-minimize-btn{width:32px;height:30px;border:0;border-radius:8px;background:#18251e;color:#fff;cursor:pointer}.call-video-wrap{position:relative;width:100%}#callModal #remoteVideo{width:100%;height:190px;max-height:42vh;border-radius:10px;background:#000;object-fit:cover;transform:none!important}#callModal #localCallVideo{position:absolute;right:8px;top:8px;width:88px;height:64px;border-radius:8px;background:#000;object-fit:cover;display:none;border:1px solid rgba(255,255,255,.25)}.call-mini-bar{position:fixed;right:14px;bottom:14px;z-index:1000;display:none;align-items:center;gap:12px;border:1px solid #2a3a31;background:#0c1110;color:#fff;border-radius:12px;padding:10px 13px;box-shadow:0 8px 30px rgba(0,0,0,.45);cursor:pointer}.call-mini-bar span:last-child{background:#18251e;padding:5px 8px;border-radius:7px;font-size:12px}
+.call-window-head{display:flex;align-items:center;gap:8px}.call-duration{font-variant-numeric:tabular-nums;min-width:48px;text-align:center;font-size:12px;opacity:.9;background:#18251e;padding:5px 7px;border-radius:7px}.call-window-head h3{margin:0;flex:1}.call-minimize-btn{width:32px;height:30px;border:0;border-radius:8px;background:#18251e;color:#fff;cursor:pointer}.call-video-wrap{position:relative;width:100%}#callModal #remoteVideo{width:100%;height:190px;max-height:42vh;border-radius:10px;background:#000;object-fit:cover;transform:none!important}#callModal #localCallVideo{position:absolute;right:8px;top:8px;width:88px;height:64px;border-radius:8px;background:#000;object-fit:cover;display:none;border:1px solid rgba(255,255,255,.25)}.call-mini-bar{position:fixed;right:14px;bottom:14px;z-index:1000;display:none;align-items:center;gap:12px;border:1px solid #2a3a31;background:#0c1110;color:#fff;border-radius:12px;padding:10px 13px;box-shadow:0 8px 30px rgba(0,0,0,.45);cursor:pointer}.call-mini-bar span:last-child{background:#18251e;padding:5px 8px;border-radius:7px;font-size:12px}
 </style>
 <style>
 .community-readonly{display:none;padding:11px 14px;border-top:1px solid #1b2822;color:#8d9893;text-align:center;background:#0a100d;font-size:13px}
@@ -480,7 +480,7 @@ img,video{max-width:100%}
 </div>
 <div id="recording" class="modal" style="display:none"><div class="modal-card"><h3>🎙️ Запись голосового</h3><div id="recordTime">0:00</div><div class="modal-actions"><button onclick="finishRecording()">Отправить</button><button onclick="cancelRecording()">Отмена</button></div></div></div>
 <div id="videoRecording" class="modal" style="display:none"><div class="modal-card"><h3>🎥 Видеосообщение</h3><video id="videoPreview" autoplay muted playsinline></video><div id="videoTime">0:00</div><div class="modal-actions"><button onclick="finishVideoRecording()">Отправить</button><button onclick="cancelVideoRecording()">Отмена</button></div></div></div>
-<div id="callModal" class="modal" style="display:none"><div class="modal-card"><div class="call-window-head"><h3 id="callTitle">Звонок</h3><button type="button" class="call-minimize-btn" onclick="minimizeCall()" title="Свернуть">—</button></div><div class="call-video-wrap"><video id="remoteVideo" autoplay playsinline></video><video id="localCallVideo" autoplay muted playsinline></video></div><audio id="remoteAudio" autoplay></audio><div class="modal-actions"><button id="acceptCall" onclick="acceptIncomingCall()">Принять</button><button id="callMinimizeAction" type="button" onclick="minimizeCall()" style="display:none">Свернуть</button><button onclick="endCall()">Завершить</button></div></div></div><button id="callMiniBar" class="call-mini-bar" type="button" onclick="restoreCall()" style="display:none"><span id="callMiniTitle">📞 Активный звонок</span><span>Открыть</span></button></main></div>
+<div id="callModal" class="modal" style="display:none"><div class="modal-card"><div class="call-window-head"><h3 id="callTitle">Звонок</h3><span id="callDuration" class="call-duration">00:00</span><button type="button" class="call-minimize-btn" onclick="minimizeCall()" title="Свернуть">—</button></div><div class="call-video-wrap"><video id="remoteVideo" autoplay playsinline></video><video id="localCallVideo" autoplay muted playsinline></video></div><audio id="remoteAudio" autoplay></audio><div class="modal-actions"><button id="acceptCall" onclick="acceptIncomingCall()">Принять</button><button id="callMinimizeAction" type="button" onclick="minimizeCall()" style="display:none">Свернуть</button><button onclick="endCall()">Завершить</button></div></div></div><button id="callMiniBar" class="call-mini-bar" type="button" onclick="restoreCall()" style="display:none"><span id="callMiniTitle">📞 Активный звонок</span><span>Открыть</span></button></main></div>
 
 <div id="statusesModal" class="modal wa-status-modal" style="display:none">
   <div class="wa-status-panel">
@@ -1700,13 +1700,43 @@ async function send(){
 }
 
 
-let peer=null, localCallStream=null, incomingCall=null, callType="audio", pendingIceCandidates=[], incomingIceCandidates=[], callPeerUserId=null, localCallId=null, callTimeout=null;
+let peer=null, localCallStream=null, incomingCall=null, callType="audio", pendingIceCandidates=[], incomingIceCandidates=[], callPeerUserId=null, localCallId=null, callTimeout=null, callStartedAt=0, callDurationTimer=null;
 
 function callSocket(data){
   if(!socket || socket.readyState!==WebSocket.OPEN){
     throw new Error("Нет соединения с сервером. Перезагрузи страницу.");
   }
   socket.send(JSON.stringify(data));
+}
+
+function formatCallDuration(totalSeconds){
+  const s=Math.max(0,Math.floor(Number(totalSeconds)||0));
+  const h=Math.floor(s/3600);
+  const m=Math.floor((s%3600)/60);
+  const sec=s%60;
+  return h ? `${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}:${String(sec).padStart(2,"0")}` : `${String(m).padStart(2,"0")}:${String(sec).padStart(2,"0")}`;
+}
+function updateCallDuration(){
+  const el=$("callDuration");
+  if(el) el.textContent=callStartedAt ? formatCallDuration((Date.now()-callStartedAt)/1000) : "00:00";
+  const mini=$("callMiniTitle");
+  if(mini && callStartedAt){
+    const who=selected?.username ? `@${selected.username}` : "Активный звонок";
+    mini.textContent=(callType==="video"?"📹":"📞")+" "+who+" · "+formatCallDuration((Date.now()-callStartedAt)/1000);
+  }
+}
+function startCallDuration(){
+  if(!callStartedAt) callStartedAt=Date.now();
+  clearInterval(callDurationTimer);
+  updateCallDuration();
+  callDurationTimer=setInterval(updateCallDuration,1000);
+}
+function stopCallDuration(){
+  clearInterval(callDurationTimer);
+  callDurationTimer=null;
+  callStartedAt=0;
+  const el=$("callDuration");
+  if(el) el.textContent="00:00";
 }
 
 async function startCall(type){
@@ -1758,7 +1788,7 @@ function createPeer(){
   };
   pc.onicecandidateerror=e=>console.warn("ICE candidate error", e.errorCode, e.url);
   pc.oniceconnectionstatechange=()=>{
-    if(["connected","completed"].includes(pc.iceConnectionState)) clearTimeout(callTimeout);
+    if(["connected","completed"].includes(pc.iceConnectionState)) { clearTimeout(callTimeout); startCallDuration(); }
     if(pc.iceConnectionState==="failed") {
       console.warn("ICE failed; TURN may be unavailable");
     }
@@ -1771,6 +1801,7 @@ function createPeer(){
     $("remoteVideo").play().catch(()=>{});
   };
   pc.onconnectionstatechange=()=>{
+    if(["connected"].includes(pc.connectionState)) startCallDuration();
     if(pc.connectionState==="failed") {
       console.warn("WebRTC connection failed");
     }
@@ -1900,7 +1931,10 @@ function updateCallMiniBar(){
   if(!bar)return;
   const active=!!(peer&&localCallStream&&localCallId);
   bar.style.display=active&&$("callModal")?.style.display!=="grid"?"flex":"none";
-  if(title) title.textContent=(callType==="video"?"📹":"📞")+" "+(selected?.username?"@"+selected.username:"Активный звонок");
+  if(title) {
+    const who=selected?.username?"@"+selected.username:"Активный звонок";
+    title.textContent=(callType==="video"?"📹":"📞")+" "+who+(callStartedAt?" · "+formatCallDuration((Date.now()-callStartedAt)/1000):"");
+  }
 }
 window.minimizeCall=function(){
   if(!peer||!localCallStream)return;
@@ -1920,6 +1954,7 @@ function endCall(notify=true){
   if(notify && callPeerUserId && socket && socket.readyState===WebSocket.OPEN)
     callSocket({type:"call-signal",toUserId:Number(callPeerUserId),signalType:"hangup",callId:localCallId,signal:{}});
   try{if(peer)peer.close()}catch(e){}
+  stopCallDuration();
   if(localCallStream)localCallStream.getTracks().forEach(t=>t.stop());
   peer=null;localCallStream=null;incomingCall=null;pendingIceCandidates=[];incomingIceCandidates=[];callPeerUserId=null;localCallId=null;
   $("callModal").style.display="none";
@@ -2273,7 +2308,16 @@ document.addEventListener("click", function(e){
   };
 })();
 </script>
-<script>document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')markSelectedChatRead();});</script>
+<script>
+// Не завершаем WebRTC при сворачивании/уходе со страницы: активный звонок
+// продолжает использовать микрофон/камеру, пока браузер не выгрузит страницу.
+document.addEventListener('visibilitychange',()=>{
+  if(document.visibilityState==='visible'){ markSelectedChatRead(); updateCallMiniBar(); updateCallDuration(); }
+});
+window.addEventListener('beforeunload',(e)=>{
+  if(peer && localCallStream){ e.preventDefault(); e.returnValue=''; }
+});
+</script>
 \n<script id="bkt-statuses-final-fix">\n(function(){\n  const $=id=>document.getElementById(id);\n  const auth=()=>typeof token!=="undefined"&&token?{Authorization:"Bearer "+token}:{};\n  let rows=[]; let current=0; let timer=null;\n  function esc(v){return typeof escapeHtml==="function"?escapeHtml(v||""):String(v||"").replace(/[&<>\"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'\"':"&quot;","'":"&#39;"}[c]));}\n  function apiLocal(path,opts={}){\n    const headers={...(opts.headers||{}),...auth()};\n    if(opts.body && typeof opts.body!=="string"){headers["Content-Type"]="application/json";opts={...opts,body:JSON.stringify(opts.body)};}\n    return fetch(path,{...opts,headers}).then(async r=>{const t=await r.text();let d={};try{d=t?JSON.parse(t):{}}catch(_){d={error:t||("HTTP "+r.status)}};if(!r.ok)throw new Error(d.error||d.message||("HTTP "+r.status));return d;});\n  }\n  function closeViewer(){clearTimeout(timer);timer=null;const m=$("statusViewerModal");if(m)m.style.display="none";}\n  function openViewer(i){if(!rows[i])return;current=i;const m=$("statusViewerModal");if(m)m.style.display="grid";renderViewer();}\n  function renderViewer(){\n    const feed=$("tiktokStatusFeed"); if(!feed)return;\n    feed.innerHTML=rows.map((s,i)=>{\n      const media=s.media_url?`<img class="tiktok-status-photo" src="${esc(s.media_url)}" alt="Фото статуса" loading="eager">`:`<div class="tiktok-status-photo" style="display:grid;place-items:center;background:#0c1711;font-size:64px">💬</div>`;\n      const avatar=s.avatar?`<img class="tiktok-status-avatar" src="${esc(s.avatar)}" alt="">`:`<div class="tiktok-status-avatar" style="display:grid;place-items:center;font-weight:800">${esc((s.username||"?")[0].toUpperCase())}</div>`;\n      const own=Number(s.user_id)===Number(window.me?.id);\n      return `<section class="tiktok-status-slide" data-index="${i}">${media}<div class="tiktok-status-gradient"></div><div class="tiktok-status-info"><div class="tiktok-status-user">${avatar}<span>${esc(s.username||"Пользователь")}</span></div>${s.text?`<div class="tiktok-status-caption">${esc(s.text)}</div>`:""}<div class="tiktok-status-date">${esc(new Date(s.created_at).toLocaleString("ru-RU",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}))}</div></div><div class="tiktok-status-actions"><button class="tiktok-status-action" onclick="focusStatusComposer()">＋</button>${own?`<button class="tiktok-status-action" title="Удалить" onclick="deleteStatus(${Number(s.id)})">🗑️</button>`:""}</div></section>`;\n    }).join("");\n    requestAnimationFrame(()=>scrollToCurrent(false));\n    clearTimeout(timer); if(rows.length)timer=setTimeout(()=>{if(current<rows.length-1){current++;scrollToCurrent(true);}else closeViewer();},5000);\n  }\n  function scrollToCurrent(smooth){const f=$("tiktokStatusFeed");if(!f)return;const el=f.children[current];if(el)f.scrollTo({top:el.offsetTop,behavior:smooth?"smooth":"auto"});}\n  async function load(){\n    try{rows=await apiLocal("/api/statuses");if(!Array.isArray(rows))rows=[];\n      const list=$("statusFeed"),empty=$("statusEmpty");\n      if(list){list.innerHTML="";list.style.display=rows.length?"block":"";}\n      if(empty){empty.style.display=rows.length?"none":"flex";empty.textContent=rows.length?"":"Здесь появятся статусы контактов";}\n      rows.forEach((s,i)=>{if(!list)return;const item=document.createElement("button");item.type="button";item.className="wa-status-row";item.onclick=()=>openViewer(i);item.innerHTML=`<span class="wa-status-avatar" style="background-image:url('${esc(s.avatar||"")}')"></span><span class="wa-status-row-body"><b>${esc(s.username||"Пользователь")}</b><small>${s.media_url?"📷 Фото статуса":"💬 Текстовый статус"} · ${new Date(s.created_at).toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"})}</small></span>`;list.appendChild(item);});\n      const my=$("waMyStatusAvatar");if(my&&window.me?.avatar)my.style.backgroundImage=`url("${esc(window.me.avatar)}")`;\n    }catch(e){const empty=$("statusEmpty");if(empty){empty.style.display="flex";empty.textContent=e.message||"Не удалось загрузить статусы";}}\n  }\n  window.openStatuses=async function(){const m=$("statusesModal");if(m)m.style.display="flex";await load();};\n  window.loadStatuses=load;\n  window.openStatusViewer=openViewer;\n  window.closeStatusViewer=closeViewer;\n  window.closeStatuses=function(){const m=$("statusesModal");if(m)m.style.display="none";closeViewer();};\n  window.deleteStatus=async function(id){\n    if(!confirm("Удалить этот статус навсегда?"))return;\n    try{await apiLocal("/api/statuses/"+encodeURIComponent(id),{method:"DELETE"});rows=rows.filter(s=>Number(s.id)!==Number(id));await load();if(rows.length)openViewer(Math.min(current,rows.length-1));else closeViewer();}\n    catch(e){alert(e.message||"Не удалось удалить статус");}\n  };\n  window.publishStatus=async function(){\n    const file=$("statusPhotoInput")?.files?.[0] || $("statusCameraInput")?.files?.[0] || window.cameraShot;\n    const text=($("statusCaption")?.value||$("statusText")?.value||"").trim();\n    if(!file){alert("Выберите фото или сделайте снимок.");return;}\n    const btn=$("statusPublishButton");if(btn){btn.disabled=true;btn.textContent="Публикация…";}\n    try{\n      const fd=new FormData();fd.append("image",file,file.name||"status.jpg");\n      const up=await fetch("/api/statuses/upload",{method:"POST",headers:auth(),body:fd});\n      const ud=await up.json().catch(()=>({}));if(!up.ok)throw new Error(ud.error||"Не удалось загрузить фото");\n      await apiLocal("/api/statuses",{method:"POST",body:{text,mediaUrl:ud.url}});\n      if($("statusPhotoInput"))$("statusPhotoInput").value="";if($("statusCameraInput"))$("statusCameraInput").value="";if($("statusCaption"))$("statusCaption").value="";\n      if(typeof closeStatusComposer==="function")closeStatusComposer();else{$("statusComposerModal").style.display="none";}\n      await load();\n    }catch(e){alert(e.message||"Не удалось опубликовать статус");}\n    finally{if(btn){btn.disabled=false;btn.textContent="Опубликовать";}}\n  };\n  window.addEventListener("load",()=>{load();});\n  document.addEventListener("keydown",e=>{if($("statusViewerModal")?.style.display!=="grid")return;if(e.key==="Escape")closeViewer();if(e.key==="ArrowDown"){current=Math.min(rows.length-1,current+1);scrollToCurrent(true);}if(e.key==="ArrowUp"){current=Math.max(0,current-1);scrollToCurrent(true);}});\n})();\n</script>\n
 <style id="bkt-statuses-desktop-final">
 /* Final TikTok-style status viewer: the header is part of the shell, so the feed
