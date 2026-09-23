@@ -2393,13 +2393,14 @@ window.addEventListener('beforeunload',(e)=>{
       return `<section class="tiktok-status-slide" data-index="${i}">
         ${media}
         <div class="tiktok-status-gradient"></div>
+        <div class="tiktok-status-topbar">
+          <div class="tiktok-status-top-user">${avatar}<div><b>${esc(s.username||"Пользователь")}</b><small>${esc(new Date(s.created_at).toLocaleTimeString("ru-RU",{hour:"2-digit",minute:"2-digit"}))}</small></div></div>
+          <button type="button" class="tiktok-status-top-plus" title="Добавить статус" aria-label="Добавить статус" onclick="event.stopPropagation();focusStatusComposer()">＋</button>
+        </div>
         <div class="tiktok-status-info">
-          <div class="tiktok-status-user">${avatar}<span>${esc(s.username||"Пользователь")}</span></div>
           ${s.text?`<div class="tiktok-status-caption">${esc(s.text)}</div>`:""}
-          <div class="tiktok-status-date">${esc(new Date(s.created_at).toLocaleString("ru-RU",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}))}</div>
         </div>
         <div class="tiktok-status-actions">
-          <button type="button" class="tiktok-status-action" title="Новый статус" onclick="focusStatusComposer();event.stopPropagation()">＋</button>
           ${own?`<button type="button" class="tiktok-status-action" title="Удалить" onclick="deleteStatus(${Number(s.id)});event.stopPropagation()">🗑️</button>`:""}
         </div>
       </section>`;
@@ -2553,4 +2554,28 @@ window.addEventListener('beforeunload',(e)=>{
   // На телефоне листание вверх/вниз работает свайпом, на ПК — колесом/стрелками.
 })();
 </script>
+
+<style id="bkt-statuses-name-plus-final">
+.tiktok-status-topbar{
+  position:absolute!important;top:0!important;left:0!important;right:0!important;z-index:8!important;
+  display:flex!important;align-items:center!important;justify-content:space-between!important;
+  padding:12px 14px!important;padding-top:max(12px,env(safe-area-inset-top))!important;
+  background:linear-gradient(to bottom,rgba(0,0,0,.68),rgba(0,0,0,0))!important;
+  color:#fff!important;pointer-events:none!important;
+}
+.tiktok-status-top-user{display:flex;align-items:center;gap:9px;min-width:0;text-shadow:0 1px 3px rgba(0,0,0,.8)}
+.tiktok-status-top-user .tiktok-status-avatar{width:38px!important;height:38px!important;flex:none!important}
+.tiktok-status-top-user b{display:block;font-size:15px;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:58vw}
+.tiktok-status-top-user small{display:block;font-size:11px;opacity:.78;margin-top:3px}
+.tiktok-status-top-plus{pointer-events:auto!important;width:44px!important;height:44px!important;border:0!important;border-radius:50%!important;background:rgba(0,0,0,.5)!important;color:#fff!important;font-size:30px!important;line-height:1!important;display:grid!important;place-items:center!important;cursor:pointer!important;backdrop-filter:blur(6px)!important;touch-action:manipulation!important}
+.tiktok-status-info{bottom:24px!important}
+.tiktok-status-photo{max-width:min(88vw,520px)!important;max-height:calc(100dvh - 190px)!important}
+@media(max-width:700px){
+ .tiktok-status-slide{padding:64px 8px 105px!important}
+ .tiktok-status-photo{max-width:90vw!important;max-height:calc(100dvh - 205px)!important}
+ .tiktok-status-topbar{padding-left:12px!important;padding-right:12px!important}
+ .tiktok-status-top-plus{width:46px!important;height:46px!important;font-size:31px!important}
+ .tiktok-status-info{left:12px!important;right:62px!important;bottom:16px!important}
+}
+</style>
 </body></html>
