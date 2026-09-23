@@ -2376,13 +2376,8 @@ window.addEventListener('beforeunload',(e)=>{
     scheduleAuto();
   }
   function scheduleAuto(){
-    if(timer)clearTimeout(timer);
-    timer=null;
-    if(rows.length<=1)return;
-    timer=setTimeout(()=>{
-      if(current<rows.length-1) moveTo(current+1,true);
-      else closeViewer();
-    },5000);
+    // Листание статусов теперь полностью ручное: без автоматического перехода.
+    if(timer){clearTimeout(timer);timer=null;}
   }
   function render(){
     const feed=$("tiktokStatusFeed");
@@ -2504,4 +2499,58 @@ window.addEventListener('beforeunload',(e)=>{
 })();
 </script>
 
+
+<style id="bkt-statuses-phone-comfort-final">
+/* Компактный просмотр статуса: фото не растягивается на весь экран. */
+.tiktok-status-slide{
+  box-sizing:border-box!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  padding:66px 14px 92px!important;
+  background:#050505!important;
+}
+.tiktok-status-photo{
+  position:relative!important;
+  width:auto!important;
+  height:auto!important;
+  max-width:min(92vw,560px)!important;
+  max-height:calc(100dvh - 170px)!important;
+  object-fit:contain!important;
+  border-radius:14px!important;
+  display:block!important;
+  box-shadow:0 8px 35px rgba(0,0,0,.45)!important;
+}
+.tiktok-status-slide > .tiktok-status-photo[style]{
+  width:min(92vw,560px)!important;
+  height:min(60dvh,560px)!important;
+}
+.tiktok-status-gradient{
+  background:linear-gradient(to bottom,rgba(0,0,0,.25),transparent 22%,transparent 70%,rgba(0,0,0,.72))!important;
+}
+.tiktok-status-info{
+  left:14px!important;right:70px!important;bottom:18px!important;
+  max-width:calc(100% - 84px)!important;
+}
+.tiktok-status-caption{font-size:15px!important;line-height:1.25!important}
+.tiktok-status-actions{right:10px!important;bottom:18px!important;gap:9px!important}
+.tiktok-status-action{width:42px!important;height:42px!important;font-size:20px!important}
+@media(max-width:700px){
+  .tiktok-status-slide{padding:62px 8px 88px!important;touch-action:pan-y!important}
+  .tiktok-status-photo{max-width:94vw!important;max-height:calc(100dvh - 155px)!important;border-radius:12px!important}
+  .tiktok-status-info{left:12px!important;right:62px!important;bottom:12px!important}
+  .tiktok-status-user{font-size:14px!important;margin-bottom:5px!important}
+  .tiktok-status-date{font-size:10px!important;margin-top:4px!important}
+  .tiktok-status-actions{right:8px!important;bottom:12px!important}
+  .tiktok-status-action{width:40px!important;height:40px!important}
+}
+</style>
+<script id="bkt-statuses-manual-scroll-final">
+(function(){
+  const $=id=>document.getElementById(id);
+  function isOpen(){const m=$("statusViewerModal");return m&&m.style.display==="grid";}
+  document.addEventListener("touchmove",e=>{if(isOpen()) e.stopPropagation();},{passive:true});
+  // На телефоне листание вверх/вниз работает свайпом, на ПК — колесом/стрелками.
+})();
+</script>
 </body></html>
