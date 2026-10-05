@@ -13,7 +13,7 @@ button,input{font:inherit}.app{height:100vh;max-width:1100px;margin:auto;display
 .verified-badge{display:inline-grid;place-items:center;width:17px;height:17px;margin-left:4px;border-radius:50%;background:#2388ff;color:#fff;font-size:11px;font-weight:900;vertical-align:middle}
 .group-item{padding:12px 16px;border-radius:12px;cursor:pointer;margin:3px 10px}
 .group-item:hover{background:#142019}
-.verified-badge{display:inline-grid;place-items:center;width:17px;height:17px;margin-left:4px;border-radius:50%;background:#2388ff;color:#fff;font-size:11px;font-weight:900;vertical-align:middle}.group-item{padding:10px 18px;cursor:pointer;border-bottom:1px solid #17211c}.modal{position:fixed;inset:0;background:rgba(0,0,0,.7);display:none;place-items:center;z-index:20}.modal-card{width:min(420px,92vw);background:#0c1110;border:1px solid #24312b;border-radius:18px;padding:22px}#callModal .modal-card{width:min(280px,82vw);padding:10px;border-radius:12px}#callModal #remoteVideo{width:100%;height:150px;max-height:34vh;border-radius:10px;background:#000;object-fit:cover;transform:none!important}#callModal .modal-actions{gap:7px;margin-top:10px}#callModal .modal-actions button{padding:8px 10px;border-radius:9px;font-size:13px}#callModal .modal-actions button[onclick="endCall()"]{background:#b42323;color:#fff}.modal-card input,.modal-card textarea{width:100%;background:#111716;border:1px solid #24312b;border-radius:10px;padding:11px;color:#fff;margin:6px 0 12px}.modal-actions{display:flex;gap:8px}.modal-actions button{flex:1;padding:11px;border:0;border-radius:10px;cursor:pointer}
+.verified-badge{display:inline-grid;place-items:center;width:17px;height:17px;margin-left:4px;border-radius:50%;background:#2388ff;color:#fff;font-size:11px;font-weight:900;vertical-align:middle}.group-item{padding:10px 18px;cursor:pointer;border-bottom:1px solid #17211c}.modal{position:fixed;inset:0;background:rgba(0,0,0,.7);display:none;place-items:center;z-index:20}.modal-card{width:min(420px,92vw);background:#0c1110;border:1px solid #24312b;border-radius:18px;padding:22px}#callModal .modal-card{width:min(280px,82vw);padding:10px;border-radius:12px}#callModal #remoteVideo{width:100%;height:150px;max-height:34vh;border-radius:10px;background:#000;object-fit:cover;transform:none!important;-webkit-transform:none!important}#callModal .modal-actions{gap:7px;margin-top:10px}#callModal .modal-actions button{padding:8px 10px;border-radius:9px;font-size:13px}#callModal .modal-actions button[onclick="endCall()"]{background:#b42323;color:#fff}.modal-card input,.modal-card textarea{width:100%;background:#111716;border:1px solid #24312b;border-radius:10px;padding:11px;color:#fff;margin:6px 0 12px}.modal-actions{display:flex;gap:8px}.modal-actions button{flex:1;padding:11px;border:0;border-radius:10px;cursor:pointer}
 .chat-title{min-width:0;flex:1}.chat-title b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.call-actions{display:flex;gap:6px;margin-left:auto}.call-actions button{width:42px;height:42px;min-width:42px;border:1px solid #24312b;border-radius:12px;background:#111716;color:#fff;cursor:pointer}.call-actions button:hover{background:#17231c}.call-actions button:disabled{opacity:.45;cursor:not-allowed}
 .call-actions .active{background:#0b6630;border-color:#22ff72}
 .call-history{opacity:.8;font-style:italic}
@@ -22,7 +22,7 @@ button,input{font:inherit}.app{height:100vh;max-width:1100px;margin:auto;display
 .quick-actions{display:flex;gap:6px;margin:0 10px 10px}.quick-actions button{flex:1;min-width:0;padding:8px 5px;border:1px solid #24312b;background:#111716;color:#fff;border-radius:10px;cursor:pointer;font-size:12px;white-space:nowrap}.quick-actions .notify-btn{margin:0;width:auto}.avatar-upload,.wallpaper-row{display:flex;gap:7px;align-items:center}.avatar-upload input[type=file]{display:none}.avatar-upload button,.wallpaper-row button{border:0;border-radius:9px;padding:9px;cursor:pointer;background:#18251e;color:#fff}.avatar-upload #profileAvatar,.wallpaper-row input[placeholder]{min-width:0;flex:1}.wallpaper-row input[type=color]{width:46px;height:38px;padding:2px;background:#111716;border:1px solid #24312b;border-radius:8px}.settings-modal .modal-card{}
 .profile-view-card{width:min(430px,92vw);background:#0c1110;border:1px solid #24312b;border-radius:20px;padding:24px;text-align:center}
 .profile-view-avatar{width:96px;height:96px;border-radius:50%;margin:4px auto 14px;background:#0c6630;display:grid;place-items:center;font-size:34px;font-weight:700;overflow:hidden}
-.profile-view-avatar img{width:100%;height:100%;object-fit:cover}
+.profile-view-avatar img{width:100%;height:100%;object-fit:cover}.profile-view-avatar{position:relative}.profile-view-avatar .profile-frame-overlay{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;pointer-events:none;z-index:3}
 .profile-view-name{font-size:22px;font-weight:700}
 .profile-view-username{color:#8d9893;margin-top:4px}
 .profile-view-bio{margin:18px 0;color:#dce5e0;white-space:pre-wrap;word-break:break-word;min-height:24px}
@@ -69,7 +69,7 @@ button,input{font:inherit}.app{height:100vh;max-width:1100px;margin:auto;display
 .status-card{display:flex;gap:10px;align-items:flex-start;padding:12px;border:1px solid #24312b;border-radius:14px;background:#0d1411}.status-card img{width:42px;height:42px;border-radius:50%;object-fit:cover}.status-card-media{width:100%;max-height:300px;object-fit:cover;border-radius:12px;margin-top:8px}.status-card-body{min-width:0;flex:1}.status-card-body b{display:block}.status-card-body small{display:block;color:#8d9893;margin-top:4px;white-space:pre-wrap;word-break:break-word}.status-delete{border:0;background:transparent;color:#ff8d8d;cursor:pointer;font-size:18px}
 @media(max-width:700px){.status-composer-preview{max-height:58vh}.status-modal-card{width:calc(100vw - 12px);max-height:94dvh!important}.tiktok-status-create{padding:12px}.status-list{margin-left:12px;margin-right:12px}}
 
-.call-window-head{display:flex;align-items:center;gap:8px}.call-duration{font-variant-numeric:tabular-nums;min-width:48px;text-align:center;font-size:12px;opacity:.9;background:#18251e;padding:5px 7px;border-radius:7px}.call-window-head h3{margin:0;flex:1}.call-minimize-btn{width:32px;height:30px;border:0;border-radius:8px;background:#18251e;color:#fff;cursor:pointer}.call-video-wrap{position:relative;width:100%}#callModal #remoteVideo{width:100%;height:190px;max-height:42vh;border-radius:10px;background:#000;object-fit:cover;transform:none!important}#callModal #localCallVideo{position:absolute;right:8px;top:8px;width:88px;height:64px;border-radius:8px;background:#000;object-fit:cover;display:none;border:1px solid rgba(255,255,255,.25)}.call-mini-bar{position:fixed;right:14px;bottom:14px;z-index:1000;display:none;align-items:center;gap:12px;border:1px solid #2a3a31;background:#0c1110;color:#fff;border-radius:12px;padding:10px 13px;box-shadow:0 8px 30px rgba(0,0,0,.45);cursor:pointer}.call-mini-bar span:last-child{background:#18251e;padding:5px 8px;border-radius:7px;font-size:12px}
+.call-window-head{display:flex;align-items:center;gap:8px}.call-duration{font-variant-numeric:tabular-nums;min-width:48px;text-align:center;font-size:12px;opacity:.9;background:#18251e;padding:5px 7px;border-radius:7px}.call-window-head h3{margin:0;flex:1}.call-minimize-btn{width:32px;height:30px;border:0;border-radius:8px;background:#18251e;color:#fff;cursor:pointer}.call-video-wrap{position:relative;width:100%}#callModal #remoteVideo{width:100%;height:190px;max-height:42vh;border-radius:10px;background:#000;object-fit:cover;transform:none!important;-webkit-transform:none!important}#callModal #localCallVideo{position:absolute;right:8px;top:8px;width:88px;height:64px;border-radius:8px;background:#000;object-fit:cover;display:none;border:1px solid rgba(255,255,255,.25);transform:none!important;-webkit-transform:none!important}.call-mini-bar{position:fixed;right:14px;bottom:14px;z-index:1000;display:none;align-items:center;gap:12px;border:1px solid #2a3a31;background:#0c1110;color:#fff;border-radius:12px;padding:10px 13px;box-shadow:0 8px 30px rgba(0,0,0,.45);cursor:pointer}.call-mini-bar span:last-child{background:#18251e;padding:5px 8px;border-radius:7px;font-size:12px}
 </style>
 <style>
 .community-readonly{display:none;padding:11px 14px;border-top:1px solid #1b2822;color:#8d9893;text-align:center;background:#0a100d;font-size:13px}
@@ -445,6 +445,29 @@ img,video{max-width:100%}
   }
 }
 </style>
+
+<style id="settings-navigation-css">
+.settings-card{display:flex;flex-direction:column;gap:0}
+.settings-sticky-head{position:sticky;top:-1px;z-index:5;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:2px 0 12px;margin-bottom:4px;background:#0a0f0c;border-bottom:1px solid #1b2822}
+.settings-sticky-head h2{margin:0;font-size:22px}
+.settings-close{width:38px;height:38px;border:1px solid #2a3a31;border-radius:11px;background:#111916;color:#fff;font-size:24px;line-height:1;cursor:pointer;flex:0 0 auto}
+.settings-close:hover{background:#18251e}
+.settings-section{padding:14px 0;border-bottom:1px solid #17211c}
+.settings-section:last-of-type{border-bottom:0}
+.settings-section-title{font-weight:800;margin-bottom:9px}
+.settings-notify-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 12px;background:#101714;border:1px solid #24312b;border-radius:12px}
+.settings-notify-row>span{color:#cbd5cf;font-size:13px;line-height:1.35}
+.settings-notify-btn{white-space:nowrap}
+.shop-btn{position:relative}
+@media(max-width:700px){
+  .settings-notify-row{align-items:stretch;flex-direction:column}
+  .settings-notify-btn{width:100%}
+  .settings-sticky-head h2{font-size:20px}
+}
+</style>
+<style id="orange-system-css">
+.orange-system-nav{display:flex;gap:7px;flex-wrap:wrap;margin:12px 0}.orange-system-nav button{border:1px solid #2a3a31;background:#111916;color:#fff;border-radius:10px;padding:8px 10px;cursor:pointer}.orange-system-nav button.active{background:#1f7a43;border-color:#38a966}.orange-section{display:none}.orange-section.active{display:block}.orange-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}.orange-item{background:#101714;border:1px solid #24312b;border-radius:14px;padding:13px}.orange-item h3{margin:0 0 6px;font-size:15px}.orange-muted{font-size:12px;color:#9eaaa3}.orange-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.orange-actions button{border:0;border-radius:9px;padding:9px 11px;background:#238a4d;color:#fff;cursor:pointer}.orange-actions button.secondary{background:#18251e;border:1px solid #2a3a31}.orange-list{display:flex;flex-direction:column;gap:7px}.orange-row{display:flex;align-items:center;gap:10px;background:#101714;border:1px solid #24312b;border-radius:11px;padding:10px}.orange-row .grow{flex:1;min-width:0}.orange-rank{width:28px;text-align:center;font-weight:900}.orange-number{font-weight:900;white-space:nowrap}.orange-badge{display:inline-flex;align-items:center;gap:4px;padding:4px 7px;border-radius:999px;background:#18251e;border:1px solid #2a3a31;font-size:12px}.orange-history-positive{color:#7be3a0}.orange-history-negative{color:#ff9b9b}.orange-achieved{border-color:#34895a}.orange-balance-big{font-size:28px;font-weight:900;margin:5px 0 14px}.orange-note{font-size:12px;color:#9eaaa3;line-height:1.45}.orange-system-modal .reward-panel{width:min(720px,95vw);max-height:90vh;overflow:auto}
+</style>
 </head>
 <body>
 <div id="bktToast" onclick="openToastChat()"></div>
@@ -461,7 +484,7 @@ img,video{max-width:100%}
 </div>
 <button class="primary" onclick="authAction()" id="authBtn">Войти</button><div class="switch" onclick="toggleAuth()" id="switch">Нет аккаунта? Регистрация</div><div id="referralHint" class="reward-sub" style="display:none;margin-top:8px"></div>
 </div></div><div class="app" id="app" style="display:none">
-<aside class="sidebar"><div class="quick-actions"><button id="profileBtn" onclick="openSettings()">⚙️ <span data-i18n="settings">Настройки</span></button><button class="notify-btn" id="notifyBtn" onclick="enableNotifications()">🔔 <span data-i18n="notifications">Уведомления</span></button><button onclick="createGroup()">＋ <span data-i18n="group">Группа</span></button><button onclick="openRewards()">🍊 <span>Награды</span></button></div><div class="top"><div class="brand"><div class="logo">БКТ</div><div><h1>БКТ</h1><small id="me" onclick="openMyProfile()" style="cursor:pointer" title="Открыть свой профиль"></small></div></div></div>
+<aside class="sidebar"><div class="quick-actions"><button id="profileBtn" onclick="openSettings()">⚙️ <span data-i18n="settings">Настройки</span></button><button class="shop-btn" id="shopBtn" onclick="openRewards();showOrangeTab('shop')" title="Открыть магазин" aria-label="Открыть магазин">🛍️ <span>Магазин</span></button><button onclick="createGroup()">＋ <span data-i18n="group">Группа</span></button><button onclick="openRewards()">🍊 <span>Награды</span></button></div><div class="top"><div class="brand"><div class="logo">БКТ</div><div><h1>БКТ</h1><small id="me" onclick="openMyProfile()" style="cursor:pointer" title="Открыть свой профиль"></small></div></div></div>
 <button id="statusesBtn" class="statuses-btn" onclick="openStatuses()">🟢 Статусы</button><div class="search"><input id="search" placeholder="Найти пользователя по @username" oninput="loadUsers()"></div><div id="groups"></div><div id="users" class="users"></div></aside>
 <main class="chat"><div class="chathead"><button class="back" onclick="mobileBack()" style="display:none">‹</button><div class="avatar" id="headAvatar" onclick="openSelectedProfile()" style="cursor:pointer" title="Открыть профиль"></div><div class="chat-title" onclick="openSelectedProfile()" style="cursor:pointer"><b id="headName" data-i18n="chooseChat">Выберите чат</b><span class="status" id="headStatus"></span></div><div class="call-actions"><button id="audioCallButton" title="Аудиозвонок" aria-label="Аудиозвонок">📞</button><button id="videoCallButton" title="Видеозвонок" aria-label="Видеозвонок">📹</button></div></div>
 <div id="messages" class="messages"><div class="empty">Выберите пользователя слева</div></div>
@@ -533,6 +556,24 @@ img,video{max-width:100%}
       <div id="captchaHint" class="reward-sub" style="margin-top:10px">Выберите правильный ответ. Задание каждый раз разное.</div>
     </div>
     <div id="rewardCards" class="reward-cards"></div>
+    <div class="orange-system-nav" id="orangeSystemNav">
+      <button type="button" class="active" data-orange-tab="daily" onclick="showOrangeTab('daily')">🎁 Бонус</button>
+      <button type="button" data-orange-tab="achievements" onclick="showOrangeTab('achievements')">🏆 Достижения</button>
+      <button type="button" data-orange-tab="shop" onclick="showOrangeTab('shop')">🛍️ Магазин</button>
+      <button type="button" data-orange-tab="leaderboard" onclick="showOrangeTab('leaderboard')">🏅 Лидеры</button>
+      <button type="button" data-orange-tab="history" onclick="showOrangeTab('history')">📜 История</button>
+      <button type="button" data-orange-tab="captcha" onclick="showOrangeTab('captcha')">🧩 САРТСНА</button>
+    </div>
+    <div id="orangeTabDaily" class="orange-section active">
+      <div class="orange-balance-big" id="orangeSystemBalance">🍊 0</div>
+      <div class="orange-item"><h3>Ежедневный бонус</h3><div id="orangeDailyText" class="orange-muted">Загрузка…</div><div class="orange-actions"><button type="button" id="orangeDailyButton" onclick="claimOrangeDaily()">Получить бонус</button></div></div>
+      <div class="orange-note" style="margin-top:10px">День 1–20: каждый следующий день +1 🍊. Начало — 5 🍊, максимум — 24 🍊. После 20-го дня цикл начинается заново с 5 🍊. Если пропустить день, серия начинается заново. Все начисления и траты записываются в историю.</div>
+    </div>
+    <div id="orangeTabAchievements" class="orange-section"><div id="orangeAchievementsGrid" class="orange-grid"></div></div>
+    <div id="orangeTabShop" class="orange-section"><div id="orangeShopGrid" class="orange-grid"></div></div>
+    <div id="orangeTabLeaderboard" class="orange-section"><div id="orangeLeaderboard" class="orange-list"></div></div>
+    <div id="orangeTabHistory" class="orange-section"><div id="orangeHistory" class="orange-list"></div></div>
+    <div id="orangeTabCaptcha" class="orange-section"><div class="orange-item"><h3>🧩 САРТСНА</h3><div class="orange-note">Обычная HTML/CSS/JS CAPTCHA без Chromium-специфичных API. Работает через стандартные кнопки и запросы к серверу.</div><div class="orange-actions"><button type="button" onclick="startCaptcha()">Новая задача</button></div></div><div id="orangeCaptchaMirror" class="orange-note" style="margin-top:10px"></div></div>
     <div id="referralCard" style="margin-top:14px;padding:14px;border:1px solid #24312b;border-radius:14px;background:#101714">
       <div style="font-weight:800;margin-bottom:6px">👥 Пригласи друзей</div>
       <div id="referralText" class="reward-sub">Загрузка…</div>
@@ -567,7 +608,7 @@ img,video{max-width:100%}
     <button id="statusPublishButton" class="wa-publish-btn" type="button" onclick="publishStatus()">Опубликовать</button>
   </div>
 </div>
-<div id="settingsModal" class="modal"><div class="modal-card"><h2 data-i18n="profileSettings">Настройки профиля</h2><label data-i18n="login">Логин</label><input id="profileUsername" autocomplete="username" autocapitalize="none" spellcheck="false" oninput="toggleProfileProtectedCode()"><input id="profileAccessCode" type="password" placeholder="Секретный код" data-i18n-placeholder="secretCode" autocomplete="off" style="display:none"><label data-i18n="about">О себе</label><textarea id="profileBio" maxlength="160"></textarea><label data-i18n="avatar">Аватар</label><div class="settings-avatar"><img id="profileAvatarPreview" src="" alt=""><span data-i18n="chooseSticker">Выберите другой стикер для аватарки.</span><input id="settingsAvatarPreview" type="hidden" value=""></div><div id="settingsAvatarGrid" class="auth-avatar-grid settings-avatar-grid"></div><label data-i18n="language">Язык</label>
+<div id="settingsModal" class="modal"><div class="modal-card settings-card"><div class="settings-sticky-head"><h2 data-i18n="profileSettings">Настройки профиля</h2><button type="button" class="settings-close" onclick="closeSettings()" aria-label="Закрыть">×</button></div><div class="settings-section"><div class="settings-section-title">🔔 Уведомления</div><div class="settings-notify-row"><span>Push-уведомления о новых сообщениях</span><button class="notify-btn settings-notify-btn" id="notifyBtn" onclick="enableNotifications()">🔔 <span data-i18n="notifications">Уведомления</span></button></div></div><div class="settings-section"><label data-i18n="login">Логин</label><input id="profileUsername" autocomplete="username" autocapitalize="none" spellcheck="false" oninput="toggleProfileProtectedCode()"><input id="profileAccessCode" type="password" placeholder="Секретный код" data-i18n-placeholder="secretCode" autocomplete="off" style="display:none"><label data-i18n="about">О себе</label><textarea id="profileBio" maxlength="160"></textarea><label data-i18n="avatar">Аватар</label><div class="settings-avatar"><img id="profileAvatarPreview" src="" alt=""><span data-i18n="chooseSticker">Выберите другой стикер для аватарки.</span><input id="settingsAvatarPreview" type="hidden" value=""></div><div id="settingsAvatarGrid" class="auth-avatar-grid settings-avatar-grid"></div><label data-i18n="language">Язык</label>
 <select id="languageSelect" onchange="changeLanguage(this.value)" style="width:100%;padding:10px;border-radius:9px;border:1px solid #24312b;background:#111716;color:#fff;margin:4px 0 14px">
   <option value="ru">Русский</option>
   <option value="en">English</option>
@@ -580,13 +621,14 @@ img,video{max-width:100%}
   <div id="profileViewAvatar" class="profile-view-avatar">БКТ</div>
   <div id="profileViewName" class="profile-view-name">Профиль</div>
   <div id="profileViewUsername" class="profile-view-username"></div>
-  <div id="profileViewBio" class="profile-view-bio"></div>
+  <div id="profileViewBio" class="profile-view-bio"></div><div id="profileViewOrangeBadge" style="margin:8px 0"></div><div id="profileViewOrangeAchievements" class="orange-grid" style="margin:8px 0"></div>
   <div id="profileViewGifts" class="reward-cards" style="margin:0 0 8px"></div>
   <div id="profileViewGiftActions" class="profile-view-actions" style="margin:0 0 12px"></div>
   <div id="profileViewBlockState" class="profile-block-state"></div>
   <div class="profile-view-actions">
     <button id="profileViewChat" class="primary-profile" onclick="chatFromProfile()">💬 Написать</button>
     <button id="profileViewBlock" onclick="toggleProfileBlock()">🚫 Заблокировать</button>
+    <button id="profileViewReport" onclick="reportProfileUser()">⚠️ Жалоба</button>
     <button onclick="closeProfileView()">Закрыть</button>
   </div>
 </div></div>
@@ -607,7 +649,7 @@ window.formatMessageTime = function(value){
 };
 // Compatibility fallback: keep the formatter available even if another script references it first.
 function formatMessageTime(value){ return window.formatMessageTime(value); }
-function toggleProtectedCode(){const username=$("login").value.trim().replace(/^@+/,"").toLowerCase(); const protectedUser=["brozi","vlad","vladmobile"].includes(username); $("accessCode").style.display=protectedUser?"block":"none"; $("accessCode").placeholder=protectedUser?"Секретный код":"Секретный код";}
+function toggleProtectedCode(){const username=$("login").value.trim().replace(/^@+/,"").toLowerCase(); const protectedUser=["brozi","vlad","vladmobile","premium_бот"].includes(username); $("accessCode").style.display=protectedUser?"block":"none"; $("accessCode").placeholder=protectedUser?"Секретный код":"Секретный код";}
 const REGISTRATION_AVATARS = Array.from({length:28},(_,i)=>`/stickers/${i+1}.webp`);
 let giftCatalog=[];
 async function loadGiftCatalog(){ try{ const d=await api('/api/gifts/catalog'); giftCatalog=Array.isArray(d.gifts)?d.gifts:[]; return d; }catch(_){ giftCatalog=[]; return {oranges:0,gifts:[]}; } }
@@ -816,6 +858,48 @@ async function deleteStatus(id){
   },{passive:true});
 })();
 let rewardState={oranges:0,rewards:[],captcha:null};
+let orangeSystemState={daily:null,achievements:[],shop:[],leaderboard:[],history:[]};
+function showOrangeTab(tab){
+  document.querySelectorAll('[data-orange-tab]').forEach(b=>b.classList.toggle('active',b.dataset.orangeTab===tab));
+  document.querySelectorAll('.orange-section').forEach(x=>x.classList.remove('active'));
+  const el=document.getElementById('orangeTab'+tab.charAt(0).toUpperCase()+tab.slice(1)); if(el)el.classList.add('active');
+  if(tab==='leaderboard')loadOrangeLeaderboard();
+  if(tab==='history')loadOrangeHistory();
+  if(tab==='shop')loadOrangeShop();
+}
+async function loadOrangeSystem(){
+  try{
+    const d=await api('/api/oranges'); orangeSystemState={...orangeSystemState,...d};
+    $('orangeSystemBalance').textContent=`🍊 ${Number(d.oranges||0)}`;
+    const day=Number(d.daily?.streakDay||1), amount=Number(d.daily?.amount||5);
+    $('orangeDailyText').textContent=d.daily?.claimed
+      ? `Сегодня уже получено ${amount} 🍊 · день ${day}/20. Серия продолжается.`
+      : `Сегодня доступно +${amount} 🍊 · день ${day}/20.`;
+    $('orangeDailyButton').disabled=!!d.daily?.claimed;
+    $('orangeDailyButton').textContent=d.daily?.claimed?'Бонус уже получен':`Получить +${amount} 🍊`;
+    renderOrangeAchievements(d.achievements||[]); await loadOrangeShop();
+  }catch(e){console.debug('orange system:',e.message)}
+}
+function renderOrangeAchievements(rows){
+  const box=$('orangeAchievementsGrid'); if(!box)return;
+  box.innerHTML=rows.map(a=>`<div class="orange-item ${a.obtained_at?'orange-achieved':''}"><div style="font-size:25px">${escapeHtml(a.icon||'🍊')}</div><h3>${escapeHtml(a.name)}</h3><div class="orange-muted">${escapeHtml(a.description||'')}</div><div style="margin-top:8px">${a.obtained_at?`<span class="orange-badge">Получено · ${escapeHtml(a.badge||'🏆')}</span>`:'<span class="orange-muted">Ещё не получено</span>'}</div>${a.obtained_at?`<div class="orange-actions"><button type="button" class="secondary" onclick="setOrangeAchievementBadge('${String(a.key).replace(/'/g,"\\'")}')">Сделать значком профиля</button></div>`:''}</div>`).join('')||'<div class="orange-muted">Пока нет достижений.</div>';
+}
+async function setOrangeAchievementBadge(key){try{await api('/api/oranges/badge',{method:'POST',body:{achievementKey:key}});alert('Значок достижения установлен в профиль.');}catch(e){alert(e.message)}}
+async function claimOrangeDaily(){try{const d=await api('/api/oranges/daily',{method:'POST'});await loadOrangeSystem();await loadOrangeHistory();alert(`+${Number(d.amount||0)} 🍊`);}catch(e){alert(e.message)}}
+async function loadOrangeShop(){try{
+  const rows=await api('/api/oranges/shop'); orangeSystemState.shop=rows;
+  const box=$('orangeShopGrid'); if(!box)return;
+  box.innerHTML=rows.map(i=>`<div class="orange-item">
+    ${i.frameSrc?`<div style="height:120px;border-radius:14px;background:#070a09;display:grid;place-items:center;margin-bottom:8px;overflow:hidden"><img src="${escapeHtml(i.frameSrc)}" alt="" style="width:110px;height:110px;object-fit:contain"></div>`:`<div style="font-size:27px">${escapeHtml(i.icon)}</div>`}
+    <h3>${escapeHtml(i.name)}</h3><div class="orange-muted">${escapeHtml(i.description)}</div>
+    <div style="margin-top:8px;font-weight:900">${Number(i.price)} 🍊</div>
+    <div class="orange-actions"><button type="button" ${i.owned?'disabled':''} onclick="buyOrangeItem('${String(i.id).replace(/'/g,"\'")}')">${i.owned?'Уже куплено':'Купить'}</button></div>
+  </div>`).join('')||'<div class="orange-muted">Магазин пуст.</div>';
+}catch(e){console.debug(e.message)}}
+async function buyOrangeItem(id){try{const d=await api('/api/oranges/shop/'+encodeURIComponent(id)+'/buy',{method:'POST'});await loadOrangeSystem();alert(`Куплено: ${d.item?.name||'предмет'}`);}catch(e){alert(e.message)}}
+async function loadOrangeLeaderboard(){try{const rows=await api('/api/oranges/leaderboard');$('orangeLeaderboard').innerHTML=rows.map(r=>`<div class="orange-row"><div class="orange-rank">${Number(r.rank)<=3?['🥇','🥈','🥉'][Number(r.rank)-1]:Number(r.rank)}</div><div class="grow"><b>${escapeHtml(r.username)}</b>${r.verified?' ✓':''}</div><div class="orange-number">🍊 ${Number(r.oranges||0)}</div></div>`).join('')||'<div class="orange-muted">Пока нет участников.</div>';}catch(e){console.debug(e.message)}}
+async function loadOrangeHistory(){try{const rows=await api('/api/oranges/history');$('orangeHistory').innerHTML=rows.map(r=>`<div class="orange-row"><div class="grow"><b>${escapeHtml(r.description||r.type)}</b><div class="orange-muted">${formatOrangeDate(r.created_at)}</div></div><div class="orange-number ${Number(r.amount)>=0?'orange-history-positive':'orange-history-negative'}">${Number(r.amount)>=0?'+':''}${Number(r.amount)} 🍊</div><div class="orange-muted">${Number(r.balance_after)} всего</div></div>`).join('')||'<div class="orange-muted">История пока пуста.</div>';}catch(e){console.debug(e.message)}}
+function formatOrangeDate(v){const d=new Date(v);return Number.isNaN(d.getTime())?String(v||''):d.toLocaleString('ru-RU')}
 async function loadReferral(){
   try{
     referralState=await api('/api/referral');
@@ -839,7 +923,8 @@ async function loadRewards(){
 function openRewards(){
   $('rewardsModal').style.display='grid';
   $('captchaBox').style.display='none';
-  loadRewards();
+  showOrangeTab('daily');
+  loadRewards(); loadOrangeSystem();
 }
 function closeRewards(){ $('rewardsModal').style.display='none'; }
 function renderRewards(){
@@ -884,7 +969,7 @@ async function startCaptcha(){
       btn.addEventListener('click',()=>verifyCaptcha(Number(v)),{once:true});
       box.appendChild(btn);
     });
-    $('captchaHint').textContent='Сложность: высокая • за правильный ответ +5 🍊 • каждый раз новое задание';
+    $('captchaHint').textContent='Сложность: высокая • за правильный ответ начисляются 🍊 • каждый раз новое задание'; if($('orangeCaptchaMirror'))$('orangeCaptchaMirror').textContent=d.expression||'';
   }catch(e){alert(e.message||'Не удалось создать CAPTCHA');}
 }
 async function verifyCaptcha(answer){
@@ -894,7 +979,7 @@ async function verifyCaptcha(answer){
     rewardState.oranges=Number(d.oranges||0); rewardState.rewards=d.rewards||[];
     $('captchaBox').style.display='none';
     renderRewards();
-    alert('Верно! +5 🍊');
+    alert('Верно! Апельсины начислены.'); loadOrangeSystem();
   }catch(e){
     $('captchaHint').textContent='Неверно. Получите новую CAPTCHA и попробуйте ещё раз.';
     $('captchaHint').style.color='#ff9a9a';
@@ -941,18 +1026,40 @@ function toggleAuth(){
 async function api(path, options={}){
   const saved=sessionStorage.getItem("bkt_token");
   if(saved) token=saved;
-  const headers={...(options.headers||{})};
-  if(token) headers.Authorization="Bearer "+token;
+  const baseHeaders={...(options.headers||{})};
+  if(token) baseHeaders.Authorization="Bearer "+token;
+  let requestOptions={...options,headers:baseHeaders};
   if(options.body && typeof options.body!=="string"){
-    headers["Content-Type"]="application/json";
-    options={...options,body:JSON.stringify(options.body)};
+    requestOptions={...requestOptions,body:JSON.stringify(options.body),headers:{...baseHeaders,"Content-Type":"application/json"}};
   }
-  const res=await fetch(path,{...options,headers});
-  const text=await res.text();
-  let data={};
-  try{ data=text?JSON.parse(text):{}; }catch(_){ throw new Error("Сервер вернул неверный ответ ("+res.status+")"); }
-  if(!res.ok) throw new Error(data.error||data.message||("Ошибка "+res.status));
-  return data;
+  const method=String(requestOptions.method||"GET").toUpperCase();
+  const retryable=method==="GET" || method==="HEAD" || method==="OPTIONS";
+  let lastError=null;
+  for(let attempt=0; attempt<(retryable?3:1); attempt++){
+    try{
+      const res=await fetch(path,{...requestOptions,cache:requestOptions.cache||"no-store"});
+      const text=await res.text();
+      let data={};
+      try{ data=text?JSON.parse(text):{}; }catch(_){
+        if(retryable && [429,502,503,504].includes(res.status) && attempt<2){ await new Promise(r=>setTimeout(r,500*(attempt+1))); continue; }
+        throw new Error("Сервер вернул неверный ответ ("+res.status+")");
+      }
+      if(!res.ok){
+        if(retryable && [429,502,503,504].includes(res.status) && attempt<2){
+          const retryAfter=Number(res.headers.get("Retry-After")||0);
+          await new Promise(r=>setTimeout(r,Math.min(5000,Math.max(500,retryAfter*1000||500*(attempt+1)))));
+          continue;
+        }
+        throw new Error(data.error||data.message||("Ошибка "+res.status));
+      }
+      return data;
+    }catch(e){
+      lastError=e;
+      if(!retryable || attempt>=2) throw e;
+      await new Promise(r=>setTimeout(r,500*(attempt+1)));
+    }
+  }
+  throw lastError||new Error("Сервер временно недоступен");
 }
 
 
@@ -1096,8 +1203,9 @@ async function pollActiveCall(){
   try{
     const st=await api('/api/calls/'+encodeURIComponent(localCallId)+'/state');
     if(!st || st.status==='ended') { if(peer) endCall(false); return; }
-    if(st.answer && !peer.remoteDescription){
-      await peer.setRemoteDescription(new RTCSessionDescription(st.answer));
+    if(st.answer && peer.signalingState === "have-local-offer" && !applyingRemoteAnswer){
+      applyingRemoteAnswer=true;
+      try { await peer.setRemoteDescription(new RTCSessionDescription(st.answer)); } finally { applyingRemoteAnswer=false; }
       for(const c of (st.iceCandidates||[])){ try{ await peer.addIceCandidate(new RTCIceCandidate(c)); }catch(_){} }
     }else if(st.iceCandidates?.length){
       for(const c of st.iceCandidates){ try{ await peer.addIceCandidate(new RTCIceCandidate(c)); }catch(_){} }
@@ -1465,12 +1573,25 @@ function applyWallpaperValue(value){ const v=(value||"").trim(); const el=$("mes
 function loadChatWallpaper(){ const key=wallpaperKey(); if(key==="none")return; const saved=localStorage.getItem("bkt_wallpaper_"+key)||""; $("wallpaperUrl").value=saved && !/^#[0-9a-f]{3,8}$/i.test(saved)?saved:""; $("wallpaperColor").value=/^#[0-9a-f]{3,8}$/i.test(saved)?saved:"#08100c"; applyWallpaperValue(saved); }
 function applyChatWallpaper(){ const v=$("wallpaperUrl").value.trim() || $("wallpaperColor").value; if(wallpaperKey()==="none")return; localStorage.setItem("bkt_wallpaper_"+wallpaperKey(),v); applyWallpaperValue(v); }
 function clearChatWallpaper(){ if(wallpaperKey()!=="none")localStorage.removeItem("bkt_wallpaper_"+wallpaperKey()); $("wallpaperUrl").value=""; $("wallpaperColor").value="#08100c"; applyWallpaperValue(""); }
+let profileViewRequest=null;
 async function openProfileView(userId, isMe=false){
+  const requestKey=(isMe?"me":String(userId));
+  if(profileViewRequest?.key===requestKey){ return profileViewRequest.promise; }
+  const promise=(async()=>{
   try{
-    const p = isMe ? await api("/api/profile") : await api("/api/users/"+encodeURIComponent(userId)+"/profile");
+    const numericUserId = Number(userId);
+    if(!isMe && (!Number.isSafeInteger(numericUserId) || numericUserId <= 0)){
+      throw new Error("Не удалось определить пользователя");
+    }
+    const p = isMe ? await api("/api/me") : await api("/api/users/"+encodeURIComponent(numericUserId)+"/profile");
     $("profileViewName").innerHTML = verifiedName(p.username, !!p.verified);
     $("profileViewUsername").textContent = "@"+p.username;
     $("profileViewBio").textContent = p.bio || "О себе пока ничего не указано.";
+    const orangeProfile=p.orange||{};
+    const badgeBox=$("profileViewOrangeBadge");
+    if(badgeBox) badgeBox.innerHTML=orangeProfile.badge?`<span class="orange-badge">${escapeHtml(orangeProfile.badge.value||'🍊')} · профильный значок</span>`:`<span class="orange-muted">🍊 ${Number(orangeProfile.oranges||0)}</span>`;
+    const achievementBox=$("profileViewOrangeAchievements");
+    if(achievementBox){ const aa=Array.isArray(orangeProfile.achievements)?orangeProfile.achievements:[]; achievementBox.innerHTML=aa.length?aa.slice(0,6).map(a=>`<div class="orange-item"><div style="font-size:20px">${escapeHtml(a.icon||'🏆')}</div><b>${escapeHtml(a.name)}</b><div class="orange-muted">${escapeHtml(a.badge||'')}</div></div>`).join(''):''; }
     const giftsBox=$("profileViewGifts");
     if(giftsBox){
       const gifts=Array.isArray(p.gifts)?p.gifts:[];
@@ -1482,6 +1603,14 @@ async function openProfileView(userId, isMe=false){
       const img=document.createElement("img"); img.src=p.avatar; img.alt=""; av.appendChild(img);
     }else{
       av.textContent=(p.username||"?")[0].toUpperCase();
+    }
+    const frameSrc=p.orange?.frame?.src;
+    if(frameSrc){
+      const frame=document.createElement("img");
+      frame.className="profile-frame-overlay";
+      frame.src=frameSrc;
+      frame.alt="";
+      av.appendChild(frame);
     }
     $("profileViewChat").style.display = isMe ? "none" : "block";
     const giftActions=$("profileViewGiftActions");
@@ -1498,7 +1627,7 @@ async function openProfileView(userId, isMe=false){
     }else{
       blockBtn.style.display="block"; blockBtn.disabled=false;
       try{
-        const bs=await api("/api/users/"+encodeURIComponent(p.id)+"/block-status");
+        const bs=p.viewerRelation || await api("/api/users/"+encodeURIComponent(p.id)+"/block-status");
         window.profileViewBlockStatus=bs;
         if(bs.blocked){
           blockBtn.textContent="🔓 Разблокировать"; blockBtn.className="blocked";
@@ -1513,6 +1642,9 @@ async function openProfileView(userId, isMe=false){
     $("profileViewModal").style.display="grid";
     window.profileViewUser = isMe ? null : p;
   }catch(e){ alert(e.message || "Не удалось открыть профиль"); }
+  })();
+  profileViewRequest={key:requestKey,promise};
+  try{ return await promise; } finally { if(profileViewRequest?.promise===promise) profileViewRequest=null; }
 }
 async function giftRewardTo(receiverId, stickerId){
   try{ const d=await api('/api/stickers/'+Number(stickerId)+'/send',{method:'POST',body:{receiverId:Number(receiverId)}}); rewardState.oranges=Number(d.oranges||0); await loadGiftCatalog(); renderRewards(); alert(`Подарок отправлен. Списано ${Number(d.gift?.price||0)} 🍊.`); }
@@ -1536,6 +1668,12 @@ async function toggleProfileBlock(){
 }
 function openMyProfile(){ openProfileView(me?.id, true); }
 function openSelectedProfile(){ if(selected) openProfileView(selected.id, false); }
+async function reportProfileUser(){
+  const p=window.profileViewUser; if(!p)return;
+  const reason=prompt('Причина жалобы:', 'Нарушение правил'); if(reason===null)return;
+  const details=prompt('Дополнительные сведения (необязательно):','') || '';
+  try{ await api('/api/reports',{method:'POST',body:{targetUserId:Number(p.id),reason,details}}); alert('Жалоба отправлена администраторам.'); }catch(e){ alert(e.message||'Не удалось отправить жалобу'); }
+}
 function closeProfileView(){ $("profileViewModal").style.display="none"; window.profileViewUser=null; }
 async function chatFromProfile(){
   const p=window.profileViewUser;
@@ -1583,7 +1721,7 @@ async function renderSettingsAvatarPicker(currentAvatar){
   $("settingsAvatarPreview").value=currentAvatar || REGISTRATION_AVATARS[0];
 }
 function closeSettings(){ $("settingsModal").style.display="none"; }
-function toggleProfileProtectedCode(){const username=$("profileUsername").value.trim().replace(/^@+/,"").toLowerCase(); const protectedUser=["brozi","vlad","vladmobile"].includes(username); $("profileAccessCode").style.display=protectedUser?"block":"none";}
+function toggleProfileProtectedCode(){const username=$("profileUsername").value.trim().replace(/^@+/,"").toLowerCase(); const protectedUser=["brozi","vlad","vladmobile","premium_бот"].includes(username); $("profileAccessCode").style.display=protectedUser?"block":"none";}
 async function saveSettings(){
  try{
   const p=await api("/api/profile",{method:"PATCH",body:{
@@ -1727,7 +1865,7 @@ async function send(){
 }
 
 
-let peer=null, localCallStream=null, incomingCall=null, callType="audio", pendingIceCandidates=[], incomingIceCandidates=[], callPeerUserId=null, localCallId=null, callTimeout=null, callStartedAt=0, callDurationTimer=null;
+let peer=null, localCallStream=null, incomingCall=null, callType="audio", pendingIceCandidates=[], incomingIceCandidates=[], callPeerUserId=null, localCallId=null, callTimeout=null, callStartedAt=0, callDurationTimer=null, answerSentForCallId=null, applyingRemoteAnswer=false;
 
 function callSocket(data){
   if(!socket || socket.readyState!==WebSocket.OPEN){
@@ -1770,21 +1908,26 @@ async function startCall(type){
   if(!selected)return alert("Сначала выберите чат");
   if(!navigator.mediaDevices || !window.RTCPeerConnection) return alert("Звонки не поддерживаются этим браузером");
   if(!window.isSecureContext) return alert("Для звонков нужен HTTPS (или localhost).");
+  // Если предыдущий звонок ещё не успел корректно завершиться — сначала закрываем его.
+  if(peer || localCallStream){ endCall(false); }
   try{
     if(!socket || socket.readyState!==WebSocket.OPEN){
       await new Promise((resolve,reject)=>{ const t=setTimeout(()=>reject(new Error("Сигнальный сервер недоступен")),5000); const check=()=>{ if(socket&&socket.readyState===WebSocket.OPEN){clearTimeout(t);resolve();} else setTimeout(check,100);}; check(); });
     }
     callType=type;
     await loadRtcConfig();
-    localCallStream=await navigator.mediaDevices.getUserMedia(type==="video"?{audio:true,video:true}:{audio:true});
+    const acquiredStream=await navigator.mediaDevices.getUserMedia(type==="video"?{audio:true,video:{facingMode:{ideal:"user"}}}:{audio:true});
+    // Другой конец мог завершить звонок, пока браузер запрашивал разрешение.
+    if(!selected){ acquiredStream.getTracks().forEach(t=>t.stop()); return; }
+    localCallStream=acquiredStream;
     peer=createPeer(); pendingIceCandidates=[]; incomingIceCandidates=[]; callPeerUserId=Number(selected.id);
     clearTimeout(callTimeout); callTimeout=setTimeout(()=>{ if(peer && !["connected","completed"].includes(peer.iceConnectionState)) { endCall(true); alert("Не удалось установить соединение. Проверьте интернет или настройки TURN."); } },45000);
-    localCallStream.getTracks().forEach(t=>peer.addTrack(t,localCallStream));
+    acquiredStream.getTracks().forEach(t=>peer.addTrack(t,acquiredStream));
     $("callTitle").textContent=type==="video"?"📹 Видеозвонок":"📞 Аудиозвонок";
     $("callModal").style.display="grid";
     $("acceptCall").style.display="none";
     $("callMinimizeAction").style.display="block";
-    if(type==="video"){ $("remoteVideo").style.display="block"; $("remoteVideo").muted=false; $("remoteVideo").srcObject=null; $("localCallVideo").srcObject=localCallStream; $("localCallVideo").style.display="block"; }
+    if(type==="video"){ $("remoteVideo").style.display="block"; $("remoteVideo").muted=false; $("remoteVideo").srcObject=null; $("remoteVideo").style.transform="none"; $("localCallVideo").srcObject=acquiredStream; $("localCallVideo").style.display="block"; $("localCallVideo").style.transform="none"; }
     else { $("remoteVideo").style.display="none"; $("localCallVideo").srcObject=null; $("localCallVideo").style.display="none"; }
     const callId=`${Date.now()}-${Math.random().toString(36).slice(2)}`;
     localCallId=callId;
@@ -1838,8 +1981,9 @@ function createPeer(){
 }
 
 async function acceptIncomingCall(){
-  // Take an immutable snapshot before any await. The global incomingCall can be
-  // cleared by polling/WebSocket while getUserMedia or ICE setup is pending.
+  // Берём неизменяемый снимок входящего звонка: WebRTC может ждать
+  // разрешения на микрофон/камеру, а за это время другой клиент может
+  // завершить звонок и вызвать endCall().
   const call = incomingCall;
   if(!call || !call.callId || !call.fromUserId || !call.signal){
     console.warn("acceptIncomingCall: incoming call is missing or already handled", call);
@@ -1847,32 +1991,61 @@ async function acceptIncomingCall(){
     incomingCallAccepting=false;
     if($('acceptCall')) $('acceptCall').style.display='none';
     if($('callModal')) $('callModal').style.display='none';
-    alert("Входящий звонок уже завершён или больше недоступен. Позвоните ещё раз.");
     return;
   }
+  if(incomingCallAccepting) return;
   incomingCallAccepting=true;
+  let acquiredStream=null;
   try{
     const from=Number(call.fromUserId);
     callType=call.callType||"audio";
     selected={id:from,username:call.fromUsername};
     localCallId=String(call.callId);
     callPeerUserId=from;
-    localCallStream=await navigator.mediaDevices.getUserMedia(
-      callType==="video"?{audio:true,video:{facingMode:"user"}}:{audio:true}
+
+    acquiredStream=await navigator.mediaDevices.getUserMedia(
+      callType==="video"?{audio:true,video:{facingMode:{ideal:"user"}}}:{audio:true}
     );
+
+    // Пока пользователь разрешал доступ, звонок мог быть отменён.
+    if(!incomingCall || String(incomingCall.callId)!==String(call.callId)){
+      acquiredStream.getTracks().forEach(t=>t.stop());
+      incomingCallAccepting=false;
+      return;
+    }
+
     await loadRtcConfig();
     peer=createPeer();
+    localCallStream=acquiredStream;
+    acquiredStream=null; // Теперь владение потоком у состояния звонка.
+    clearTimeout(callTimeout);
     callTimeout=setTimeout(()=>{
-      if(peer && !["connected","completed"].includes(peer.connectionState)) {
+      if(peer && !["connected","completed"].includes(peer.iceConnectionState)) {
         endCall(true);
         alert("Не удалось установить соединение. Проверьте интернет или настройки TURN.");
       }
     },60000);
     localCallStream.getTracks().forEach(t=>peer.addTrack(t,localCallStream));
-    if(callType==="video"){ $("remoteVideo").style.display="block"; $("localCallVideo").srcObject=localCallStream; $("localCallVideo").style.display="block"; }
-    else { $("remoteVideo").style.display="none"; $("localCallVideo").style.display="none"; }
+
+    if(callType==="video"){
+      $("remoteVideo").style.display="block";
+      $("remoteVideo").style.transform="none";
+      $("localCallVideo").srcObject=localCallStream;
+      $("localCallVideo").style.display="block";
+      $("localCallVideo").style.transform="none";
+    } else {
+      $("remoteVideo").style.display="none";
+      $("localCallVideo").srcObject=null;
+      $("localCallVideo").style.display="none";
+    }
     $("callMinimizeAction").style.display="block";
-    await peer.setRemoteDescription(new RTCSessionDescription(call.signal));
+    // Для принимающей стороны offer должен переводить PC в have-remote-offer.
+    // Если другой обработчик уже принял этот же offer, не создаём второй answer.
+    if(peer.signalingState === "stable") {
+      await peer.setRemoteDescription(new RTCSessionDescription(call.signal));
+    } else if(peer.signalingState !== "have-remote-offer") {
+      throw new DOMException("Неверное состояние WebRTC для принятия offer", "InvalidStateError");
+    }
     for(const c of (call.iceCandidates||[])){
       try{await peer.addIceCandidate(new RTCIceCandidate(c));}catch(e){console.warn("initial ICE add failed",e)}
     }
@@ -1880,11 +2053,22 @@ async function acceptIncomingCall(){
       try{await peer.addIceCandidate(new RTCIceCandidate(c));}catch(e){console.warn("queued ICE add failed",e)}
     }
     incomingIceCandidates=[];
+    if(peer.signalingState !== "have-remote-offer") {
+      // Если answer уже был создан другим параллельным обработчиком, просто
+      // считаем звонок принятым и не вызываем createAnswer() в stable.
+      if(answerSentForCallId === String(localCallId) && peer.localDescription?.type === "answer") {
+        incomingCallAccepting=false;
+        if($('acceptCall')) $('acceptCall').style.display="none";
+        return;
+      }
+      throw new DOMException("Нельзя создать answer: соединение уже не ждёт offer", "InvalidStateError");
+    }
     const answer=await peer.createAnswer();
     await peer.setLocalDescription(answer);
+    answerSentForCallId=String(localCallId);
     const answerSignal={sdp:peer.localDescription.sdp,type:peer.localDescription.type};
     callSocket({type:"call-signal",toUserId:from,signalType:"answer",callId:localCallId,signal:answerSignal,callType});
-    // Only clear the global after the answer has been created and sent.
+
     if(incomingCall && String(incomingCall.callId)===String(call.callId)) incomingCall=null;
     incomingCallAccepting=false;
     if($('acceptCall')) $('acceptCall').style.display="none";
@@ -1896,6 +2080,7 @@ async function acceptIncomingCall(){
     pollActiveCall();
   }catch(e){
     console.error("acceptIncomingCall failed",e);
+    if(acquiredStream) acquiredStream.getTracks().forEach(t=>t.stop());
     incomingCallAccepting=false;
     if(incomingCall && String(incomingCall.callId)===String(call.callId)) incomingCall=null;
     endCall(false);
@@ -1904,7 +2089,6 @@ async function acceptIncomingCall(){
     alert(msg);
   }
 }
-
 function showIncomingCallNotification(d){
   const title=d.callType==="video"?"📹 Входящий видеозвонок":"📞 Входящий аудиозвонок";
   const body=`@${d.fromUsername||"Пользователь"} звонит вам`;
@@ -1918,6 +2102,10 @@ async function handleCallSignal(d){
   if(d.signalType==="call-created"){
     localCallId=d.callId||localCallId;
   }else if(d.signalType==="offer"){
+    // Один и тот же offer может прийти одновременно через WebSocket и polling.
+    // Не показываем второй входящий звонок и не создаём второй RTCPeerConnection.
+    if((localCallId && String(localCallId)===String(d.callId) && peer) ||
+       (incomingCall && String(incomingCall.callId)===String(d.callId))) return;
     incomingCall=d;
     incomingIceCandidates=[];
     callType=d.callType||"audio";
@@ -1935,9 +2123,16 @@ async function handleCallSignal(d){
     localCallId=d.callId||null;
   }else if(d.signalType==="answer" && peer){
     localCallId=d.callId||localCallId;
-    await peer.setRemoteDescription(new RTCSessionDescription(d.signal));
-    for(const c of incomingIceCandidates){try{await peer.addIceCandidate(new RTCIceCandidate(c));}catch(e){}}
-    incomingIceCandidates=[];
+    // Ответ принимается только вызывающей стороной, когда PC находится
+    // в состоянии have-local-offer. Повторный answer (например, из WebSocket
+    // и polling одновременно) больше не приводит к "Cannot create/set ... stable".
+    if(peer.signalingState !== "have-local-offer" || applyingRemoteAnswer) return;
+    applyingRemoteAnswer=true;
+    try {
+      await peer.setRemoteDescription(new RTCSessionDescription(d.signal));
+      for(const c of incomingIceCandidates){try{await peer.addIceCandidate(new RTCIceCandidate(c));}catch(e){}}
+      incomingIceCandidates=[];
+    } finally { applyingRemoteAnswer=false; }
   }else if(d.signalType==="ice"){
     if(peer && peer.remoteDescription && peer.remoteDescription.type){
       try{await peer.addIceCandidate(new RTCIceCandidate(d.signal));}catch(e){console.warn("ICE add failed",e)}
@@ -1983,7 +2178,7 @@ function endCall(notify=true){
   try{if(peer)peer.close()}catch(e){}
   stopCallDuration();
   if(localCallStream)localCallStream.getTracks().forEach(t=>t.stop());
-  peer=null;localCallStream=null;incomingCall=null;pendingIceCandidates=[];incomingIceCandidates=[];callPeerUserId=null;localCallId=null;
+  peer=null;localCallStream=null;incomingCall=null;pendingIceCandidates=[];incomingIceCandidates=[];callPeerUserId=null;localCallId=null;answerSentForCallId=null;applyingRemoteAnswer=false;incomingCallAccepting=false;
   $("callModal").style.display="none";
   $("callMiniBar").style.display="none";
   $("remoteVideo").srcObject=null;
@@ -2296,7 +2491,6 @@ document.addEventListener("click", function(e){
     canvas.toBlob(blob=>{
       if(!blob)return;
       cameraShot=new File([blob],"camera-status.jpg",{type:"image/jpeg"});
-      window.__bktCameraShot=cameraShot;
       previewFile(cameraShot);
       stopStatusCamera();
     },"image/jpeg",0.9);
@@ -2449,8 +2643,7 @@ window.addEventListener('beforeunload',(e)=>{
     try{
       await fetchRows();
       if(!rows.length){
-        closeViewer();
-        focusStatusComposer();
+        alert("Пока нет активных статусов.");
         return;
       }
       current=Math.max(0,Math.min(rows.length-1,index));
@@ -2585,8 +2778,6 @@ window.addEventListener('beforeunload',(e)=>{
 
   // Replace the message renderer with one that exposes reply/edit/reaction controls.
   window.renderMessage=function(m){
-    if(!window._bktMessageCache)window._bktMessageCache=new Map();
-    window._bktMessageCache.set(Number(m.id),m);
     if(document.getElementById('m'+m.id))return;
     const d=document.createElement('div');d.id='m'+m.id;d.className='bubble '+(Number(m.sender_id)===Number(me.id)?'me':'');
     if(m.reply_to_id){
@@ -2636,13 +2827,9 @@ window.addEventListener('beforeunload',(e)=>{
 
   // Fix statuses: text-only statuses are valid, and photo upload is optional.
   window.publishStatus=async function(){
-    const caption=($('statusCaption')?.value||'').trim();
-    const photo=$('statusPhotoInput');
-    const camera=$('statusCameraInput');
-    const file=window.__bktCameraShot || photo?.files?.[0] || camera?.files?.[0] || null;
-    if(!caption && !file){alert('Добавьте текст или выберите фото.');return;}
-    const btn=$('statusPublishButton');
-    if(btn){btn.disabled=true;btn.textContent='Публикация…';}
+    const text=($('statusText')?.value||'').trim();
+    const file=$('statusImage')?.files?.[0];
+    if(!text && !file){alert('Добавьте текст или выберите фото.');return;}
     try{
       let mediaUrl='';
       if(file){
@@ -2653,148 +2840,14 @@ window.addEventListener('beforeunload',(e)=>{
         const ud=await up.json().catch(()=>({}));if(!up.ok)throw new Error(ud.error||'Не удалось загрузить фото');
         mediaUrl=ud.url||ud.mediaUrl||'';if(!mediaUrl)throw new Error('Сервер не вернул адрес фото');
       }
-      await api('/api/statuses',{method:'POST',body:{text:caption,mediaUrl}});
-      if($('statusCaption'))$('statusCaption').value='';
-      if(photo)photo.value='';
-      if(camera)camera.value='';
-      window.__bktCameraShot=null;
-      if($('statusPreviewWrap'))$('statusPreviewWrap').style.display='none';
+      await api('/api/statuses',{method:'POST',body:{text,mediaUrl}});
+      if($('statusText'))$('statusText').value='';if($('statusImage'))$('statusImage').value='';
       closeStatusComposer();
       await loadStatuses();
       alert('Статус опубликован.');
     }catch(e){alert(e.message||'Не удалось опубликовать статус');}
-    finally{if(btn){btn.disabled=false;btn.textContent='Опубликовать';}}
   };
 })();
 </script>
 
-
-<style id="bkt-longpress-message-menu">
-.message-actions{display:none!important}
-.bkt-message-menu{position:fixed;z-index:10050;min-width:220px;max-width:min(320px,calc(100vw - 24px));padding:8px;border:1px solid #2a3a32;border-radius:16px;background:rgba(13,19,17,.98);box-shadow:0 14px 45px rgba(0,0,0,.5);backdrop-filter:blur(14px);color:#fff}
-.bkt-message-menu .bkt-reactions{display:flex;gap:4px;padding:3px 2px 8px;border-bottom:1px solid #26332d;margin-bottom:5px;flex-wrap:wrap}
-.bkt-message-menu button{border:0;background:transparent;color:#fff;border-radius:10px;padding:9px 10px;cursor:pointer;font-size:15px;text-align:left;width:100%}
-.bkt-message-menu .bkt-reactions button{width:auto;min-width:38px;padding:7px 6px;text-align:center;font-size:20px}
-.bkt-message-menu button:hover,.bkt-message-menu button:active{background:#183021}
-.bkt-message-menu .danger{color:#ff8e8e}
-@media(max-width:700px){.bkt-message-menu{min-width:235px}.bkt-message-menu button{padding:11px 10px}}
-</style>
-<script id="bkt-longpress-message-menu-js">
-(function(){
-  const root=document.getElementById('messages');
-  if(!root)return;
-  const REACTIONS=['👍','❤️','😂','😮','😢'];
-  let menu=null, timer=null, suppressClickUntil=0, activeMessage=null;
-
-  function closeMenu(){
-    if(menu){menu.remove();menu=null;}
-    activeMessage=null;
-  }
-  window.closeMessageMenu=closeMenu;
-
-  function makeButton(label,fn,cls){
-    const b=document.createElement('button');
-    b.type='button'; b.textContent=label; if(cls)b.className=cls;
-    b.addEventListener('click',e=>{e.stopPropagation(); closeMenu(); fn();});
-    return b;
-  }
-
-  function openMenu(msg, x, y){
-    closeMenu();
-    activeMessage=msg;
-    menu=document.createElement('div');
-    menu.className='bkt-message-menu';
-    menu.setAttribute('role','menu');
-
-    const reactions=document.createElement('div');
-    reactions.className='bkt-reactions';
-    REACTIONS.forEach(r=>{
-      const b=document.createElement('button');
-      b.type='button'; b.textContent=r; b.title='Реакция '+r;
-      b.addEventListener('click',async e=>{
-        e.stopPropagation();
-        closeMenu();
-        try{await reactMessage(msg.id,r);}catch(_){ }
-      });
-      reactions.appendChild(b);
-    });
-    menu.appendChild(reactions);
-    menu.appendChild(makeButton('↩️ Ответить',()=>replyToMessage(msg)));
-    if(Number(msg.sender_id)===Number(me?.id)){
-      menu.appendChild(makeButton('✏️ Изменить',()=>editMessage(msg.id,String(msg.text||''))));
-      menu.appendChild(makeButton('🗑️ Удалить','' + (()=>{}), ''));
-      const del=menu.lastElementChild;
-      del.className='danger';
-      del.onclick=(e)=>{e.stopPropagation();closeMenu();deleteMessage(msg.id);};
-    }
-    document.body.appendChild(menu);
-    const pad=10;
-    const rect=menu.getBoundingClientRect();
-    let left=Math.max(pad,Math.min(x,window.innerWidth-rect.width-pad));
-    let top=y;
-    if(top+rect.height>window.innerHeight-pad) top=Math.max(pad,y-rect.height-12);
-    menu.style.left=left+'px'; menu.style.top=Math.max(pad,top)+'px';
-  }
-
-  function findMessage(target){
-    const el=target?.closest?.('.bubble[id^="m"]');
-    if(!el)return null;
-    const id=Number(el.id.slice(1));
-    if(!id)return null;
-    return {id,el};
-  }
-  function messageData(found){
-    if(!found)return null;
-    const m=window._bktMessageCache?.get(found.id);
-    if(m)return m;
-    // Reconstruct enough data from the rendered bubble for reply/edit/delete.
-    return {id:found.id,sender_id:found.el.classList.contains('me')?Number(me?.id):0,text:found.el.querySelector('.message-reply')?.textContent||found.el.innerText||''};
-  }
-
-  // Keep the actual server message objects so long-press actions have reply text/sender.
-  const oldRender=window.renderMessage;
-  window.renderMessage=function(m){
-    if(!window._bktMessageCache)window._bktMessageCache=new Map();
-    window._bktMessageCache.set(Number(m.id),m);
-    return oldRender?.(m);
-  };
-  // The feature renderer is installed before this script in the page, so wrap its calls too.
-  if(!window._bktMessageCache)window._bktMessageCache=new Map();
-
-  root.addEventListener('pointerdown',e=>{
-    if(e.pointerType==='mouse' && e.button!==0)return;
-    const found=findMessage(e.target); if(!found)return;
-    const msg=messageData(found); if(!msg)return;
-    clearTimeout(timer);
-    const x=e.clientX, y=e.clientY;
-    timer=setTimeout(()=>{
-      suppressClickUntil=Date.now()+700;
-      openMenu(msg,x,y);
-    },550);
-  });
-  ['pointerup','pointercancel','pointermove','scroll'].forEach(type=>{
-    root.addEventListener(type,()=>{if(type!=='scroll')clearTimeout(timer);else closeMenu();},{passive:true});
-  });
-
-  root.addEventListener('contextmenu',e=>{
-    const found=findMessage(e.target); if(!found)return;
-    e.preventDefault();
-    clearTimeout(timer);
-    const msg=messageData(found); if(msg)openMenu(msg,e.clientX,e.clientY);
-  });
-  root.addEventListener('click',e=>{if(Date.now()<suppressClickUntil){e.preventDefault();e.stopPropagation();suppressClickUntil=0;}},true);
-  document.addEventListener('pointerdown',e=>{
-    if(menu && !menu.contains(e.target) && !e.target.closest('.bubble[id^="m"]'))closeMenu();
-  },true);
-  window.addEventListener('resize',closeMenu);
-  window.addEventListener('scroll',closeMenu,{passive:true});
-
-  // Cache incoming/edited messages even when they arrive through the socket.
-  const oldSocketMessage=window.__bktCacheSocketMessage;
-  window.__bktCacheSocketMessage=function(m){
-    if(m?.id){if(!window._bktMessageCache)window._bktMessageCache=new Map();window._bktMessageCache.set(Number(m.id),m);}
-    if(oldSocketMessage)oldSocketMessage(m);
-  };
-})();
-</script>
 </body></html>

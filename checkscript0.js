@@ -2,7 +2,7 @@
 let token=sessionStorage.getItem("bkt_token")||null, me=null, selected=null, activeGroup=null, socket=null, registering=false, selectedRegistrationAvatar="";
 // Never reuse a persistent login token left by another person/browser session.
 function $(id){return document.getElementById(id)}
-function toggleProtectedCode(){const username=$("login").value.trim().replace(/^@/,"").toLowerCase(); const protectedUser=["brozi","vlad","vladmobile"].includes(username); $("accessCode").style.display=protectedUser?"block":"none"; $("accessCode").placeholder=protectedUser?"Секретный код":"Секретный код";}
+function toggleProtectedCode(){const username=$("login").value.trim().replace(/^@/,"").toLowerCase(); const protectedUser=["brozi","vlad","vladmobile","premium_бот"].includes(username); $("accessCode").style.display=protectedUser?"block":"none"; $("accessCode").placeholder=protectedUser?"Секретный код":"Секретный код";}
 const REGISTRATION_AVATARS = Array.from({length:28},(_,i)=>`/stickers/${i+1}.webp`);
 function renderRegistrationAvatarPicker(){
   const picker=$("registerAvatarPicker"), grid=$("registerAvatarGrid"), selected=$("registerAvatarSelected");
@@ -809,7 +809,7 @@ function renderSettingsAvatarPicker(currentAvatar){
   $("settingsAvatarPreview").value=currentAvatar || REGISTRATION_AVATARS[0];
 }
 function closeSettings(){ $("settingsModal").style.display="none"; }
-function toggleProfileProtectedCode(){const username=$("profileUsername").value.trim().replace(/^@+/,"").toLowerCase(); const protectedUser=["brozi","vlad","vladmobile"].includes(username); $("profileAccessCode").style.display=protectedUser?"block":"none";}
+function toggleProfileProtectedCode(){const username=$("profileUsername").value.trim().replace(/^@+/,"").toLowerCase(); const protectedUser=["brozi","vlad","vladmobile","premium_бот"].includes(username); $("profileAccessCode").style.display=protectedUser?"block":"none";}
 async function saveSettings(){
  try{
   const p=await api("/api/profile",{method:"PATCH",body:{
