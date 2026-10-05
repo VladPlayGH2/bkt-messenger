@@ -1096,8 +1096,9 @@ async function pollActiveCall(){
   try{
     const st=await api('/api/calls/'+encodeURIComponent(localCallId)+'/state');
     if(!st || st.status==='ended') { if(peer) endCall(false); return; }
-    if(st.answer && !peer.remoteDescription){
-      await peer.setRemoteDescription(new RTCSessionDescription(st.answer));
+    if(st.answer && peer.signalingState === "have-local-offer" && !applyingRemoteAnswer){
+      applyingRemoteAnswer=true;
+      try { await peer.setRemoteDescription(new RTCSessionDescription(st.answer)); } finally { applyingRemoteAnswer=false; }
       for(const c of (st.iceCandidates||[])){ try{ await peer.addIceCandidate(new RTCIceCandidate(c)); }catch(_){} }
     }else if(st.iceCandidates?.length){
       for(const c of st.iceCandidates){ try{ await peer.addIceCandidate(new RTCIceCandidate(c)); }catch(_){} }
@@ -1727,7 +1728,7 @@ async function send(){
 }
 
 
-let peer=null, localCallStream=null, incomingCall=null, callType="audio", pendingIceCandidates=[], incomingIceCandidates=[], callPeerUserId=null, localCallId=null, callTimeout=null, callStartedAt=0, callDurationTimer=null;
+let peer=null, localCallStream=null, incomingCall=null, callType="audio", pendingIceCandidates=[], incomingIceCandidates=[], callPeerUserId=null, localCallId=null, callTimeout=null, callStartedAt=0, callDurationTimer=null, answerSentForCallId=null, applyingRemoteAnswer=false;
 
 function callSocket(data){
   if(!socket || socket.readyState!==WebSocket.OPEN){
@@ -1901,7 +1902,13 @@ async function acceptIncomingCall(){
       $("localCallVideo").style.display="none";
     }
     $("callMinimizeAction").style.display="block";
-    await peer.setRemoteDescription(new RTCSessionDescription(call.signal));
+    // Для принимающей стороны offer должен переводить PC в have-remote-offer.
+    // Если другой обработчик уже принял этот же offer, не создаём второй answer.
+    if(peer.signalingState === "stable") {
+      await peer.setRemoteDescription(new RTCSessionDescription(call.signal));
+    } else if(peer.signalingState !== "have-remote-offer") {
+      throw new DOMException("Неверное состояние WebRTC для принятия offer", "InvalidStateError");
+    }
     for(const c of (call.iceCandidates||[])){
       try{await peer.addIceCandidate(new RTCIceCandidate(c));}catch(e){console.warn("initial ICE add failed",e)}
     }
@@ -1909,8 +1916,19 @@ async function acceptIncomingCall(){
       try{await peer.addIceCandidate(new RTCIceCandidate(c));}catch(e){console.warn("queued ICE add failed",e)}
     }
     incomingIceCandidates=[];
+    if(peer.signalingState !== "have-remote-offer") {
+      // Если answer уже был создан другим параллельным обработчиком, просто
+      // считаем звонок принятым и не вызываем createAnswer() в stable.
+      if(answerSentForCallId === String(localCallId) && peer.localDescription?.type === "answer") {
+        incomingCallAccepting=false;
+        if($('acceptCall')) $('acceptCall').style.display="none";
+        return;
+      }
+      throw new DOMException("Нельзя создать answer: соединение уже не ждёт offer", "InvalidStateError");
+    }
     const answer=await peer.createAnswer();
     await peer.setLocalDescription(answer);
+    answerSentForCallId=String(localCallId);
     const answerSignal={sdp:peer.localDescription.sdp,type:peer.localDescription.type};
     callSocket({type:"call-signal",toUserId:from,signalType:"answer",callId:localCallId,signal:answerSignal,callType});
 
@@ -1947,6 +1965,10 @@ async function handleCallSignal(d){
   if(d.signalType==="call-created"){
     localCallId=d.callId||localCallId;
   }else if(d.signalType==="offer"){
+    // Один и тот же offer может прийти одновременно через WebSocket и polling.
+    // Не показываем второй входящий звонок и не создаём второй RTCPeerConnection.
+    if((localCallId && String(localCallId)===String(d.callId) && peer) ||
+       (incomingCall && String(incomingCall.callId)===String(d.callId))) return;
     incomingCall=d;
     incomingIceCandidates=[];
     callType=d.callType||"audio";
@@ -1964,9 +1986,16 @@ async function handleCallSignal(d){
     localCallId=d.callId||null;
   }else if(d.signalType==="answer" && peer){
     localCallId=d.callId||localCallId;
-    await peer.setRemoteDescription(new RTCSessionDescription(d.signal));
-    for(const c of incomingIceCandidates){try{await peer.addIceCandidate(new RTCIceCandidate(c));}catch(e){}}
-    incomingIceCandidates=[];
+    // Ответ принимается только вызывающей стороной, когда PC находится
+    // в состоянии have-local-offer. Повторный answer (например, из WebSocket
+    // и polling одновременно) больше не приводит к "Cannot create/set ... stable".
+    if(peer.signalingState !== "have-local-offer" || applyingRemoteAnswer) return;
+    applyingRemoteAnswer=true;
+    try {
+      await peer.setRemoteDescription(new RTCSessionDescription(d.signal));
+      for(const c of incomingIceCandidates){try{await peer.addIceCandidate(new RTCIceCandidate(c));}catch(e){}}
+      incomingIceCandidates=[];
+    } finally { applyingRemoteAnswer=false; }
   }else if(d.signalType==="ice"){
     if(peer && peer.remoteDescription && peer.remoteDescription.type){
       try{await peer.addIceCandidate(new RTCIceCandidate(d.signal));}catch(e){console.warn("ICE add failed",e)}
@@ -2012,7 +2041,7 @@ function endCall(notify=true){
   try{if(peer)peer.close()}catch(e){}
   stopCallDuration();
   if(localCallStream)localCallStream.getTracks().forEach(t=>t.stop());
-  peer=null;localCallStream=null;incomingCall=null;pendingIceCandidates=[];incomingIceCandidates=[];callPeerUserId=null;localCallId=null;
+  peer=null;localCallStream=null;incomingCall=null;pendingIceCandidates=[];incomingIceCandidates=[];callPeerUserId=null;localCallId=null;answerSentForCallId=null;applyingRemoteAnswer=false;incomingCallAccepting=false;
   $("callModal").style.display="none";
   $("callMiniBar").style.display="none";
   $("remoteVideo").srcObject=null;

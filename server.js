@@ -751,7 +751,12 @@ app.get("/api/rtc-config", auth, async (req, res) => {
     .split(",").map(s => s.trim()).filter(Boolean);
   const turnSecret = String(process.env.TURN_SECRET || "");
   if (turnUrls.length && turnSecret) {
-    const expires = Math.floor(Date.now() / 1000) + 21600;
+    // TURN credentials are short-lived by default, but the lifetime can be
+    // configured for a self-hosted coturn server. 1000 hours is the requested
+    // lifetime; set TURN_CREDENTIAL_TTL_HOURS to override it in production.
+    const ttlHours = Number(process.env.TURN_CREDENTIAL_TTL_HOURS || 1000);
+    const safeTtlHours = Number.isFinite(ttlHours) && ttlHours > 0 ? Math.min(ttlHours, 24 * 365) : 1000;
+    const expires = Math.floor(Date.now() / 1000) + Math.floor(safeTtlHours * 60 * 60);
     const username = `${expires}:${String(req.user.id)}`;
     const credential = crypto.createHmac("sha1", turnSecret).update(username).digest("base64");
     iceServers.push({ urls: turnUrls, username, credential });
