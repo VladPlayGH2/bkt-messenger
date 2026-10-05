@@ -580,7 +580,6 @@ img,video{max-width:100%}
   <div id="profileViewAvatar" class="profile-view-avatar">БКТ</div>
   <div id="profileViewName" class="profile-view-name">Профиль</div>
   <div id="profileViewUsername" class="profile-view-username"></div>
-  <div id="profileViewLastSeen" class="profile-view-username"></div>
   <div id="profileViewBio" class="profile-view-bio"></div>
   <div id="profileViewGifts" class="reward-cards" style="margin:0 0 8px"></div>
   <div id="profileViewGiftActions" class="profile-view-actions" style="margin:0 0 12px"></div>
@@ -588,7 +587,6 @@ img,video{max-width:100%}
   <div class="profile-view-actions">
     <button id="profileViewChat" class="primary-profile" onclick="chatFromProfile()">💬 Написать</button>
     <button id="profileViewBlock" onclick="toggleProfileBlock()">🚫 Заблокировать</button>
-    <button id="profileViewDelete" class="danger" style="display:none" onclick="deleteAccountPermanently()">🗑️ Удалить аккаунт навсегда</button>
     <button onclick="closeProfileView()">Закрыть</button>
   </div>
 </div></div>
@@ -1085,17 +1083,6 @@ let callStatePollTimer=null;
 let socketReconnectTimer=null;
 let socketReconnectDelay=1000;
 const presenceState=new Map();
-const presenceLastSeen=new Map();
-function formatLastSeen(value){
-  if(!value) return "последний визит неизвестен";
-  const d=new Date(value);
-  if(Number.isNaN(d.getTime())) return "последний визит неизвестен";
-  const now=new Date(), time=d.toLocaleTimeString("ru-RU",{hour:"2-digit",minute:"2-digit"});
-  if(d.toDateString()===now.toDateString()) return "был(а) сегодня в "+time;
-  const yesterday=new Date(now); yesterday.setDate(now.getDate()-1);
-  if(d.toDateString()===yesterday.toDateString()) return "был(а) вчера в "+time;
-  return "был(а) "+d.toLocaleDateString("ru-RU",{day:"2-digit",month:"2-digit",year:"numeric"})+" в "+time;
-}
 function startCallPolling(){
   clearInterval(callPollTimer);
   callPollTimer=setInterval(async()=>{
@@ -1121,24 +1108,19 @@ async function pollActiveCall(){
   }catch(_){}
 }
 
-function updatePresenceUI(userId, online, lastSeen=null){
+function updatePresenceUI(userId, online){
   const id=Number(userId);
   presenceState.set(id, !!online);
-  if(lastSeen) presenceLastSeen.set(id,lastSeen);
-  const savedLastSeen=presenceLastSeen.get(id);
-  document.querySelectorAll('[data-user-id="'+id+'"]').forEach(row=>{
+  document.querySelectorAll('[data-user-id=\"'+id+'\"]').forEach(row=>{
     const dot=row.querySelector('.presence-dot');
     const label=row.querySelector('.presence-label');
     if(dot){dot.className='presence-dot '+(online?'online':'offline');dot.textContent='●';}
-    if(label) label.innerHTML='<span class="presence-dot '+(online?'online':'offline')+'">●</span> '+(online?'онлайн':formatLastSeen(savedLastSeen));
+    if(label) label.innerHTML='<span class="presence-dot '+(online?'online':'offline')+'">●</span>'+(online?'онлайн':'не в сети');
   });
   if(selected && Number(selected.id)===id){
     selected.online=!!online;
-    if(lastSeen) selected.last_seen=lastSeen;
     const hs=$('headStatus');
-    if(hs) hs.innerHTML=online
-      ? ' <span class="presence-dot online">●</span> онлайн'
-      : ' <span class="presence-dot offline">●</span> '+formatLastSeen(savedLastSeen || selected.last_seen);
+    if(hs) hs.innerHTML=online?' <span class="presence-dot online">●</span> онлайн':' <span class="presence-dot offline">●</span> не в сети';
   }
 }
 
@@ -1194,6 +1176,8 @@ function connectSocket(){
         return;
       }
       if(d.type==='message-deleted'){const el=document.getElementById('m'+d.messageId);if(el)el.remove();return;}
+      if(d.type==='message-edited' && d.message){const el=document.getElementById('m'+d.message.id);if(el){el.remove();renderMessage(d.message);}return;}
+      if(d.type==='message-reactions'){if(typeof updateReactions==='function')updateReactions(d.messageId,d.reactions||[]);return;}
       if(d.type==='group-message'&&d.message&&activeGroup&&Number(d.message.group_id)===Number(activeGroup.id)){renderGroupMessage(d.message);if(Number(d.message.sender_id)!==Number(me?.id))maybeOpenBktGame(d.message.text,true);return;}
       if(d.type==='group-message-deleted'){const el=document.getElementById('gm'+d.messageId);if(el)el.remove();return;}
     }catch(err){console.error('WebSocket message error:',err);}
@@ -1225,9 +1209,7 @@ async function loadUsers(){
       const avatar=u.avatar ? `<img src="${escapeHtml(u.avatar)}" style="width:42px;height:42px;border-radius:50%;object-fit:cover">` : initial;
       const online=presenceState.has(Number(u.id)) ? presenceState.get(Number(u.id)) : !!u.online;
       presenceState.set(Number(u.id),online);
-      if(u.last_seen) presenceLastSeen.set(Number(u.id),u.last_seen);
-      const presenceText=online?'онлайн':formatLastSeen(u.last_seen||presenceLastSeen.get(Number(u.id)));
-      row.innerHTML=`<div class="avatar">${avatar}</div><div><b>${verifiedName(u.username,!!u.verified)}</b><small>@${escapeHtml(u.username)}</small><small class="presence-label" style="display:block;color:${online?'#22ff72':'#68736d'}"> <span class="presence-dot ${online?'online':'offline'}">●</span> ${escapeHtml(presenceText)}</small></div>`;
+      row.innerHTML=`<div class="avatar">${avatar}</div><div><b>${verifiedName(u.username,!!u.verified)}</b><small>@${escapeHtml(u.username)}</small><small class="presence-label" style="display:block;color:${online?'#22ff72':'#68736d'}"> <span class="presence-dot ${online?'online':'offline'}">●</span>${online?'онлайн':'не в сети'}</small></div>`;
       box.appendChild(row);
     }
   } catch(e) { box.innerHTML='<div style="padding:14px;color:#ff8d8d">'+escapeHtml(e.message||"Ошибка загрузки пользователей")+'</div>'; }
@@ -1281,7 +1263,7 @@ async function deleteGroupMessage(id){
   try{await api("/api/groups/messages/"+id,{method:"DELETE"});const el=$("gm"+id);if(el)el.remove();}
   catch(e){alert(e.message||"Не удалось удалить сообщение");}
 }
-async function openUser(u){activeGroup=null;selected=u;$('app').classList.add('mobile-chat');$('headName').textContent=u.username;$('headAvatar').textContent=u.username[0].toUpperCase();if(u.last_seen)presenceLastSeen.set(Number(u.id),u.last_seen);const online=presenceState.has(Number(u.id))?presenceState.get(Number(u.id)):!!u.online;$('headStatus').innerHTML=online?' <span class="presence-dot online">●</span> онлайн':' <span class="presence-dot offline">●</span> '+formatLastSeen(u.last_seen||presenceLastSeen.get(Number(u.id)));updateComposerAccess();let ms=await api("/api/messages/"+u.id);$('messages').innerHTML="";ms.forEach(renderMessage);$('messages').scrollTop=$('messages').scrollHeight;await markSelectedChatRead();loadUsers()}
+async function openUser(u){activeGroup=null;selected=u;$('app').classList.add('mobile-chat');$('headName').textContent=u.username;$('headAvatar').textContent=u.username[0].toUpperCase();const online=presenceState.has(Number(u.id))?presenceState.get(Number(u.id)):!!u.online;$('headStatus').innerHTML=online?' <span class="presence-dot online">●</span> онлайн':' <span class="presence-dot offline">●</span> не в сети';updateComposerAccess();let ms=await api("/api/messages/"+u.id);$('messages').innerHTML="";ms.forEach(renderMessage);$('messages').scrollTop=$('messages').scrollHeight;await markSelectedChatRead();loadUsers()}
   loadChatWallpaper();
 function renderMessage(m){
   if(document.getElementById("m"+m.id))return;
@@ -1488,8 +1470,6 @@ async function openProfileView(userId, isMe=false){
     const p = isMe ? await api("/api/profile") : await api("/api/users/"+encodeURIComponent(userId)+"/profile");
     $("profileViewName").innerHTML = verifiedName(p.username, !!p.verified);
     $("profileViewUsername").textContent = "@"+p.username;
-    const profileLastSeen=$("profileViewLastSeen");
-    if(profileLastSeen) profileLastSeen.textContent=isMe ? "сейчас онлайн" : (presenceState.get(Number(p.id)) ? "онлайн" : formatLastSeen(p.last_seen));
     $("profileViewBio").textContent = p.bio || "О себе пока ничего не указано.";
     const giftsBox=$("profileViewGifts");
     if(giftsBox){
@@ -1512,12 +1492,7 @@ async function openProfileView(userId, isMe=false){
         giftActions.style.display=(catalog.gifts||[]).length?'flex':'none';
       }else{ giftActions.innerHTML=''; giftActions.style.display='none'; }
     }
-    const blockBtn=$("profileViewBlock"), blockState=$("profileViewBlockState"), deleteBtn=$("profileViewDelete");
-    if(deleteBtn){
-      const admin=["brozi","vlad"].includes(String(me?.username||"").trim().replace(/^@+/,"").toLowerCase());
-      const targetProtected=["brozi","vlad"].includes(String(p.username||"").trim().replace(/^@+/,"").toLowerCase());
-      deleteBtn.style.display=(!isMe && admin && !targetProtected)?"block":"none";
-    }
+    const blockBtn=$("profileViewBlock"), blockState=$("profileViewBlockState");
     if(isMe){
       blockBtn.style.display="none"; blockState.textContent="";
     }else{
@@ -1542,26 +1517,6 @@ async function openProfileView(userId, isMe=false){
 async function giftRewardTo(receiverId, stickerId){
   try{ const d=await api('/api/stickers/'+Number(stickerId)+'/send',{method:'POST',body:{receiverId:Number(receiverId)}}); rewardState.oranges=Number(d.oranges||0); await loadGiftCatalog(); renderRewards(); alert(`Подарок отправлен. Списано ${Number(d.gift?.price||0)} 🍊.`); }
   catch(e){ alert(e.message||'Не удалось отправить подарок'); }
-}
-async function deleteAccountPermanently(){
-  const p=window.profileViewUser;
-  const admin=["brozi","vlad"].includes(String(me?.username||"").trim().replace(/^@+/,"").toLowerCase());
-  if(!p || !admin || Number(p.id)===Number(me?.id)) return;
-  if(["brozi","vlad"].includes(String(p.username||"").trim().replace(/^@+/,"").toLowerCase())) return;
-  if(!confirm(`Удалить @${p.username} навсегда?\n\nБудут удалены аккаунт, сообщения, статусы и связанные данные. Восстановить его будет нельзя.`)) return;
-  try{
-    await api("/api/admin/users/"+encodeURIComponent(p.id),{method:"DELETE"});
-    closeProfileView();
-    if(selected && Number(selected.id)===Number(p.id)){
-      selected=null;
-      $("headName").textContent="Выберите чат";
-      $("headStatus").textContent="";
-      $("messages").innerHTML='<div class="empty">Пользователь удалён</div>';
-      $("app").classList.remove("mobile-chat");
-    }
-    loadUsers();
-    alert("Аккаунт @"+p.username+" удалён навсегда.");
-  }catch(e){alert(e.message||"Не удалось удалить аккаунт");}
 }
 async function toggleProfileBlock(){
   const p=window.profileViewUser; if(!p)return;
@@ -2390,80 +2345,8 @@ window.addEventListener('beforeunload',(e)=>{
   if(peer && localCallStream){ e.preventDefault(); e.returnValue=''; }
 });
 </script>
-\n<script id="bkt-statuses-final-fix">
-(function(){
-  const $=id=>document.getElementById(id);
-  const auth=()=>typeof token!=="undefined"&&token?{Authorization:"Bearer "+token}:{};
-  let rows=[]; let current=0; let timer=null;
-  function esc(v){return typeof escapeHtml==="function"?escapeHtml(v||""):String(v||"").replace(/[&<>\"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'\"':"&quot;","'":"&#39;"}[c]));}
-  function apiLocal(path,opts={}){
-    const headers={...(opts.headers||{}),...auth()};
-    if(opts.body && typeof opts.body!=="string"){headers["Content-Type"]="application/json";opts={...opts,body:JSON.stringify(opts.body)};}
-    return fetch(path,{...opts,headers}).then(async r=>{const t=await r.text();let d={};try{d=t?JSON.parse(t):{}}catch(_){d={error:t||("HTTP "+r.status)}};if(!r.ok)throw new Error(d.error||d.message||("HTTP "+r.status));return d;});
-  }
-  function closeViewer(){clearTimeout(timer);timer=null;const m=$("statusViewerModal");if(m)m.style.display="none";}
-  function openViewer(i){if(!rows[i])return;current=i;const m=$("statusViewerModal");if(m)m.style.display="grid";renderViewer();}
-  function renderViewer(){
-    const feed=$("tiktokStatusFeed"); if(!feed)return;
-    feed.innerHTML=rows.map((s,i)=>{
-      const media=s.media_url?`<img class="tiktok-status-photo" src="${esc(s.media_url)}" alt="Фото статуса" loading="eager">`:`<div class="tiktok-status-photo" style="display:grid;place-items:center;background:#0c1711;font-size:64px">💬</div>`;
-      const avatar=s.avatar?`<img class="tiktok-status-avatar" src="${esc(s.avatar)}" alt="">`:`<div class="tiktok-status-avatar" style="display:grid;place-items:center;font-weight:800">${esc((s.username||"?")[0].toUpperCase())}</div>`;
-      const own=Number(s.user_id)===Number(window.me?.id);
-      return `<section class="tiktok-status-slide" data-index="${i}">${media}<div class="tiktok-status-gradient"></div><div class="tiktok-status-info"><div class="tiktok-status-user">${avatar}<span>${esc(s.username||"Пользователь")}</span></div>${s.text?`<div class="tiktok-status-caption">${esc(s.text)}</div>`:""}<div class="tiktok-status-date">${esc(new Date(s.created_at).toLocaleString("ru-RU",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}))}</div></div><div class="tiktok-status-actions"><button class="tiktok-status-action" onclick="focusStatusComposer()">＋</button>${own?`<button class="tiktok-status-action" title="Удалить" onclick="deleteStatus(${Number(s.id)})">🗑️</button>`:""}</div></section>`;
-    }).join("");
-    requestAnimationFrame(()=>scrollToCurrent(false));
-    clearTimeout(timer); if(rows.length)timer=setTimeout(()=>{if(current<rows.length-1){current++;scrollToCurrent(true);}else closeViewer();},5000);
-  }
-  function scrollToCurrent(smooth){const f=$("tiktokStatusFeed");if(!f)return;const el=f.children[current];if(el)f.scrollTo({top:el.offsetTop,behavior:smooth?"smooth":"auto"});}
-  async function load(){
-    try{rows=await apiLocal("/api/statuses");if(!Array.isArray(rows))rows=[];
-      const list=$("statusFeed"),empty=$("statusEmpty");
-      if(list){list.innerHTML="";list.style.display=rows.length?"block":"";}
-      if(empty){empty.style.display=rows.length?"none":"flex";empty.textContent=rows.length?"":"Здесь появятся статусы контактов";}
-      rows.forEach((s,i)=>{if(!list)return;const item=document.createElement("button");item.type="button";item.className="wa-status-row";item.onclick=()=>openViewer(i);item.innerHTML=`<span class="wa-status-avatar" style="background-image:url('${esc(s.avatar||"")}')"></span><span class="wa-status-row-body"><b>${esc(s.username||"Пользователь")}</b><small>${s.media_url?"📷 Фото статуса":"💬 Текстовый статус"} · ${new Date(s.created_at).toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"})}</small></span>`;list.appendChild(item);});
-      const my=$("waMyStatusAvatar");if(my&&window.me?.avatar)my.style.backgroundImage=`url("${esc(window.me.avatar)}")`;
-    }catch(e){const empty=$("statusEmpty");if(empty){empty.style.display="flex";empty.textContent=e.message||"Не удалось загрузить статусы";}}
-  }
-  window.openStatuses=async function(){const m=$("statusesModal");if(m)m.style.display="flex";await load();};
-  window.loadStatuses=load;
-  window.openStatusViewer=openViewer;
-  window.closeStatusViewer=closeViewer;
-  window.closeStatuses=function(){const m=$("statusesModal");if(m)m.style.display="none";closeViewer();};
-  window.deleteStatus=async function(id){
-    if(!confirm("Удалить этот статус навсегда?"))return;
-    try{await apiLocal("/api/statuses/"+encodeURIComponent(id),{method:"DELETE"});rows=rows.filter(s=>Number(s.id)!==Number(id));await load();if(rows.length)openViewer(Math.min(current,rows.length-1));else closeViewer();}
-    catch(e){alert(e.message||"Не удалось удалить статус");}
-  };
-  window.publishStatus=async function(){
-    const file=$("statusPhotoInput")?.files?.[0] || $("statusCameraInput")?.files?.[0] || window.cameraShot;
-    const text=($("statusCaption")?.value||$("statusText")?.value||"").trim();
-    if(!file && !text){alert("Добавьте текст или выберите фото.");return;}
-    if(text.length>280){alert("Текст статуса — максимум 280 символов.");return;}
-    const btn=$("statusPublishButton");if(btn){btn.disabled=true;btn.textContent="Публикация…";}
-    try{
-      let mediaUrl="";
-      if(file){
-        const fd=new FormData();fd.append("image",file,file.name||"status.jpg");
-        const up=await fetch("/api/statuses/upload",{method:"POST",headers:auth(),body:fd});
-        const ud=await up.json().catch(()=>({}));if(!up.ok)throw new Error(ud.error||"Не удалось загрузить фото");
-        mediaUrl=ud.url||ud.mediaUrl||"";
-        if(!mediaUrl)throw new Error("Сервер не вернул ссылку на фото");
-      }
-      await apiLocal("/api/statuses",{method:"POST",body:{text,mediaUrl}});
-      if($("statusPhotoInput"))$("statusPhotoInput").value="";
-      if($("statusCameraInput"))$("statusCameraInput").value="";
-      if($("statusCaption"))$("statusCaption").value="";
-      window.cameraShot=null;
-      if($("statusPreviewWrap"))$("statusPreviewWrap").style.display="none";
-      if(typeof closeStatusComposer==="function")closeStatusComposer();else{$("statusComposerModal").style.display="none";}
-      await load();
-    }catch(e){alert(e.message||"Не удалось опубликовать статус");}
-    finally{if(btn){btn.disabled=false;btn.textContent="Опубликовать";}}
-  };
-  window.addEventListener("load",()=>{load();});
-  document.addEventListener("keydown",e=>{if($("statusViewerModal")?.style.display!=="grid")return;if(e.key==="Escape")closeViewer();if(e.key==="ArrowDown"){current=Math.min(rows.length-1,current+1);scrollToCurrent(true);}if(e.key==="ArrowUp"){current=Math.max(0,current-1);scrollToCurrent(true);}});
-})();
-</script>\n
+
+
 <style id="bkt-statuses-desktop-final">
 /* Final TikTok-style status viewer: the header is part of the shell, so the feed
    must occupy the remaining height rather than 100% of the shell. */
@@ -2646,6 +2529,129 @@ window.addEventListener('beforeunload',(e)=>{
     else if(e.key==="ArrowDown"||e.key==="PageDown")next();
     else if(e.key==="ArrowUp"||e.key==="PageUp")prev();
   });
+})();
+</script>
+
+
+<style id="bkt-message-features-final">
+.reply-preview{margin:0 0 8px;padding:8px 10px;border-left:3px solid #36d47a;background:#102019;border-radius:8px;display:flex;justify-content:space-between;gap:8px;align-items:center}
+.reply-preview button{border:0;background:transparent;color:#aaa;font-size:18px;cursor:pointer}
+.message-reply{font-size:12px;color:#a9b8b0;border-left:3px solid #36d47a;padding:4px 7px;margin-bottom:6px;background:rgba(0,0,0,.12);border-radius:6px;max-width:260px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.message-actions{display:flex;gap:3px;align-items:center;margin-top:4px;flex-wrap:wrap}
+.message-actions button{border:0;background:transparent;color:#9eaaa4;cursor:pointer;padding:2px 4px;border-radius:6px}
+.message-actions button:hover{background:rgba(255,255,255,.08);color:#fff}
+.message-reactions{display:flex;gap:4px;flex-wrap:wrap;margin-top:5px}
+.message-reaction{border:1px solid #2c3d34!important;background:#101a15!important;border-radius:10px!important;color:#fff!important;font-size:13px!important;padding:2px 6px!important}
+.message-reaction.active{border-color:#35d879!important;background:#153b27!important}
+.edited-label{font-size:10px;color:#82918a;margin-left:3px}
+</style>
+<script id="bkt-features-final">
+(function(){
+  const $=id=>document.getElementById(id);
+  const REACTIONS=['👍','❤️','😂','😮','😢'];
+  let replyTarget=null;
+  function esc(v){return typeof escapeHtml==='function'?escapeHtml(String(v??'')):String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+  function showReplyPreview(m){
+    replyTarget=m;
+    let box=$('replyPreview');
+    if(!box){
+      box=document.createElement('div');box.id='replyPreview';box.className='reply-preview';
+      const composer=$('text')?.parentElement?.parentElement || $('text')?.parentElement;
+      if(composer?.parentElement)composer.parentElement.insertBefore(box,composer);else $('messages')?.parentElement?.appendChild(box);
+    }
+    box.innerHTML=`<span>↩️ Ответ <b>@${esc(m.sender_name||'пользователь')}</b>: ${esc(m.text||'')}</span><button type="button" onclick="cancelReply()">✕</button>`;
+  }
+  window.cancelReply=function(){replyTarget=null;const b=$('replyPreview');if(b)b.remove();};
+  window.replyToMessage=showReplyPreview;
+  window.editMessage=async function(id,oldText){
+    const text=prompt('Изменить сообщение:',oldText||'');
+    if(text===null)return;
+    const next=text.trim(); if(!next)return alert('Сообщение не может быть пустым.');
+    try{const m=await api('/api/messages/'+id,{method:'PATCH',body:{text:next}});const el=$('m'+id);if(el){el.remove();renderMessage(m);}}
+    catch(e){alert(e.message||'Не удалось изменить сообщение');}
+  };
+  window.reactMessage=async function(id,reaction){
+    try{const d=await api('/api/messages/'+id+'/reaction',{method:'POST',body:{reaction}});updateReactions(id,d.reactions||[]);}
+    catch(e){alert(e.message||'Не удалось поставить реакцию');}
+  };
+  function updateReactions(id,reactions){
+    const box=$('m'+id)?.querySelector('.message-reactions');if(!box)return;
+    const grouped={};(reactions||[]).forEach(r=>{grouped[r.reaction]=(grouped[r.reaction]||[]).concat(Number(r.userId));});
+    box.innerHTML=Object.entries(grouped).map(([r,ids])=>`<button type="button" class="message-reaction ${ids.includes(Number(me?.id))?'active':''}" onclick="reactMessage(${id},'${r}')">${r} ${ids.length>1?ids.length:''}</button>`).join('');
+  }
+  window.updateReactions=updateReactions;
+
+  // Replace the message renderer with one that exposes reply/edit/reaction controls.
+  window.renderMessage=function(m){
+    if(document.getElementById('m'+m.id))return;
+    const d=document.createElement('div');d.id='m'+m.id;d.className='bubble '+(Number(m.sender_id)===Number(me.id)?'me':'');
+    if(m.reply_to_id){
+      const q=document.createElement('div');q.className='message-reply';q.textContent=`↩ ${m.reply_sender||'пользователь'}: ${m.reply_text||'Сообщение'}`;d.appendChild(q);
+    }
+    const text=String(m.text||'');
+    if(text.startsWith('[STICKER]')){const img=document.createElement('img');img.className='sticker-msg';img.alt='Стикер';img.src=text.substring(9);img.loading='lazy';d.appendChild(img);}
+    else if(text.startsWith('[VOICE]')){const a=document.createElement('audio');a.controls=true;a.preload='metadata';a.src=text.substring(7);a.style.maxWidth='230px';d.appendChild(a);}
+    else if(text.startsWith('[VIDEO_NOTE]')){const v=document.createElement('video');v.controls=true;v.playsInline=true;v.preload='metadata';v.src=text.substring(12);v.style.width='180px';v.style.height='180px';v.style.objectFit='cover';v.style.borderRadius='50%';d.appendChild(v);}
+    else {const body=document.createElement('div');body.textContent=text;if(text.startsWith('📞')||text.startsWith('📹'))d.classList.add('call-history');d.appendChild(body);}
+    const meta=document.createElement('div');meta.style.cssText='display:flex;align-items:center;justify-content:flex-end;gap:6px';
+    const t=document.createElement('time');t.textContent=window.formatMessageTime(m.created_at);meta.appendChild(t);
+    if(m.edited_at){const e=document.createElement('span');e.className='edited-label';e.textContent='Изменено';meta.appendChild(e);}
+    if(Number(m.sender_id)===Number(me.id)){const status=document.createElement('span');status.className='message-status '+(m.read_at?'read':'unread');status.textContent='✓';status.title=m.read_at?'Прочитано':'Отправлено, не прочитано';meta.appendChild(status);}
+    d.appendChild(meta);
+    const actions=document.createElement('div');actions.className='message-actions';
+    const reply=document.createElement('button');reply.type='button';reply.title='Ответить';reply.textContent='↩️';reply.onclick=()=>showReplyPreview(m);actions.appendChild(reply);
+    if(Number(m.sender_id)===Number(me.id)){const edit=document.createElement('button');edit.type='button';edit.title='Редактировать';edit.textContent='✏️';edit.onclick=()=>editMessage(m.id,text);actions.appendChild(edit);}
+    REACTIONS.forEach(r=>{const b=document.createElement('button');b.type='button';b.title='Реакция '+r;b.textContent=r;b.onclick=()=>reactMessage(m.id,r);actions.appendChild(b);});
+    if(Number(m.sender_id)===Number(me.id)){const del=document.createElement('button');del.type='button';del.title='Удалить';del.textContent='🗑️';del.onclick=()=>deleteMessage(m.id);actions.appendChild(del);}
+    d.appendChild(actions);
+    const rb=document.createElement('div');rb.className='message-reactions';d.appendChild(rb);
+    updateReactions(id=m.id,m.reactions||[]);
+    $('messages').appendChild(d);
+    if(window._suppressMessageScroll!==true)$('messages').scrollTop=$('messages').scrollHeight;
+  };
+
+  // Re-render after socket events so reactions/edits appear instantly.
+  const oldConnect=window.connectSocket;
+  // The existing socket handler is inside the page scope, so use a document-level listener
+  // only as a fallback for custom events emitted by future builds.
+  document.addEventListener('bkt-message-reactions',e=>{const d=e.detail||{};if(d.messageId)updateReactions(d.messageId,d.reactions||[]);});
+
+  // Send reply_to_id when the normal send() path is used.
+  const oldSend=window.send;
+  window.send=async function(){
+    const input=$('text');const text=input?.value.trim();
+    if(!text)return oldSend?.();
+    if(replyTarget && !activeGroup && selected){
+      try{
+        const msg=await api('/api/messages',{method:'POST',body:{receiverId:Number(selected.id),text,replyToId:Number(replyTarget.id)}});
+        input.value='';cancelReply();renderMessage(msg);maybeOpenBktGame(msg.text);return;
+      }catch(e){alert(e.message||'Не удалось отправить ответ');return;}
+    }
+    return oldSend?.();
+  };
+
+  // Fix statuses: text-only statuses are valid, and photo upload is optional.
+  window.publishStatus=async function(){
+    const text=($('statusText')?.value||'').trim();
+    const file=$('statusImage')?.files?.[0];
+    if(!text && !file){alert('Добавьте текст или выберите фото.');return;}
+    try{
+      let mediaUrl='';
+      if(file){
+        if(file.size>8*1024*1024)throw new Error('Фото должно быть не больше 8 МБ');
+        const fd=new FormData();fd.append('image',file,file.name||'status.jpg');
+        const headers={};if(typeof token!=='undefined'&&token)headers.Authorization='Bearer '+token;
+        const up=await fetch('/api/statuses/upload',{method:'POST',headers,body:fd});
+        const ud=await up.json().catch(()=>({}));if(!up.ok)throw new Error(ud.error||'Не удалось загрузить фото');
+        mediaUrl=ud.url||ud.mediaUrl||'';if(!mediaUrl)throw new Error('Сервер не вернул адрес фото');
+      }
+      await api('/api/statuses',{method:'POST',body:{text,mediaUrl}});
+      if($('statusText'))$('statusText').value='';if($('statusImage'))$('statusImage').value='';
+      closeStatusComposer();
+      await loadStatuses();
+      alert('Статус опубликован.');
+    }catch(e){alert(e.message||'Не удалось опубликовать статус');}
+  };
 })();
 </script>
 

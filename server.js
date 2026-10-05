@@ -168,7 +168,6 @@ async function initDb() {
 
     ALTER TABLE users ADD COLUMN IF NOT EXISTS referral_code TEXT;
     ALTER TABLE users ADD COLUMN IF NOT EXISTS is_bot BOOLEAN NOT NULL DEFAULT FALSE;
-    ALTER TABLE users ADD COLUMN IF NOT EXISTS last_seen TIMESTAMPTZ;
     CREATE UNIQUE INDEX IF NOT EXISTS idx_users_referral_code ON users(referral_code) WHERE referral_code IS NOT NULL;
 
     CREATE TABLE IF NOT EXISTS referrals (
@@ -335,6 +334,29 @@ async function initDb() {
     }
   }
   await query("ALTER TABLE statuses ADD COLUMN IF NOT EXISTS media_url TEXT NOT NULL DEFAULT ''");
+  // Message feature migrations (safe for existing databases).
+  await query("ALTER TABLE messages ADD COLUMN IF NOT EXISTS reply_to_id BIGINT REFERENCES messages(id) ON DELETE SET NULL");
+  await query("ALTER TABLE messages ADD COLUMN IF NOT EXISTS edited_at TIMESTAMPTZ");
+  await query(`CREATE TABLE IF NOT EXISTS message_reactions (
+    message_id BIGINT NOT NULL REFERENCES messages(id) ON DELETE CASCADE,
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    reaction TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY(message_id,user_id)
+  )`);
+  await query(`CREATE TABLE IF NOT EXISTS message_favorites (
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    message_id BIGINT NOT NULL REFERENCES messages(id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY(user_id,message_id)
+  )`);
+  await query(`CREATE TABLE IF NOT EXISTS message_pins (
+    message_id BIGINT PRIMARY KEY REFERENCES messages(id) ON DELETE CASCADE,
+    pinned_by BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  )`);
+  await query("CREATE INDEX IF NOT EXISTS idx_message_reactions_message ON message_reactions(message_id)");
+  await query("CREATE INDEX IF NOT EXISTS idx_messages_reply_to ON messages(reply_to_id)");
   await query("ALTER TABLE messages ADD COLUMN IF NOT EXISTS read_at TIMESTAMPTZ");
   await query("ALTER TABLE users ADD COLUMN IF NOT EXISTS phone TEXT");
   await query("DROP INDEX IF EXISTS idx_users_email_lower");
@@ -543,27 +565,10 @@ app.use("/status-media", express.static(statusMediaDir));
 function tokenFor(user) {
   return jwt.sign({ id: Number(user.id), username: user.username }, JWT_SECRET, { expiresIn: "7d" });
 }
-const lastSeenWriteAt = new Map();
-async function touchLastSeen(userId, force = false) {
-  const id = Number(userId);
-  if (!id) return;
-  const now = Date.now();
-  const previous = Number(lastSeenWriteAt.get(id) || 0);
-  if (!force && now - previous < 60000) return;
-  lastSeenWriteAt.set(id, now);
-  try {
-    await query("UPDATE users SET last_seen=NOW() WHERE id=$1", [id]);
-  } catch (e) {
-    // A last-seen update must never break normal messaging/auth requests.
-    console.error("last_seen update error:", e?.message || e);
-  }
-}
 function auth(req, res, next) {
   try {
     const raw = (req.headers.authorization || "").replace(/^Bearer\s+/i, "");
     req.user = jwt.verify(raw, JWT_SECRET);
-    // Throttled so normal polling does not create a DB write on every request.
-    touchLastSeen(req.user.id).catch(() => {});
     next();
   } catch {
     res.status(401).json({ error: "Требуется авторизация" });
@@ -648,11 +653,11 @@ async function permanentlyBotBanUser(userId, reason) {
 async function currentUser(req) {
   const id = Number(req.user?.id ?? req.user?.userId ?? req.user?.sub ?? 0);
   if (id) {
-    const byId = await one("SELECT id, username, last_seen FROM users WHERE id=$1", [id]);
+    const byId = await one("SELECT id, username FROM users WHERE id=$1", [id]);
     if (byId) return byId;
   }
   const username = String(req.user?.username ?? "").trim();
-  if (username) return one("SELECT id, username, last_seen FROM users WHERE LOWER(username)=LOWER($1)", [username]);
+  if (username) return one("SELECT id, username FROM users WHERE LOWER(username)=LOWER($1)", [username]);
   return null;
 }
 async function currentUserId(req) {
@@ -684,8 +689,8 @@ function onlineUserIds(){
   if(botUserId && Date.now()-botLastSeenAt<150000) ids.add(botUserId);
   return ids;
 }
-function broadcastPresence(userId, online, lastSeen = null){
-  const payload=JSON.stringify({type:"presence",userId:Number(userId),online:!!online,lastSeen:lastSeen || null});
+function broadcastPresence(userId, online){
+  const payload=JSON.stringify({type:"presence",userId:Number(userId),online:!!online});
   for(const set of sockets.values()) for(const ws of [...set]){
     if(ws.readyState===1){ try{ws.send(payload)}catch(_){} }
   }
@@ -872,8 +877,7 @@ app.post("/api/login", async (req, res) => {
       row = await one("SELECT * FROM users WHERE LOWER(username)=LOWER($1) LIMIT 1", [normalizedUsername]);
     }
     if (!row || !(await bcrypt.compare(password, row.password_hash))) return res.status(401).json({ error: "Неверный логин/номер телефона или пароль" });
-    await touchLastSeen(row.id, true);
-    const user = { id: row.id, username: row.username, last_seen: new Date().toISOString() };
+    const user = { id: row.id, username: row.username };
     res.json({ token: tokenFor(user), user });
   } catch (e) {
     console.error("Login error:", e);
@@ -890,7 +894,7 @@ app.get("/api/me", auth, async (req, res) => {
 app.get("/api/profile", auth, async (req, res) => {
   const meUser = await currentUser(req);
   if (!meUser) return res.status(401).json({ error: "Аккаунт не найден в базе данных. Выйдите и войдите снова." });
-  const user = await one("SELECT id,username,COALESCE(bio,'') AS bio,COALESCE(avatar,'') AS avatar,last_seen FROM users WHERE id=$1", [meUser.id]);
+  const user = await one("SELECT id,username,COALESCE(bio,'') AS bio,COALESCE(avatar,'') AS avatar,last_seen_at FROM users WHERE id=$1", [meUser.id]);
   if (!user) return res.status(404).json({ error: "Профиль не найден" });
   res.json(user);
 });
@@ -924,7 +928,7 @@ app.get("/api/users/search", auth, async (req, res) => {
   if (!meUser) return res.status(401).json({ error: "Аккаунт не найден в базе данных" });
   if (!q) return res.json([]);
   const users = await many(`
-    SELECT u.id,u.username,COALESCE(u.bio,'') AS bio,COALESCE(u.avatar,'') AS avatar,u.last_seen,
+    SELECT u.id,u.username,COALESCE(u.bio,'') AS bio,COALESCE(u.avatar,'') AS avatar,
       EXISTS(SELECT 1 FROM verified_users v WHERE v.user_id=u.id) AS verified
     FROM users u WHERE u.id<>$1 AND LOWER(u.username) LIKE LOWER($2)
     ORDER BY CASE WHEN LOWER(u.username)=LOWER($3) THEN 0 WHEN LOWER(u.username) LIKE LOWER($4) THEN 1 ELSE 2 END, LOWER(u.username)
@@ -938,7 +942,7 @@ app.get("/api/users/by-username/:username", auth, async (req, res) => {
   const uid = await currentUserId(req);
   const q = normalizeUsername(req.params.username);
   if (!uid) return res.status(401).json({ error: "Сессия недействительна" });
-  const user = await one(`SELECT u.id,u.username,COALESCE(u.bio,'') AS bio,COALESCE(u.avatar,'') AS avatar,u.last_seen,
+  const user = await one(`SELECT u.id,u.username,COALESCE(u.bio,'') AS bio,COALESCE(u.avatar,'') AS avatar,
     EXISTS(SELECT 1 FROM verified_users v WHERE v.user_id=u.id) AS verified
     FROM users u WHERE LOWER(u.username)=$1`, [q]);
   if (!user) return res.status(404).json({ error: "Пользователь не найден" });
@@ -947,7 +951,7 @@ app.get("/api/users/by-username/:username", auth, async (req, res) => {
 
 app.get("/api/users/:id/profile", auth, async (req, res) => {
   const userId = Number(req.params.id);
-  const user = await one("SELECT id,username,COALESCE(bio,'') AS bio,COALESCE(avatar,'') AS avatar FROM users WHERE id=$1", [userId]);
+  const user = await one("SELECT id,username,COALESCE(bio,'') AS bio,COALESCE(avatar,'') AS avatar,last_seen_at FROM users WHERE id=$1", [userId]);
   if (!user) return res.status(404).json({ error: "Пользователь не найден" });
   const gifts = await many(`SELECT sticker_id,added_at FROM profile_gifts WHERE user_id=$1 ORDER BY added_at DESC`, [userId]);
   res.json({ ...user, verified: await isVerified(userId), gifts: gifts.map(g=>({stickerId:Number(g.sticker_id),src:`/stickers/${Number(g.sticker_id)}.webp`,addedAt:g.added_at})) });
@@ -1107,27 +1111,16 @@ app.post("/api/statuses", auth, async (req, res) => {
   try {
     const user = await currentUser(req);
     if (!user) return res.status(401).json({ error: "Аккаунт не найден" });
-    const text = String(req.body.text || "").trim().slice(0, 280);
+    const text = String(req.body.text || "").trim();
     const mediaUrl = String(req.body.mediaUrl || "").trim();
+    if (text.length > 280) return res.status(400).json({ error: "Текст статуса — максимум 280 символов" });
     if (!text && !mediaUrl) return res.status(400).json({ error: "Добавьте текст или фото" });
     if (mediaUrl && !mediaUrl.startsWith("/status-media/")) return res.status(400).json({ error: "Некорректное фото" });
-
-    // Remove expired statuses before checking the active feed.
-    const expired = await many("DELETE FROM statuses WHERE expires_at <= NOW() RETURNING media_url");
-    for (const row of expired) {
-      if (row.media_url && row.media_url.startsWith("/status-media/")) {
-        fs.unlink(path.join(statusMediaDir, path.basename(row.media_url)), () => {});
-      }
-    }
-
-    const row = await one(`INSERT INTO statuses(user_id,text,media_url,expires_at)
-      VALUES($1,$2,$3,NOW()+INTERVAL '24 hours')
+    await query("DELETE FROM statuses WHERE expires_at <= NOW()");
+    const row = await one(`INSERT INTO statuses(user_id,text,media_url,expires_at) VALUES($1,$2,$3,NOW()+INTERVAL '24 hours')
       RETURNING id,user_id,text,media_url,created_at,expires_at`, [user.id, text, mediaUrl]);
     res.json({ ...row, username: user.username });
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ error: "Не удалось сохранить статус" });
-  }
+  } catch (e) { console.error(e); res.status(500).json({ error: "Не удалось сохранить статус" }); }
 });
 
 app.delete("/api/statuses/:id", auth, async (req, res) => {
@@ -1144,7 +1137,7 @@ app.get("/api/users", auth, async (req, res) => {
   const raw = String(req.query.q || "").trim().replace(/^@+/, "");
   if (!raw) {
     const chats = await many(`
-      SELECT u.id,u.username,u.last_seen,EXISTS(SELECT 1 FROM verified_users v WHERE v.user_id=u.id) AS verified,MAX(m.id) AS last_message_id
+      SELECT u.id,u.username,EXISTS(SELECT 1 FROM verified_users v WHERE v.user_id=u.id) AS verified,MAX(m.id) AS last_message_id
       FROM users u JOIN messages m ON (m.sender_id=u.id AND m.receiver_id=$1) OR (m.receiver_id=u.id AND m.sender_id=$2)
       WHERE u.id<>$3
         AND NOT EXISTS (
@@ -1155,9 +1148,9 @@ app.get("/api/users", auth, async (req, res) => {
       GROUP BY u.id,u.username ORDER BY last_message_id DESC LIMIT 50`, [req.user.id, req.user.id, req.user.id]);
     res.set("Cache-Control", "no-store");
     const online=onlineUserIds();
-    return res.json(chats.map(({ id, username, last_seen, verified }) => ({ id, username, last_seen, verified: !!verified, online: online.has(Number(id)) })));
+    return res.json(chats.map(({ id, username, verified }) => ({ id, username, verified: !!verified, online: online.has(Number(id)) })));
   }
-  const users = await many(`SELECT u.id,u.username,u.last_seen,EXISTS(SELECT 1 FROM verified_users v WHERE v.user_id=u.id) AS verified
+  const users = await many(`SELECT u.id,u.username,EXISTS(SELECT 1 FROM verified_users v WHERE v.user_id=u.id) AS verified
     FROM users u
     WHERE u.id<>$1
       AND LOWER(u.username) LIKE LOWER($2)
@@ -1175,8 +1168,13 @@ app.get("/api/users", auth, async (req, res) => {
 app.get("/api/messages/:userId", auth, async (req, res) => {
   const other = Number(req.params.userId);
   if (await isBlockedBetween(req.user.id, other)) return res.json([]);
-  const rows = await many(`SELECT m.id,m.sender_id,m.receiver_id,m.text,m.created_at,m.read_at,u.username sender_name
+  const rows = await many(`SELECT m.id,m.sender_id,m.receiver_id,m.text,m.created_at,m.read_at,m.reply_to_id,m.edited_at,u.username sender_name,
+    rm.text AS reply_text, ru.username AS reply_sender,
+    COALESCE((SELECT json_agg(json_build_object('reaction',mr.reaction,'userId',mr.user_id)) FROM message_reactions mr WHERE mr.message_id=m.id),'[]'::json) AS reactions,
+    EXISTS(SELECT 1 FROM message_favorites mf WHERE mf.message_id=m.id AND mf.user_id=$1) AS favorite,
+    EXISTS(SELECT 1 FROM message_pins mp WHERE mp.message_id=m.id) AS pinned
     FROM messages m JOIN users u ON u.id=m.sender_id
+    LEFT JOIN messages rm ON rm.id=m.reply_to_id LEFT JOIN users ru ON ru.id=rm.sender_id
     WHERE (m.sender_id=$1 AND m.receiver_id=$2) OR (m.sender_id=$3 AND m.receiver_id=$4)
     ORDER BY m.id ASC`, [req.user.id, other, other, req.user.id]);
   res.json(rows);
@@ -1372,9 +1370,16 @@ app.post("/api/messages", auth, async (req, res) => {
       return res.status(403).json({ error: "Аккаунт заблокирован автоматической модерацией за угрозу. Все сообщения удалены, номер телефона заблокирован навсегда." });
     }
     if (await isBlockedBetween(req.user.id, receiver)) return res.status(403).json({ error: "Нельзя отправить сообщение: пользователь заблокирован" });
-    const inserted = await one("INSERT INTO messages(sender_id,receiver_id,text) VALUES($1,$2,$3) RETURNING id", [req.user.id, receiver, text]);
-    const message = await one(`SELECT m.id,m.sender_id,m.receiver_id,m.text,m.created_at,m.read_at,u.username sender_name
-      FROM messages m JOIN users u ON u.id=m.sender_id WHERE m.id=$1`, [inserted.id]);
+    const replyToId = Number(req.body?.replyToId || 0) || null;
+    const inserted = await one("INSERT INTO messages(sender_id,receiver_id,text,reply_to_id) VALUES($1,$2,$3,$4) RETURNING id", [req.user.id, receiver, text, replyToId]);
+    const message = await one(`SELECT m.id,m.sender_id,m.receiver_id,m.text,m.created_at,m.read_at,m.reply_to_id,m.edited_at,u.username sender_name,
+      rm.text AS reply_text, ru.username AS reply_sender,
+      COALESCE((SELECT json_agg(json_build_object('reaction',mr.reaction,'userId',mr.user_id)) FROM message_reactions mr WHERE mr.message_id=m.id),'[]'::json) AS reactions,
+      EXISTS(SELECT 1 FROM message_favorites mf WHERE mf.message_id=m.id AND mf.user_id=$2) AS favorite,
+      EXISTS(SELECT 1 FROM message_pins mp WHERE mp.message_id=m.id) AS pinned
+      FROM messages m JOIN users u ON u.id=m.sender_id
+      LEFT JOIN messages rm ON rm.id=m.reply_to_id LEFT JOIN users ru ON ru.id=rm.sender_id
+      WHERE m.id=$1`, [inserted.id, req.user.id]);
     const delivered = push(receiver, { type: "message", message });
     if (!delivered) pushNotification(receiver, { type: "message", title: message.sender_name || "Новое сообщение", body: message.text || "Новое сообщение", senderId: message.sender_id, message }).catch(() => {});
     push(req.user.id, { type: "message", message });
@@ -1383,6 +1388,57 @@ app.post("/api/messages", auth, async (req, res) => {
     console.error(e);
     res.status(500).json({ error: "Не удалось сохранить сообщение" });
   }
+});
+
+app.patch("/api/messages/:id", auth, async (req, res) => {
+  const id=Number(req.params.id), text=String(req.body?.text||'').trim();
+  if(!id || !text || text.length>4000) return res.status(400).json({error:"Некорректный текст"});
+  const msg=await one("SELECT id,sender_id FROM messages WHERE id=$1",[id]);
+  if(!msg) return res.status(404).json({error:"Сообщение не найдено"});
+  if(Number(msg.sender_id)!==Number(req.user.id)) return res.status(403).json({error:"Можно редактировать только своё сообщение"});
+  const row=await one("UPDATE messages SET text=$1,edited_at=NOW() WHERE id=$2 RETURNING id,sender_id,receiver_id,text,created_at,read_at,reply_to_id,edited_at",[text,id]);
+  const full=await one(`SELECT m.*,u.username sender_name FROM messages m JOIN users u ON u.id=m.sender_id WHERE m.id=$1`,[id]);
+  push(full.receiver_id,{type:"message-edited",message:full}); push(full.sender_id,{type:"message-edited",message:full});
+  res.json(full);
+});
+
+app.post("/api/messages/:id/reaction", auth, async (req,res)=>{
+  const id=Number(req.params.id), reaction=String(req.body?.reaction||'').trim();
+  const allowed=new Set(['👍','❤️','😂','😮','😢','🔥','👏','🎉']);
+  if(!id || !allowed.has(reaction)) return res.status(400).json({error:"Недопустимая реакция"});
+  const msg=await one("SELECT id,sender_id,receiver_id FROM messages WHERE id=$1",[id]);
+  if(!msg) return res.status(404).json({error:"Сообщение не найдено"});
+  const old=await one("SELECT reaction FROM message_reactions WHERE message_id=$1 AND user_id=$2",[id,req.user.id]);
+  if(old?.reaction===reaction) await query("DELETE FROM message_reactions WHERE message_id=$1 AND user_id=$2",[id,req.user.id]);
+  else await query("INSERT INTO message_reactions(message_id,user_id,reaction) VALUES($1,$2,$3) ON CONFLICT(message_id,user_id) DO UPDATE SET reaction=EXCLUDED.reaction,created_at=NOW()",[id,req.user.id,reaction]);
+  const reactions=await many("SELECT user_id AS \"userId\",reaction FROM message_reactions WHERE message_id=$1",[id]);
+  push(msg.sender_id,{type:"message-reactions",messageId:id,reactions}); push(msg.receiver_id,{type:"message-reactions",messageId:id,reactions});
+  res.json({ok:true,reactions});
+});
+
+app.post("/api/messages/:id/favorite", auth, async (req,res)=>{
+  const id=Number(req.params.id); if(!id)return res.status(400).json({error:"Некорректное сообщение"});
+  const exists=await one("SELECT 1 FROM message_favorites WHERE user_id=$1 AND message_id=$2",[req.user.id,id]);
+  if(exists) await query("DELETE FROM message_favorites WHERE user_id=$1 AND message_id=$2",[req.user.id,id]);
+  else await query("INSERT INTO message_favorites(user_id,message_id) VALUES($1,$2) ON CONFLICT DO NOTHING",[req.user.id,id]);
+  res.json({favorite:!exists});
+});
+
+app.post("/api/messages/:id/pin", auth, async (req,res)=>{
+  const id=Number(req.params.id); const msg=await one("SELECT id,sender_id,receiver_id FROM messages WHERE id=$1",[id]);
+  if(!msg)return res.status(404).json({error:"Сообщение не найдено"});
+  if(Number(msg.sender_id)!==Number(req.user.id) && Number(msg.receiver_id)!==Number(req.user.id))return res.status(403).json({error:"Нет доступа"});
+  const exists=await one("SELECT 1 FROM message_pins WHERE message_id=$1",[id]);
+  if(exists)await query("DELETE FROM message_pins WHERE message_id=$1",[id]);
+  else await query("INSERT INTO message_pins(message_id,pinned_by) VALUES($1,$2) ON CONFLICT DO NOTHING",[id,req.user.id]);
+  res.json({pinned:!exists});
+});
+
+app.get("/api/messages/search", auth, async (req,res)=>{
+  const q=String(req.query.q||'').trim(); const other=Number(req.query.userId||0);
+  if(q.length<2)return res.json([]);
+  const rows=await many(`SELECT m.id,m.sender_id,m.receiver_id,m.text,m.created_at,m.edited_at,u.username sender_name\n    FROM messages m JOIN users u ON u.id=m.sender_id\n    WHERE ((m.sender_id=$1 AND m.receiver_id=$2) OR (m.sender_id=$2 AND m.receiver_id=$1)) AND m.text ILIKE $3\n    ORDER BY m.id DESC LIMIT 100`,[req.user.id,other,'%'+q+'%']);
+  res.json(rows);
 });
 
 app.delete("/api/messages/:id", auth, async (req, res) => {
@@ -1418,7 +1474,8 @@ app.post("/api/media", auth, uploadMedia.single("media"), async (req, res) => {
     const url = `/media/${req.file.filename}`;
     const text = kind === "audio" ? `[VOICE]${url}` : kind === "image" ? `[IMAGE]${url}` : `[VIDEO]${url}`;
     const inserted = await one("INSERT INTO messages(sender_id,receiver_id,text) VALUES($1,$2,$3) RETURNING id", [req.user.id, receiverId, text]);
-    const message = await one(`SELECT m.id,m.sender_id,m.receiver_id,m.text,m.created_at,m.read_at,u.username sender_name
+    const message = await one(`SELECT m.id,m.sender_id,m.receiver_id,m.text,m.created_at,m.read_at,m.reply_to_id,m.edited_at,u.username sender_name,
+      NULL AS reply_text, NULL AS reply_sender, '[]'::json AS reactions, FALSE AS favorite, FALSE AS pinned
       FROM messages m JOIN users u ON u.id=m.sender_id WHERE m.id=$1`, [inserted.id]);
     push(receiverId, { type: "message", message });
     push(req.user.id, { type: "message", message });
@@ -1574,14 +1631,19 @@ wss.on("connection", async (ws, req) => {
   try {
     const user = jwt.verify(url.searchParams.get("token") || "", JWT_SECRET);
     const wasOnline=hasLiveSocket(user.id);
-    await touchLastSeen(user.id, true);
+    await query("UPDATE users SET last_seen_at=NOW() WHERE id=$1", [Number(user.id)]).catch(()=>{});
     addSocket(Number(user.id), ws);
-    if(!wasOnline) broadcastPresence(user.id,true,new Date().toISOString());
+    if(!wasOnline) broadcastPresence(user.id,true);
     ws.send(JSON.stringify({ type: "connected", onlineUserIds:[...onlineUserIds()] }));
 
     ws.on("message", async raw => {
       try {
         const data = JSON.parse(raw.toString());
+        if (data.type === "typing" && data.toUserId) {
+          const toUserId=Number(data.toUserId);
+          if(!await isBlockedBetween(user.id,toUserId)) push(toUserId,{type:"typing",userId:Number(user.id),active:!!data.active});
+          return;
+        }
         if (data.type === "call-signal" && data.toUserId) {
           const toUserId = Number(data.toUserId);
           const callType = data.callType || "audio";
@@ -1627,11 +1689,7 @@ wss.on("connection", async (ws, req) => {
     });
     ws.on("close", async () => {
       removeSocket(Number(user.id), ws);
-      if(!hasLiveSocket(user.id)) {
-        await touchLastSeen(user.id, true);
-        const lastSeen = new Date().toISOString();
-        broadcastPresence(user.id,false,lastSeen);
-      }
+      if(!hasLiveSocket(user.id)) { await query("UPDATE users SET last_seen_at=NOW() WHERE id=$1", [Number(user.id)]).catch(()=>{}); broadcastPresence(user.id,false); }
     });
   } catch {
     ws.close();
