@@ -2296,6 +2296,7 @@ document.addEventListener("click", function(e){
     canvas.toBlob(blob=>{
       if(!blob)return;
       cameraShot=new File([blob],"camera-status.jpg",{type:"image/jpeg"});
+      window.__bktCameraShot=cameraShot;
       previewFile(cameraShot);
       stopStatusCamera();
     },"image/jpeg",0.9);
@@ -2448,7 +2449,8 @@ window.addEventListener('beforeunload',(e)=>{
     try{
       await fetchRows();
       if(!rows.length){
-        alert("Пока нет активных статусов.");
+        closeViewer();
+        focusStatusComposer();
         return;
       }
       current=Math.max(0,Math.min(rows.length-1,index));
@@ -2583,6 +2585,8 @@ window.addEventListener('beforeunload',(e)=>{
 
   // Replace the message renderer with one that exposes reply/edit/reaction controls.
   window.renderMessage=function(m){
+    if(!window._bktMessageCache)window._bktMessageCache=new Map();
+    window._bktMessageCache.set(Number(m.id),m);
     if(document.getElementById('m'+m.id))return;
     const d=document.createElement('div');d.id='m'+m.id;d.className='bubble '+(Number(m.sender_id)===Number(me.id)?'me':'');
     if(m.reply_to_id){
@@ -2632,9 +2636,13 @@ window.addEventListener('beforeunload',(e)=>{
 
   // Fix statuses: text-only statuses are valid, and photo upload is optional.
   window.publishStatus=async function(){
-    const text=($('statusText')?.value||'').trim();
-    const file=$('statusImage')?.files?.[0];
-    if(!text && !file){alert('Добавьте текст или выберите фото.');return;}
+    const caption=($('statusCaption')?.value||'').trim();
+    const photo=$('statusPhotoInput');
+    const camera=$('statusCameraInput');
+    const file=window.__bktCameraShot || photo?.files?.[0] || camera?.files?.[0] || null;
+    if(!caption && !file){alert('Добавьте текст или выберите фото.');return;}
+    const btn=$('statusPublishButton');
+    if(btn){btn.disabled=true;btn.textContent='Публикация…';}
     try{
       let mediaUrl='';
       if(file){
@@ -2645,14 +2653,148 @@ window.addEventListener('beforeunload',(e)=>{
         const ud=await up.json().catch(()=>({}));if(!up.ok)throw new Error(ud.error||'Не удалось загрузить фото');
         mediaUrl=ud.url||ud.mediaUrl||'';if(!mediaUrl)throw new Error('Сервер не вернул адрес фото');
       }
-      await api('/api/statuses',{method:'POST',body:{text,mediaUrl}});
-      if($('statusText'))$('statusText').value='';if($('statusImage'))$('statusImage').value='';
+      await api('/api/statuses',{method:'POST',body:{text:caption,mediaUrl}});
+      if($('statusCaption'))$('statusCaption').value='';
+      if(photo)photo.value='';
+      if(camera)camera.value='';
+      window.__bktCameraShot=null;
+      if($('statusPreviewWrap'))$('statusPreviewWrap').style.display='none';
       closeStatusComposer();
       await loadStatuses();
       alert('Статус опубликован.');
     }catch(e){alert(e.message||'Не удалось опубликовать статус');}
+    finally{if(btn){btn.disabled=false;btn.textContent='Опубликовать';}}
   };
 })();
 </script>
 
+
+<style id="bkt-longpress-message-menu">
+.message-actions{display:none!important}
+.bkt-message-menu{position:fixed;z-index:10050;min-width:220px;max-width:min(320px,calc(100vw - 24px));padding:8px;border:1px solid #2a3a32;border-radius:16px;background:rgba(13,19,17,.98);box-shadow:0 14px 45px rgba(0,0,0,.5);backdrop-filter:blur(14px);color:#fff}
+.bkt-message-menu .bkt-reactions{display:flex;gap:4px;padding:3px 2px 8px;border-bottom:1px solid #26332d;margin-bottom:5px;flex-wrap:wrap}
+.bkt-message-menu button{border:0;background:transparent;color:#fff;border-radius:10px;padding:9px 10px;cursor:pointer;font-size:15px;text-align:left;width:100%}
+.bkt-message-menu .bkt-reactions button{width:auto;min-width:38px;padding:7px 6px;text-align:center;font-size:20px}
+.bkt-message-menu button:hover,.bkt-message-menu button:active{background:#183021}
+.bkt-message-menu .danger{color:#ff8e8e}
+@media(max-width:700px){.bkt-message-menu{min-width:235px}.bkt-message-menu button{padding:11px 10px}}
+</style>
+<script id="bkt-longpress-message-menu-js">
+(function(){
+  const root=document.getElementById('messages');
+  if(!root)return;
+  const REACTIONS=['👍','❤️','😂','😮','😢'];
+  let menu=null, timer=null, suppressClickUntil=0, activeMessage=null;
+
+  function closeMenu(){
+    if(menu){menu.remove();menu=null;}
+    activeMessage=null;
+  }
+  window.closeMessageMenu=closeMenu;
+
+  function makeButton(label,fn,cls){
+    const b=document.createElement('button');
+    b.type='button'; b.textContent=label; if(cls)b.className=cls;
+    b.addEventListener('click',e=>{e.stopPropagation(); closeMenu(); fn();});
+    return b;
+  }
+
+  function openMenu(msg, x, y){
+    closeMenu();
+    activeMessage=msg;
+    menu=document.createElement('div');
+    menu.className='bkt-message-menu';
+    menu.setAttribute('role','menu');
+
+    const reactions=document.createElement('div');
+    reactions.className='bkt-reactions';
+    REACTIONS.forEach(r=>{
+      const b=document.createElement('button');
+      b.type='button'; b.textContent=r; b.title='Реакция '+r;
+      b.addEventListener('click',async e=>{
+        e.stopPropagation();
+        closeMenu();
+        try{await reactMessage(msg.id,r);}catch(_){ }
+      });
+      reactions.appendChild(b);
+    });
+    menu.appendChild(reactions);
+    menu.appendChild(makeButton('↩️ Ответить',()=>replyToMessage(msg)));
+    if(Number(msg.sender_id)===Number(me?.id)){
+      menu.appendChild(makeButton('✏️ Изменить',()=>editMessage(msg.id,String(msg.text||''))));
+      menu.appendChild(makeButton('🗑️ Удалить','' + (()=>{}), ''));
+      const del=menu.lastElementChild;
+      del.className='danger';
+      del.onclick=(e)=>{e.stopPropagation();closeMenu();deleteMessage(msg.id);};
+    }
+    document.body.appendChild(menu);
+    const pad=10;
+    const rect=menu.getBoundingClientRect();
+    let left=Math.max(pad,Math.min(x,window.innerWidth-rect.width-pad));
+    let top=y;
+    if(top+rect.height>window.innerHeight-pad) top=Math.max(pad,y-rect.height-12);
+    menu.style.left=left+'px'; menu.style.top=Math.max(pad,top)+'px';
+  }
+
+  function findMessage(target){
+    const el=target?.closest?.('.bubble[id^="m"]');
+    if(!el)return null;
+    const id=Number(el.id.slice(1));
+    if(!id)return null;
+    return {id,el};
+  }
+  function messageData(found){
+    if(!found)return null;
+    const m=window._bktMessageCache?.get(found.id);
+    if(m)return m;
+    // Reconstruct enough data from the rendered bubble for reply/edit/delete.
+    return {id:found.id,sender_id:found.el.classList.contains('me')?Number(me?.id):0,text:found.el.querySelector('.message-reply')?.textContent||found.el.innerText||''};
+  }
+
+  // Keep the actual server message objects so long-press actions have reply text/sender.
+  const oldRender=window.renderMessage;
+  window.renderMessage=function(m){
+    if(!window._bktMessageCache)window._bktMessageCache=new Map();
+    window._bktMessageCache.set(Number(m.id),m);
+    return oldRender?.(m);
+  };
+  // The feature renderer is installed before this script in the page, so wrap its calls too.
+  if(!window._bktMessageCache)window._bktMessageCache=new Map();
+
+  root.addEventListener('pointerdown',e=>{
+    if(e.pointerType==='mouse' && e.button!==0)return;
+    const found=findMessage(e.target); if(!found)return;
+    const msg=messageData(found); if(!msg)return;
+    clearTimeout(timer);
+    const x=e.clientX, y=e.clientY;
+    timer=setTimeout(()=>{
+      suppressClickUntil=Date.now()+700;
+      openMenu(msg,x,y);
+    },550);
+  });
+  ['pointerup','pointercancel','pointermove','scroll'].forEach(type=>{
+    root.addEventListener(type,()=>{if(type!=='scroll')clearTimeout(timer);else closeMenu();},{passive:true});
+  });
+
+  root.addEventListener('contextmenu',e=>{
+    const found=findMessage(e.target); if(!found)return;
+    e.preventDefault();
+    clearTimeout(timer);
+    const msg=messageData(found); if(msg)openMenu(msg,e.clientX,e.clientY);
+  });
+  root.addEventListener('click',e=>{if(Date.now()<suppressClickUntil){e.preventDefault();e.stopPropagation();suppressClickUntil=0;}},true);
+  document.addEventListener('pointerdown',e=>{
+    if(menu && !menu.contains(e.target) && !e.target.closest('.bubble[id^="m"]'))closeMenu();
+  },true);
+  window.addEventListener('resize',closeMenu);
+  window.addEventListener('scroll',closeMenu,{passive:true});
+
+  // Cache incoming/edited messages even when they arrive through the socket.
+  const oldSocketMessage=window.__bktCacheSocketMessage;
+  window.__bktCacheSocketMessage=function(m){
+    if(m?.id){if(!window._bktMessageCache)window._bktMessageCache=new Map();window._bktMessageCache.set(Number(m.id),m);}
+    if(oldSocketMessage)oldSocketMessage(m);
+  };
+})();
+</script>
 </body></html>
