@@ -108,6 +108,53 @@ function canManageAccounts(username) {
   return ['brozi', 'vlad'].includes(normalizeUsername(username));
 }
 
+const BOT_USERNAME = "BKT_Bot";
+let botUserId = 0;
+let botLastSeenAt = 0;
+function makeReferralCode() { return crypto.randomBytes(6).toString("base64url"); }
+async function ensureReferralCode(userId) {
+  const row = await one("SELECT referral_code FROM users WHERE id=$1", [Number(userId)]);
+  if (row?.referral_code) return row.referral_code;
+  for (let i=0;i<5;i++) {
+    const code=makeReferralCode();
+    try {
+      const updated=await one("UPDATE users SET referral_code=$1 WHERE id=$2 AND referral_code IS NULL RETURNING referral_code",[code,Number(userId)]);
+      if(updated?.referral_code) return updated.referral_code;
+    } catch(e) { if(e.code!=="23505") throw e; }
+  }
+  throw new Error("Не удалось создать реферальный код");
+}
+async function rewardReferralOnRegistration(referredUserId, rawCode) {
+  const code=String(rawCode||"").trim(), referredId=Number(referredUserId);
+  if(!code||!referredId) return {applied:false,reason:"no-code"};
+  const client=await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const referrer=await client.query("SELECT id FROM users WHERE referral_code=$1 LIMIT 1",[code]);
+    if(!referrer.rows[0] || Number(referrer.rows[0].id)===referredId){ await client.query("ROLLBACK"); return {applied:false,reason:"invalid-code"}; }
+    const inserted=await client.query(`INSERT INTO referrals(referrer_id,referred_user_id,referral_code) VALUES($1,$2,$3) ON CONFLICT(referred_user_id) DO NOTHING RETURNING id`,[Number(referrer.rows[0].id),referredId,code]);
+    if(!inserted.rows[0]){ await client.query("ROLLBACK"); return {applied:false,reason:"already-attributed"}; }
+    await client.query(`INSERT INTO reward_wallets(user_id,oranges) VALUES($1,50) ON CONFLICT(user_id) DO UPDATE SET oranges=reward_wallets.oranges+50,updated_at=NOW()`,[referredId]);
+    const countRes=await client.query("SELECT COUNT(*)::int AS count FROM referrals WHERE referrer_id=$1",[Number(referrer.rows[0].id)]);
+    const count=Number(countRes.rows[0].count||0), milestone=count%3===0;
+    if(milestone) await client.query(`INSERT INTO reward_wallets(user_id,oranges) VALUES($1,150) ON CONFLICT(user_id) DO UPDATE SET oranges=reward_wallets.oranges+150,updated_at=NOW()`,[Number(referrer.rows[0].id)]);
+    await client.query("COMMIT");
+    push(referredId,{type:"referral-reward",oranges:50,referred:true});
+    if(milestone) push(Number(referrer.rows[0].id),{type:"referral-reward",oranges:150,referrals:count});
+    return {applied:true,count,milestone};
+  } catch(e){ try{await client.query("ROLLBACK")}catch(_){} console.error("Referral reward error:",e); return {applied:false,reason:"server-error"}; }
+  finally{client.release();}
+}
+async function ensureBotAccount() {
+  try {
+    let row=await one("SELECT id FROM users WHERE LOWER(username)=LOWER($1) LIMIT 1",[BOT_USERNAME]);
+    if(!row){ const passwordHash=await bcrypt.hash(crypto.randomBytes(24).toString("hex"),10); row=await one(`INSERT INTO users(username,password_hash,avatar,is_bot,referral_code) VALUES($1,$2,$3,TRUE,$4) RETURNING id`,[BOT_USERNAME,passwordHash,"/stickers/1.webp",makeReferralCode()]); await ensureRewardWallet(row.id); }
+    else { await query("UPDATE users SET is_bot=TRUE WHERE id=$1",[Number(row.id)]); await ensureReferralCode(row.id); }
+    botUserId=Number(row.id); botHeartbeat();
+  } catch(e){ console.error("Bot account init error:",e); }
+}
+function botHeartbeat(){ if(!botUserId)return; botLastSeenAt=Date.now(); broadcastPresence(botUserId,true); }
+
 async function initDb() {
   await query(`
     CREATE TABLE IF NOT EXISTS users (
@@ -118,6 +165,20 @@ async function initDb() {
       bio TEXT NOT NULL DEFAULT '',
       avatar TEXT NOT NULL DEFAULT ''
     );
+
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS referral_code TEXT;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS is_bot BOOLEAN NOT NULL DEFAULT FALSE;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS last_seen TIMESTAMPTZ;
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_users_referral_code ON users(referral_code) WHERE referral_code IS NOT NULL;
+
+    CREATE TABLE IF NOT EXISTS referrals (
+      id BIGSERIAL PRIMARY KEY,
+      referrer_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      referred_user_id BIGINT NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+      referral_code TEXT NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+    CREATE INDEX IF NOT EXISTS idx_referrals_referrer ON referrals(referrer_id, created_at);
 
     CREATE TABLE IF NOT EXISTS deleted_usernames (
       username TEXT PRIMARY KEY,
@@ -224,7 +285,8 @@ async function initDb() {
       user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
       answer INTEGER NOT NULL,
       expires_at TIMESTAMPTZ NOT NULL,
-      used BOOLEAN NOT NULL DEFAULT FALSE
+      used BOOLEAN NOT NULL DEFAULT FALSE,
+      referral_code TEXT NOT NULL DEFAULT ''
     );
 
     CREATE TABLE IF NOT EXISTS phone_verifications (
@@ -253,6 +315,8 @@ async function initDb() {
       PRIMARY KEY (user_id, sticker_id)
     );
 
+    ALTER TABLE phone_verifications ADD COLUMN IF NOT EXISTS referral_code TEXT NOT NULL DEFAULT '';
+
     CREATE INDEX IF NOT EXISTS idx_messages_pair ON messages(sender_id, receiver_id, id);
     CREATE INDEX IF NOT EXISTS idx_messages_receiver ON messages(receiver_id, id);
     CREATE INDEX IF NOT EXISTS idx_group_messages_group ON group_messages(group_id, id);
@@ -271,8 +335,6 @@ async function initDb() {
     }
   }
   await query("ALTER TABLE statuses ADD COLUMN IF NOT EXISTS media_url TEXT NOT NULL DEFAULT ''");
-  await query("ALTER TABLE statuses ADD COLUMN IF NOT EXISTS media_data BYTEA");
-  await query("ALTER TABLE statuses ADD COLUMN IF NOT EXISTS media_mime TEXT NOT NULL DEFAULT ''");
   await query("ALTER TABLE messages ADD COLUMN IF NOT EXISTS read_at TIMESTAMPTZ");
   await query("ALTER TABLE users ADD COLUMN IF NOT EXISTS phone TEXT");
   await query("DROP INDEX IF EXISTS idx_users_email_lower");
@@ -472,7 +534,7 @@ const statusStorage = multer.diskStorage({
   }
 });
 const uploadStatusImage = multer({
-  storage: multer.memoryStorage(),
+  storage: statusStorage,
   limits: { fileSize: 8 * 1024 * 1024 },
   fileFilter: (req, file, cb) => cb(null, /^image\/(jpeg|png|webp|gif)$/i.test(file.mimetype))
 });
@@ -481,10 +543,27 @@ app.use("/status-media", express.static(statusMediaDir));
 function tokenFor(user) {
   return jwt.sign({ id: Number(user.id), username: user.username }, JWT_SECRET, { expiresIn: "7d" });
 }
+const lastSeenWriteAt = new Map();
+async function touchLastSeen(userId, force = false) {
+  const id = Number(userId);
+  if (!id) return;
+  const now = Date.now();
+  const previous = Number(lastSeenWriteAt.get(id) || 0);
+  if (!force && now - previous < 60000) return;
+  lastSeenWriteAt.set(id, now);
+  try {
+    await query("UPDATE users SET last_seen=NOW() WHERE id=$1", [id]);
+  } catch (e) {
+    // A last-seen update must never break normal messaging/auth requests.
+    console.error("last_seen update error:", e?.message || e);
+  }
+}
 function auth(req, res, next) {
   try {
     const raw = (req.headers.authorization || "").replace(/^Bearer\s+/i, "");
     req.user = jwt.verify(raw, JWT_SECRET);
+    // Throttled so normal polling does not create a DB write on every request.
+    touchLastSeen(req.user.id).catch(() => {});
     next();
   } catch {
     res.status(401).json({ error: "Требуется авторизация" });
@@ -569,11 +648,11 @@ async function permanentlyBotBanUser(userId, reason) {
 async function currentUser(req) {
   const id = Number(req.user?.id ?? req.user?.userId ?? req.user?.sub ?? 0);
   if (id) {
-    const byId = await one("SELECT id, username FROM users WHERE id=$1", [id]);
+    const byId = await one("SELECT id, username, last_seen FROM users WHERE id=$1", [id]);
     if (byId) return byId;
   }
   const username = String(req.user?.username ?? "").trim();
-  if (username) return one("SELECT id, username FROM users WHERE LOWER(username)=LOWER($1)", [username]);
+  if (username) return one("SELECT id, username, last_seen FROM users WHERE LOWER(username)=LOWER($1)", [username]);
   return null;
 }
 async function currentUserId(req) {
@@ -602,10 +681,11 @@ function onlineUserIds(){
   for(const [id,set] of sockets.entries()){
     if([...set].some(ws=>ws.readyState===1)) ids.add(Number(id));
   }
+  if(botUserId && Date.now()-botLastSeenAt<150000) ids.add(botUserId);
   return ids;
 }
-function broadcastPresence(userId, online){
-  const payload=JSON.stringify({type:"presence",userId:Number(userId),online:!!online});
+function broadcastPresence(userId, online, lastSeen = null){
+  const payload=JSON.stringify({type:"presence",userId:Number(userId),online:!!online,lastSeen:lastSeen || null});
   for(const set of sockets.values()) for(const ws of [...set]){
     if(ws.readyState===1){ try{ws.send(payload)}catch(_){} }
   }
@@ -681,6 +761,7 @@ app.post("/api/register/request-code", async (req, res) => {
     const password = String(req.body.password || "");
     const phoneRaw = String(req.body.phone || "").trim();
     const accessCode = String(req.body.accessCode || "");
+    const referralCode = String(req.body.referralCode || "").trim();
     let avatar = String(req.body.avatar || "/stickers/1.webp").trim();
     const usernameError = validateUsername(username);
     if (usernameError) return res.status(400).json({ error: usernameError });
@@ -703,7 +784,7 @@ app.post("/api/register/request-code", async (req, res) => {
     const codeHash = crypto.createHash("sha256").update(code).digest("hex");
     const passwordHash = await bcrypt.hash(password, 10);
     await query("DELETE FROM phone_verifications WHERE phone=$1 OR expires_at<NOW()", [phone]);
-    await query(`INSERT INTO phone_verifications(token,phone,username,password_hash,avatar,code_hash,expires_at) VALUES($1,$2,$3,$4,$5,$6,NOW()+INTERVAL '10 minutes')`, [verificationToken, phone, username, passwordHash, avatar, codeHash]);
+    await query(`INSERT INTO phone_verifications(token,phone,username,password_hash,avatar,code_hash,expires_at,referral_code) VALUES($1,$2,$3,$4,$5,$6,NOW()+INTERVAL '10 minutes',$7)`, [verificationToken, phone, username, passwordHash, avatar, codeHash, referralCode]);
     if (!phoneExempt(phone)) await sendVerificationCode(phone, code);
     res.json({ token: verificationToken, phone: phone.replace(/(\d{2})\d{5}(\d{2})$/, "$1*****$2"), exempt: phoneExempt(phone), devCode: process.env.NODE_ENV !== "production" && !phoneExempt(phone) ? code : undefined });
   } catch (e) { console.error(e); res.status(500).json({ error: e.message === "SMS-провайдер не настроен" ? e.message : "Не удалось отправить код подтверждения" }); }
@@ -730,6 +811,8 @@ app.post("/api/register/verify", async (req, res) => {
     if (["brozi", "vlad", "vladmobile"].includes(pending.username.toLowerCase())) await query("INSERT INTO verified_users(user_id, verified_by) VALUES($1, NULL) ON CONFLICT(user_id) DO NOTHING", [user.id]);
     await addUserToCommunityGroup(user.id);
     await ensureRewardWallet(user.id);
+    await ensureReferralCode(user.id);
+    await rewardReferralOnRegistration(user.id, pending.referral_code);
     if (pending.username.toLowerCase() === 'brozi') await query("UPDATE reward_wallets SET oranges=1000000, updated_at=NOW() WHERE user_id=$1", [user.id]);
     if (['brozi','vlad'].includes(pending.username.toLowerCase())) { await grantRewardSticker(user.id, REWARD_STICKER_ID, true); await grantRewardSticker(user.id, REWARD_STICKER_150_ID, true); }
     res.json({ token: tokenFor(user), user });
@@ -759,6 +842,8 @@ app.post("/api/register", async (req, res) => {
     if (["brozi", "vlad", "vladmobile"].includes(username.toLowerCase())) await query("INSERT INTO verified_users(user_id, verified_by) VALUES($1, NULL) ON CONFLICT(user_id) DO NOTHING", [user.id]);
     await addUserToCommunityGroup(user.id);
     await ensureRewardWallet(user.id);
+    await ensureReferralCode(user.id);
+    await rewardReferralOnRegistration(user.id, req.body.referralCode);
     if (username.toLowerCase() === 'brozi') await query("UPDATE reward_wallets SET oranges=1000000, updated_at=NOW() WHERE user_id=$1", [user.id]);
     if (['brozi','vlad'].includes(username.toLowerCase())) { await grantRewardSticker(user.id, REWARD_STICKER_ID, true); await grantRewardSticker(user.id, REWARD_STICKER_150_ID, true); }
     res.json({ token: tokenFor(user), user });
@@ -787,7 +872,8 @@ app.post("/api/login", async (req, res) => {
       row = await one("SELECT * FROM users WHERE LOWER(username)=LOWER($1) LIMIT 1", [normalizedUsername]);
     }
     if (!row || !(await bcrypt.compare(password, row.password_hash))) return res.status(401).json({ error: "Неверный логин/номер телефона или пароль" });
-    const user = { id: row.id, username: row.username };
+    await touchLastSeen(row.id, true);
+    const user = { id: row.id, username: row.username, last_seen: new Date().toISOString() };
     res.json({ token: tokenFor(user), user });
   } catch (e) {
     console.error("Login error:", e);
@@ -804,7 +890,7 @@ app.get("/api/me", auth, async (req, res) => {
 app.get("/api/profile", auth, async (req, res) => {
   const meUser = await currentUser(req);
   if (!meUser) return res.status(401).json({ error: "Аккаунт не найден в базе данных. Выйдите и войдите снова." });
-  const user = await one("SELECT id,username,COALESCE(bio,'') AS bio,COALESCE(avatar,'') AS avatar FROM users WHERE id=$1", [meUser.id]);
+  const user = await one("SELECT id,username,COALESCE(bio,'') AS bio,COALESCE(avatar,'') AS avatar,last_seen FROM users WHERE id=$1", [meUser.id]);
   if (!user) return res.status(404).json({ error: "Профиль не найден" });
   res.json(user);
 });
@@ -838,7 +924,7 @@ app.get("/api/users/search", auth, async (req, res) => {
   if (!meUser) return res.status(401).json({ error: "Аккаунт не найден в базе данных" });
   if (!q) return res.json([]);
   const users = await many(`
-    SELECT u.id,u.username,COALESCE(u.bio,'') AS bio,COALESCE(u.avatar,'') AS avatar,
+    SELECT u.id,u.username,COALESCE(u.bio,'') AS bio,COALESCE(u.avatar,'') AS avatar,u.last_seen,
       EXISTS(SELECT 1 FROM verified_users v WHERE v.user_id=u.id) AS verified
     FROM users u WHERE u.id<>$1 AND LOWER(u.username) LIKE LOWER($2)
     ORDER BY CASE WHEN LOWER(u.username)=LOWER($3) THEN 0 WHEN LOWER(u.username) LIKE LOWER($4) THEN 1 ELSE 2 END, LOWER(u.username)
@@ -852,7 +938,7 @@ app.get("/api/users/by-username/:username", auth, async (req, res) => {
   const uid = await currentUserId(req);
   const q = normalizeUsername(req.params.username);
   if (!uid) return res.status(401).json({ error: "Сессия недействительна" });
-  const user = await one(`SELECT u.id,u.username,COALESCE(u.bio,'') AS bio,COALESCE(u.avatar,'') AS avatar,
+  const user = await one(`SELECT u.id,u.username,COALESCE(u.bio,'') AS bio,COALESCE(u.avatar,'') AS avatar,u.last_seen,
     EXISTS(SELECT 1 FROM verified_users v WHERE v.user_id=u.id) AS verified
     FROM users u WHERE LOWER(u.username)=$1`, [q]);
   if (!user) return res.status(404).json({ error: "Пользователь не найден" });
@@ -987,66 +1073,69 @@ app.delete("/api/users/:id/block", auth, async (req, res) => {
 
 app.get("/api/statuses", auth, async (req, res) => {
   try {
-    await query("DELETE FROM statuses WHERE expires_at <= NOW()");
-    const rows = await many(`
-      SELECT s.id, s.user_id, u.username, u.avatar, s.text,
-        CASE WHEN s.media_data IS NOT NULL THEN concat('data:', NULLIF(s.media_mime,''), ';base64,', encode(s.media_data,'base64')) ELSE s.media_url END AS media_url,
-        s.created_at, s.expires_at
+    const expired = await many("DELETE FROM statuses WHERE expires_at <= NOW() RETURNING media_url");
+    for (const row of expired) {
+      if (row.media_url && row.media_url.startsWith("/status-media/")) {
+        const file = path.join(statusMediaDir, path.basename(row.media_url));
+        fs.unlink(file, () => {});
+      }
+    }
+    const rows = await many(`SELECT s.id, s.user_id, u.username, u.avatar, s.text, s.media_url, s.created_at, s.expires_at
       FROM statuses s JOIN users u ON u.id=s.user_id
       WHERE s.expires_at > NOW()
-        AND (s.user_id = $1 OR NOT EXISTS (
+        AND s.user_id <> $1
+        AND NOT EXISTS (
           SELECT 1 FROM user_blocks b
           WHERE (b.blocker_id=$1 AND b.blocked_id=s.user_id)
              OR (b.blocker_id=s.user_id AND b.blocked_id=$1)
-        ))
+        )
+      UNION ALL
+      SELECT s.id, s.user_id, u.username, u.avatar, s.text, s.media_url, s.created_at, s.expires_at
+      FROM statuses s JOIN users u ON u.id=s.user_id
+      WHERE s.expires_at > NOW() AND s.user_id = $1
       ORDER BY created_at DESC LIMIT 100`, [req.user.id]);
-    res.set("Cache-Control", "no-store");
     res.json(rows);
   } catch (e) { console.error(e); res.status(500).json({ error: "Не удалось загрузить статусы" }); }
 });
 
 app.post("/api/statuses/upload", auth, uploadStatusImage.single("image"), async (req, res) => {
-  if (!req.file || !req.file.buffer?.length) return res.status(400).json({ error: "Не удалось получить фото. Разрешены JPG, PNG, WebP или GIF до 8 МБ." });
-  const mime = String(req.file.mimetype || "");
-  if (!/^image\/(jpeg|png|webp|gif)$/i.test(mime)) return res.status(400).json({ error: "Разрешены JPG, PNG, WebP или GIF." });
-  // The image is kept in memory only; the final status stores it in PostgreSQL.
-  res.json({ url: `data:${mime};base64,${req.file.buffer.toString("base64")}` });
+  if (!req.file) return res.status(400).json({ error: "Не удалось получить фото. Разрешены JPG, PNG, WebP или GIF до 8 МБ." });
+  res.json({ url: `/status-media/${req.file.filename}` });
 });
 
 app.post("/api/statuses", auth, async (req, res) => {
   try {
     const user = await currentUser(req);
     if (!user) return res.status(401).json({ error: "Аккаунт не найден" });
-    const text = String(req.body.text || "").trim();
+    const text = String(req.body.text || "").trim().slice(0, 280);
     const mediaUrl = String(req.body.mediaUrl || "").trim();
-    if (text.length > 280) return res.status(400).json({ error: "Текст статуса — максимум 280 символов" });
-    let mediaData = null, mediaMime = "", legacyUrl = "";
-    if (mediaUrl.startsWith("data:image/")) {
-      const m = mediaUrl.match(/^data:(image\/(?:jpeg|png|webp|gif));base64,([A-Za-z0-9+/=]+)$/i);
-      if (!m) return res.status(400).json({ error: "Некорректное фото" });
-      mediaMime = m[1].toLowerCase();
-      mediaData = Buffer.from(m[2], "base64");
-      if (!mediaData.length || mediaData.length > 8 * 1024 * 1024) return res.status(400).json({ error: "Фото должно быть не больше 8 МБ" });
-    } else if (mediaUrl) {
-      // Backward compatibility for an old status URL; new uploads never use this path.
-      if (!mediaUrl.startsWith("/status-media/")) return res.status(400).json({ error: "Некорректное фото" });
-      legacyUrl = mediaUrl;
+    if (!text && !mediaUrl) return res.status(400).json({ error: "Добавьте текст или фото" });
+    if (mediaUrl && !mediaUrl.startsWith("/status-media/")) return res.status(400).json({ error: "Некорректное фото" });
+
+    // Remove expired statuses before checking the active feed.
+    const expired = await many("DELETE FROM statuses WHERE expires_at <= NOW() RETURNING media_url");
+    for (const row of expired) {
+      if (row.media_url && row.media_url.startsWith("/status-media/")) {
+        fs.unlink(path.join(statusMediaDir, path.basename(row.media_url)), () => {});
+      }
     }
-    if (!text && !mediaData && !legacyUrl) return res.status(400).json({ error: "Добавьте текст или фото" });
-    await query("DELETE FROM statuses WHERE expires_at <= NOW()");
-    const row = await one(`INSERT INTO statuses(user_id,text,media_url,media_data,media_mime,expires_at) VALUES($1,$2,$3,$4,$5,NOW()+INTERVAL '24 hours')
-      RETURNING id,user_id,text,media_url,created_at,expires_at`, [user.id, text, legacyUrl, mediaData, mediaMime]);
-    row.media_url = mediaData ? `data:${mediaMime};base64,${mediaData.toString("base64")}` : legacyUrl;
-    row.username = user.username;
-    res.json(row);
-  } catch (e) { console.error(e); res.status(500).json({ error: "Не удалось сохранить статус" }); }
+
+    const row = await one(`INSERT INTO statuses(user_id,text,media_url,expires_at)
+      VALUES($1,$2,$3,NOW()+INTERVAL '24 hours')
+      RETURNING id,user_id,text,media_url,created_at,expires_at`, [user.id, text, mediaUrl]);
+    res.json({ ...row, username: user.username });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: "Не удалось сохранить статус" });
+  }
 });
 
 app.delete("/api/statuses/:id", auth, async (req, res) => {
   try {
     const uid = await currentUserId(req);
-    const row = await one("DELETE FROM statuses WHERE id=$1 AND user_id=$2 RETURNING id", [Number(req.params.id), uid]);
+    const row = await one("DELETE FROM statuses WHERE id=$1 AND user_id=$2 RETURNING id,media_url", [Number(req.params.id), uid]);
     if (!row) return res.status(404).json({ error: "Статус не найден" });
+    if (row.media_url && row.media_url.startsWith("/status-media/")) fs.unlink(path.join(statusMediaDir, path.basename(row.media_url)), () => {});
     res.json({ ok: true });
   } catch (e) { console.error(e); res.status(500).json({ error: "Не удалось удалить статус" }); }
 });
@@ -1055,7 +1144,7 @@ app.get("/api/users", auth, async (req, res) => {
   const raw = String(req.query.q || "").trim().replace(/^@+/, "");
   if (!raw) {
     const chats = await many(`
-      SELECT u.id,u.username,EXISTS(SELECT 1 FROM verified_users v WHERE v.user_id=u.id) AS verified,MAX(m.id) AS last_message_id
+      SELECT u.id,u.username,u.last_seen,EXISTS(SELECT 1 FROM verified_users v WHERE v.user_id=u.id) AS verified,MAX(m.id) AS last_message_id
       FROM users u JOIN messages m ON (m.sender_id=u.id AND m.receiver_id=$1) OR (m.receiver_id=u.id AND m.sender_id=$2)
       WHERE u.id<>$3
         AND NOT EXISTS (
@@ -1066,9 +1155,9 @@ app.get("/api/users", auth, async (req, res) => {
       GROUP BY u.id,u.username ORDER BY last_message_id DESC LIMIT 50`, [req.user.id, req.user.id, req.user.id]);
     res.set("Cache-Control", "no-store");
     const online=onlineUserIds();
-    return res.json(chats.map(({ id, username, verified }) => ({ id, username, verified: !!verified, online: online.has(Number(id)) })));
+    return res.json(chats.map(({ id, username, last_seen, verified }) => ({ id, username, last_seen, verified: !!verified, online: online.has(Number(id)) })));
   }
-  const users = await many(`SELECT u.id,u.username,EXISTS(SELECT 1 FROM verified_users v WHERE v.user_id=u.id) AS verified
+  const users = await many(`SELECT u.id,u.username,u.last_seen,EXISTS(SELECT 1 FROM verified_users v WHERE v.user_id=u.id) AS verified
     FROM users u
     WHERE u.id<>$1
       AND LOWER(u.username) LIKE LOWER($2)
@@ -1102,6 +1191,16 @@ app.post("/api/messages/:userId/read", auth, async (req, res) => {
   const ids=rows.map(r=>Number(r.id));
   if(ids.length) push(other,{type:"messages-read",messageIds:ids,readerId:Number(req.user.id)});
   res.json({ok:true,ids});
+});
+
+app.get("/api/referral", auth, async (req, res) => {
+  try {
+    const code=await ensureReferralCode(req.user.id);
+    const row=await one("SELECT COUNT(*)::int AS count FROM referrals WHERE referrer_id=$1",[Number(req.user.id)]);
+    const count=Number(row?.count||0);
+    const nextAt=count===0?3:(Math.ceil(count/3)*3);
+    res.json({code,count,nextAt,totalEarned:Math.floor(count/3)*150,rewardPerFriend:50,rewardPerThree:150});
+  } catch(e){console.error(e);res.status(500).json({error:"Не удалось загрузить реферальную информацию"});}
 });
 
 app.get("/api/rewards", auth, async (req, res) => {
@@ -1470,13 +1569,14 @@ app.get("/api/calls/pending", auth, async (req, res) => {
   res.json(out);
 });
 
-wss.on("connection", (ws, req) => {
+wss.on("connection", async (ws, req) => {
   const url = new URL(req.url, "http://localhost");
   try {
     const user = jwt.verify(url.searchParams.get("token") || "", JWT_SECRET);
     const wasOnline=hasLiveSocket(user.id);
+    await touchLastSeen(user.id, true);
     addSocket(Number(user.id), ws);
-    if(!wasOnline) broadcastPresence(user.id,true);
+    if(!wasOnline) broadcastPresence(user.id,true,new Date().toISOString());
     ws.send(JSON.stringify({ type: "connected", onlineUserIds:[...onlineUserIds()] }));
 
     ws.on("message", async raw => {
@@ -1525,9 +1625,13 @@ wss.on("connection", (ws, req) => {
         console.error("WebSocket message error:", e);
       }
     });
-    ws.on("close", () => {
+    ws.on("close", async () => {
       removeSocket(Number(user.id), ws);
-      if(!hasLiveSocket(user.id)) broadcastPresence(user.id,false);
+      if(!hasLiveSocket(user.id)) {
+        await touchLastSeen(user.id, true);
+        const lastSeen = new Date().toISOString();
+        broadcastPresence(user.id,false,lastSeen);
+      }
     });
   } catch {
     ws.close();
@@ -1553,6 +1657,8 @@ app.get("*", (req, res) => res.sendFile(path.join(__dirname, "public", "index.ht
 (async () => {
   try {
     await initDb();
+    await ensureBotAccount();
+    setInterval(botHeartbeat, 120000);
     server.listen(PORT, "0.0.0.0", () => console.log(`БКТ Messenger: http://0.0.0.0:${PORT}`));
   } catch (e) {
     console.error("PostgreSQL initialization failed:", e);
