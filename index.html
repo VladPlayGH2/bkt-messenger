@@ -468,6 +468,18 @@ img,video{max-width:100%}
 <style id="orange-system-css">
 .orange-system-nav{display:flex;gap:7px;flex-wrap:wrap;margin:12px 0}.orange-system-nav button{border:1px solid #2a3a31;background:#111916;color:#fff;border-radius:10px;padding:8px 10px;cursor:pointer}.orange-system-nav button.active{background:#1f7a43;border-color:#38a966}.orange-section{display:none}.orange-section.active{display:block}.orange-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}.orange-item{background:#101714;border:1px solid #24312b;border-radius:14px;padding:13px}.orange-item h3{margin:0 0 6px;font-size:15px}.orange-muted{font-size:12px;color:#9eaaa3}.orange-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.orange-actions button{border:0;border-radius:9px;padding:9px 11px;background:#238a4d;color:#fff;cursor:pointer}.orange-actions button.secondary{background:#18251e;border:1px solid #2a3a31}.orange-list{display:flex;flex-direction:column;gap:7px}.orange-row{display:flex;align-items:center;gap:10px;background:#101714;border:1px solid #24312b;border-radius:11px;padding:10px}.orange-row .grow{flex:1;min-width:0}.orange-rank{width:28px;text-align:center;font-weight:900}.orange-number{font-weight:900;white-space:nowrap}.orange-badge{display:inline-flex;align-items:center;gap:4px;padding:4px 7px;border-radius:999px;background:#18251e;border:1px solid #2a3a31;font-size:12px}.orange-history-positive{color:#7be3a0}.orange-history-negative{color:#ff9b9b}.orange-achieved{border-color:#34895a}.orange-balance-big{font-size:28px;font-weight:900;margin:5px 0 14px}.orange-note{font-size:12px;color:#9eaaa3;line-height:1.45}.orange-system-modal .reward-panel{width:min(720px,95vw);max-height:90vh;overflow:auto}
 </style>
+
+<style id="general-community-styles">
+.general-tab{margin:10px 10px 6px;width:calc(100% - 20px);padding:10px;border:1px solid #28523b;border-radius:11px;background:#12251a;color:#c9ffda;font-weight:800;cursor:pointer;text-align:left}
+.general-panel{display:none;margin:0 10px 10px;padding:10px;border:1px solid #26382e;border-radius:12px;background:#0d1511}
+.general-panel.active{display:block}
+.general-title{font-weight:900;margin:2px 0 8px}
+.general-card{padding:10px;margin:7px 0;border:1px solid #26382e;border-radius:10px;background:#111b15}
+.general-card-top{display:flex;justify-content:space-between;gap:8px;align-items:center}
+.general-card small{display:block;color:#9eaaa3;margin-top:4px}
+.general-card button{border:0;border-radius:8px;padding:7px 10px;background:#238a4d;color:white;font-weight:700}
+.general-card button:disabled{opacity:.55}
+</style>
 </head>
 <body>
 <div id="bktToast" onclick="openToastChat()"></div>
@@ -485,7 +497,14 @@ img,video{max-width:100%}
 <button class="primary" onclick="authAction()" id="authBtn">Войти</button><div class="switch" onclick="toggleAuth()" id="switch">Нет аккаунта? Регистрация</div><div id="referralHint" class="reward-sub" style="display:none;margin-top:8px"></div>
 </div></div><div class="app" id="app" style="display:none">
 <aside class="sidebar"><div class="quick-actions"><button id="profileBtn" onclick="openSettings()">⚙️ <span data-i18n="settings">Настройки</span></button><button class="shop-btn" id="shopBtn" onclick="openRewards();showOrangeTab('shop')" title="Открыть магазин" aria-label="Открыть магазин">🛍️ <span>Магазин</span></button><button onclick="createGroup()">＋ <span data-i18n="group">Группа</span></button><button onclick="openRewards()">🍊 <span>Награды</span></button></div><div class="top"><div class="brand"><div class="logo">БКТ</div><div><h1>БКТ</h1><small id="me" onclick="openMyProfile()" style="cursor:pointer" title="Открыть свой профиль"></small></div></div></div>
-<button id="statusesBtn" class="statuses-btn" onclick="openStatuses()">🟢 Статусы</button><div class="search"><input id="search" placeholder="Найти пользователя по @username" oninput="loadUsers()"></div><div id="groups"></div><div id="users" class="users"></div></aside>
+<button id="statusesBtn" class="statuses-btn" onclick="openStatuses()">🟢 Статусы</button><div class="search"><input id="search" placeholder="Найти пользователя по @username" oninput="loadUsers()"></div>
+<button type="button" class="general-tab" id="generalTabButton" onclick="toggleGeneralTab()">🌐 Общее · сообщества</button>
+<div id="generalPanel" class="general-panel">
+  <div class="general-title">Общие группы</div>
+  <div style="font-size:12px;color:#9eaaa3;margin-bottom:8px">Вступай в тематические сообщества и общайся с участниками</div>
+  <div id="generalGroups"><small style="color:#9eaaa3">Загрузка…</small></div>
+</div>
+<div id="groups"></div><div id="users" class="users"></div></aside>
 <main class="chat"><div class="chathead"><button class="back" onclick="mobileBack()" style="display:none">‹</button><div class="avatar" id="headAvatar" onclick="openSelectedProfile()" style="cursor:pointer" title="Открыть профиль"></div><div class="chat-title" onclick="openSelectedProfile()" style="cursor:pointer"><b id="headName" data-i18n="chooseChat">Выберите чат</b><span class="status" id="headStatus"></span></div><div class="call-actions"><button id="audioCallButton" title="Аудиозвонок" aria-label="Аудиозвонок">📞</button><button id="videoCallButton" title="Видеозвонок" aria-label="Видеозвонок">📹</button></div></div>
 <div id="messages" class="messages"><div class="empty">Выберите пользователя слева</div></div>
 <div class="sendbar">
@@ -1023,7 +1042,15 @@ function toggleAuth(){
   $("err").textContent=""; selectedRegistrationAvatar=""; renderRegistrationAvatarPicker(); updateRegistrationUI(); toggleProtectedCode();
 }
 
+const apiGetInflight=new Map();
 async function api(path, options={}){
+  const method=String(options.method||"GET").toUpperCase();
+  if(method==="GET" && apiGetInflight.has(path)) return apiGetInflight.get(path);
+  const task=apiRequest(path,options);
+  if(method==="GET"){apiGetInflight.set(path,task);task.finally(()=>{if(apiGetInflight.get(path)===task)apiGetInflight.delete(path);}).catch(()=>{});}
+  return task;
+}
+async function apiRequest(path, options={}){
   const saved=sessionStorage.getItem("bkt_token");
   if(saved) token=saved;
   const baseHeaders={...(options.headers||{})};
@@ -1050,12 +1077,12 @@ async function api(path, options={}){
           await new Promise(r=>setTimeout(r,Math.min(5000,Math.max(500,retryAfter*1000||500*(attempt+1)))));
           continue;
         }
-        throw new Error(data.error||data.message||("Ошибка "+res.status));
+        const httpError=new Error(data.error||data.message||("Ошибка "+res.status)); httpError.status=res.status; throw httpError;
       }
       return data;
     }catch(e){
       lastError=e;
-      if(!retryable || attempt>=2) throw e;
+      if(!retryable || attempt>=2 || (e.status && ![429,502,503,504].includes(e.status))) throw e;
       await new Promise(r=>setTimeout(r,500*(attempt+1)));
     }
   }
@@ -1299,13 +1326,16 @@ function verifiedName(name, verified){
   return safe+(verified?'<span class="verified-badge" title="Подтверждено">✓</span>':"");
 }
 
-async function loadUsers(){
+let userSearchTimer=null;
+function loadUsers(){clearTimeout(userSearchTimer);userSearchTimer=setTimeout(loadUsersNow,320);}
+async function loadUsersNow(){
   const input = $("search");
   const q = (input?.value || "").trim().replace(/^@+/,"");
   const box = $("users");
   if (!box) return;
   try {
     const list = q ? await api("/api/users/search?q="+encodeURIComponent(q)) : await api("/api/users");
+    if(sequence!==userSearchSequence)return;
     box.innerHTML = "";
     if (!list.length) {
       box.innerHTML = q ? '<div style="padding:14px;color:#8d9893">Никого не найдено. Проверь @username.</div>' : '<div style="padding:14px;color:#8d9893">Пока нет чатов.</div>';
@@ -1320,7 +1350,7 @@ async function loadUsers(){
       row.innerHTML=`<div class="avatar">${avatar}</div><div><b>${verifiedName(u.username,!!u.verified)}</b><small>@${escapeHtml(u.username)}</small><small class="presence-label" style="display:block;color:${online?'#22ff72':'#68736d'}"> <span class="presence-dot ${online?'online':'offline'}">●</span>${online?'онлайн':'не в сети'}</small></div>`;
       box.appendChild(row);
     }
-  } catch(e) { box.innerHTML='<div style="padding:14px;color:#ff8d8d">'+escapeHtml(e.message||"Ошибка загрузки пользователей")+'</div>'; }
+  } catch(e) { if(sequence!==userSearchSequence)return; box.innerHTML='<div style="padding:14px;color:#ff8d8d">'+escapeHtml(e.message||"Ошибка загрузки пользователей")+'</div>'; }
 }
 
 function updateComposerAccess(){
@@ -1336,6 +1366,40 @@ function updateComposerAccess(){
 async function loadGroups(){
  try{const gs=await api('/api/groups');$("groups").innerHTML=gs.map(g=>`<div class="group-item" onclick='openGroup(${JSON.stringify(g)})'>👥 ${escapeHtml(g.name)}<small style="display:block;color:#8d9893">${Array.isArray(g.members) ? g.members.length : 1} участников</small></div>`).join('')}catch(e){console.error(e)}
 }
+
+let generalGroupsCache=[];
+async function toggleGeneralTab(){
+ const panel=$("generalPanel");
+ const open=!panel.classList.contains("active");
+ panel.classList.toggle("active",open);
+ $("generalTabButton").classList.toggle("active",open);
+ if(open) await loadGeneralGroups();
+}
+async function loadGeneralGroups(){
+ const box=$("generalGroups"); if(!box)return;
+ try{
+  const rows=await api("/api/general/groups"); generalGroupsCache=Array.isArray(rows)?rows:[];
+  box.innerHTML=generalGroupsCache.map(g=>`<div class="general-card">
+    <div class="general-card-top"><b>${escapeHtml(g.name)}</b><button type="button" onclick="${g.joined?"openGeneralGroup("+Number(g.id)+")":"joinGeneralGroup("+Number(g.id)+")"}">${g.joined?"Открыть":"Вступить"}</button></div>
+    <small>${escapeHtml(g.description||"Тематическое сообщество")} · ${Number(g.member_count||0)} участников</small>
+  </div>`).join("") || '<small>Пока нет общих групп</small>';
+ }catch(e){box.innerHTML='<small style="color:#ff9999">'+escapeHtml(e.message||"Не удалось загрузить сообщества")+'</small>';}
+}
+async function openGeneralGroup(id){
+ try{const groups=await api("/api/groups");const g=groups.find(x=>Number(x.id)===Number(id));if(g)openGroup(g);else alert("Сначала вступи в группу");}
+ catch(e){alert(e.message||"Не удалось открыть группу");}
+}
+async function joinGeneralGroup(id){
+ try{
+  const result=await api("/api/general/groups/"+encodeURIComponent(id)+"/join",{method:"POST",body:{}});
+  const g=generalGroupsCache.find(x=>Number(x.id)===Number(id));
+  if(g){g.joined=true;g.member_count=Number(g.member_count||0)+1;}
+  await loadGeneralGroups(); await loadGroups();
+  const group=result.group || generalGroupsCache.find(x=>Number(x.id)===Number(id));
+  if(group) openGroup(group);
+ }catch(e){alert(e.message||"Не удалось вступить в группу");}
+}
+
 async function createGroup(){
  const name=prompt('Название группы:'); if(!name||!name.trim())return;
  const raw=prompt('Введите @username участников через запятую:')||''; const ids=[];

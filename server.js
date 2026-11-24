@@ -301,6 +301,11 @@ async function initDb() {
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
 
+    ALTER TABLE groups ADD COLUMN IF NOT EXISTS category TEXT;
+    ALTER TABLE groups ADD COLUMN IF NOT EXISTS is_public BOOLEAN NOT NULL DEFAULT FALSE;
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_public_general_group_category
+      ON groups(category) WHERE is_public=TRUE AND category IS NOT NULL;
+
     CREATE TABLE IF NOT EXISTS verified_users (
       user_id BIGINT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
       verified_by BIGINT REFERENCES users(id) ON DELETE SET NULL,
@@ -2112,6 +2117,44 @@ app.post("/api/groups", auth, async (req, res) => {
     WHERE gm.group_id=$1 ORDER BY CASE gm.role WHEN 'owner' THEN 0 ELSE 1 END,u.username`, [groupId]);
   for (const m of members) push(m.id, { type: "group-created", group, members });
   res.json({ ...group, members });
+});
+
+
+const GENERAL_CATEGORIES = [
+  { key: "кино", name: "🎬 Кино", description: "Фильмы, сериалы и премьеры" },
+  { key: "спорт", name: "⚽ Спорт", description: "Матчи, команды и тренировки" },
+  { key: "игры", name: "🎮 Игры", description: "Игры, новости и совместные катки" },
+  { key: "музыка", name: "🎵 Музыка", description: "Треки, артисты и концерты" }
+];
+
+app.get("/api/general/groups", auth, async (req, res) => {
+  const uid = Number(req.user.id);
+  for (const c of GENERAL_CATEGORIES) {
+    await query(`INSERT INTO groups(name,owner_id,category,is_public)
+      VALUES($1,$2,$3,TRUE) ON CONFLICT DO NOTHING`, [c.name, uid, c.key]);
+    const g = await one("SELECT id FROM groups WHERE category=$1 AND is_public=TRUE", [c.key]);
+    if (g) await query(`INSERT INTO group_members(group_id,user_id,role)
+      VALUES($1,$2,'member') ON CONFLICT(group_id,user_id) DO NOTHING`, [g.id, uid]);
+  }
+  const rows = await many(`SELECT g.id,g.name,g.category,g.created_at,
+      COUNT(gm.user_id)::int AS member_count,
+      EXISTS(SELECT 1 FROM group_members mine WHERE mine.group_id=g.id AND mine.user_id=$1) AS joined
+    FROM groups g LEFT JOIN group_members gm ON gm.group_id=g.id
+    WHERE g.is_public=TRUE GROUP BY g.id ORDER BY g.id`, [uid]);
+  res.set("Cache-Control", "no-store");
+  res.json(rows.map(g => ({...g, description: GENERAL_CATEGORIES.find(c=>c.key===g.category)?.description || ""})));
+});
+
+app.post("/api/general/groups/:id/join", auth, async (req, res) => {
+  const groupId = Number(req.params.id), uid = Number(req.user.id);
+  if (!Number.isSafeInteger(groupId) || groupId <= 0) return res.status(400).json({error:"Некорректная группа"});
+  const group = await one("SELECT id FROM groups WHERE id=$1 AND is_public=TRUE", [groupId]);
+  if (!group) return res.status(404).json({error:"Общая группа не найдена"});
+  await query(`INSERT INTO group_members(group_id,user_id,role)
+    VALUES($1,$2,'member') ON CONFLICT(group_id,user_id) DO NOTHING`, [groupId,uid]);
+  const members = await many(`SELECT u.id,u.username,gm.role FROM group_members gm
+    JOIN users u ON u.id=gm.user_id WHERE gm.group_id=$1 ORDER BY u.username`, [groupId]);
+  res.json({ok:true,group:{...group,name:(await one("SELECT name FROM groups WHERE id=$1",[groupId])).name,members}});
 });
 
 app.get("/api/groups", auth, async (req, res) => {
